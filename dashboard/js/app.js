@@ -298,13 +298,20 @@
   function onIdleTick() {
     idleSec++;
     var blocked = $('#takeover').classList.contains('is-open');
-    if (App.mode === 'nightdash' && idleSec >= 20) { App.setMode('night'); return; }
+    var idleMode = App.isNight() ? 'night' : 'ambient';
+    // A running idle display must follow the clock, including after the browser
+    // resumes from sleep. Leave the dashboard alone while someone is using it.
+    if (!blocked && (App.mode === 'ambient' || App.mode === 'night')) {
+      if (App.mode !== idleMode) App.setMode(idleMode);
+      return;
+    }
+    if (App.mode === 'nightdash' && idleSec >= 20 && !blocked) { App.setMode(idleMode); return; }
     if (App.mode !== 'day' || blocked) return;
     if (idleSec === App.idle.home && App.current !== 'home') { App.closeSheet(); App.go('home'); }
     if (idleSec >= App.idle.ambient) {
       App.closeSheet();
       App.go('home');
-      App.setMode(App.isNight() ? 'night' : 'ambient');
+      App.setMode(idleMode);
     }
   }
   App.resetIdle = function () { idleSec = 0; };
