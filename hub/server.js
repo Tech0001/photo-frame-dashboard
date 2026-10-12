@@ -20,6 +20,7 @@ const { searchLocations } = require('./lib/locations');
 const { AgentsStore } = require('./lib/agents');
 const makeConnections = require('./lib/connections');
 const accounts = require('./lib/accounts');
+const homeassistant = require('./lib/homeassistant');
 const tune = require('./lib/tune');
 const backup = require('./lib/backup');
 
@@ -129,6 +130,13 @@ const routes = {
   'GET /api/photos': async (req, res) => send(res, 200, { photos: await photos.scan(true), skippedHeic: photos.skipped }),
 
   'GET /api/nas': async (req, res) => send(res, 200, await getNas(cfg, secrets)),
+  'GET /api/home': async (req, res) => send(res, 200, await homeassistant.get(cfg, secrets)),
+  'GET /api/home/camera': async (req, res, q) => {
+    try {
+      const r = await homeassistant.camera(cfg, secrets, String(q.get('entity') || ''));
+      send(res, 200, r.body, { 'Content-Type': r.type, 'Cache-Control': 'no-store' });
+    } catch (e) { send(res, e.userError ? 400 : 502, { error: e.message }); }
+  },
 
   // Raw ProxMenux JSON for one fixed endpoint, for checking field names. Admin only.
   'GET /api/admin/nas-raw': async (req, res, q) => {

@@ -12,6 +12,7 @@ import './views/tasks.js';
 import './views/shopping.js';
 import './views/photos.js';
 import './views/control.js';
+import './views/homeassistant.js';
 import './views/nas.js';
 import './views/agents.js';
 import './views/ambient.js';

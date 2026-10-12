@@ -152,7 +152,7 @@ var COLORS = ['black', 'purple', 'red', 'blue', 'green', 'yellow', 'pink', 'oran
 var HEX = { black: '#111111', purple: '#8957E5', red: '#E5252A', blue: '#2D5BFF', green: '#00A36C', yellow: '#FFB000', pink: '#E4007C', orange: '#FF6A13' };
 // Emoji this frame can actually draw (tested on the frame itself; newer ones show as empty boxes).
 var EMOJI_GROUPS = [["home","Home"],["laundry","Clothes"],["food","Food"],["school","School & play"],["sports","Sports"],["pets","Pets"],["outdoors","Outdoors"],["travel","Travel"],["health","Health"],["misc","Other"]];
-var EMOJI = {"home":["🏠","🏡","🛏️","🛁","🚿","🚽","🚪","🔑","🗝️","🔐","🔒","🔓","💡","🕯️","🔌","🔋","🗑️","♻️","🚮","🚰","💧","🌀","🔧","🔨","🛠️","⚙️","🔩","📦","📬","✉️","📮","🛋️"],"laundry":["👕","👖","👗","👚","👔","👟","👞","👒","🧦","🧥","🧢","🎽","👜","🎒","👓","🕶️","💍","👘","🧤","🧣"],"food":["🍽️","🍴","🥄","🔪","🍳","🥘","🍲","🍕","🍔","🌮","🌯","🍝","🍜","🍣","🍱","🥗","🥪","🍞","🥐","🥖","🥞","🧀","🍎","🍌","🍇","🍓","🍊","🍋","🍉","🍑","🍒","🥕","🌽","🥦","🥔","🍅","🥑","🥒","🍆","🥛","☕","🍵","🍷","🍺","🥤","🍪","🍰","🎂","🍫","🍿","🥣","🥫","🥧","🥡","🥢"],"school":["📚","📖","✏️","📝","🖍️","🖊️","📐","📏","📌","🎨","🎹","🎸","🎻","🥁","🎤","🎧","🎬","📷","🎮","🕹️","🎲","🎯","🎁","🎈","🎉","🔬","🔭","🌍"],"sports":["⚽","🏀","🏈","⚾","🎾","🏐","🏉","🏓","🏸","🥊","⛳","🏊","🚴","🚲","⛸️","🎿","🏃","🚶","🧘","🏋️","🤸","🏆","🥇"],"pets":["🐶","🐕","🐩","🐱","🐈","🐠","🐟","🐦","🐹","🐇","🐢","🦎","🐴","🐄","🐑","🐾"],"outdoors":["🌱","🌿","🍀","🌳","🌲","🌻","🌷","🌹","🌵","🍂","🍁","🌾","☀️","⛅","🌧️","☔","❄️","🔥","🌊","🌼","⛺","🏕️"],"travel":["🚗","🚙","🚌","🚕","🚓","🏍️","✈️","🚀","⛽","🛒","🛍️","🚏","🅿️","🏪","🏥","🏫","🏦","⛪","🏢"],"health":["💊","💉","😴","🛌","💪","🧠","❤️","😷","🤒","🌡️"],"misc":["✅","✔️","☑️","⭐","🌟","✨","📞","☎️","📱","💻","📧","📅","⏰","⏳","📆","🎁","💰","💳","🔔","📢","🚩","🏷️","📋","📎","🔍","🗓️","🔗","❗","❓","💯","🆗","🆕"]};
+var EMOJI = {"home":["🏠","🏡","🛏️","🛁","🚿","🚽","🚪","🔑","🗝️","🔐","🔒","🔓","💡","🕯️","🔌","🔋","🗑️","♻️","🚮","🚰","💧","🌀","🔧","🔨","🛠️","⚙️","🔩","📦","📬","✉️","📮","🛋️"],"laundry":["👕","👖","👗","👚","👔","👟","👞","👒","🧦","🧥","🧢","🎽","👜","🎒","👓","🕶️","💍","👘","🧤","🧣"],"food":["🍽️","🍴","🥄","🔪","🍳","🥘","🍲","🍕","🍔","🌮","🌯","🍝","🍜","🍣","🍱","🥗","🥪","🍞","🥐","🥖","🥞","🧀","🍎","🍌","🍇","🍓","🍊","🍋","🍉","🍑","🍒","🥕","🌽","🥦","🥔","🍅","🥑","🥒","🍆","🥛","☕","🍵","🍷","🍺","🥤","🍪","🍰","🎂","🍫","🍿","🥣","🥫","🥧","🥡","🥢"],"school":["📚","📖","✏️","📝","🖍️","🖊️","📐","📏","📌","🎨","🎹","🎸","🎻","🥁","🎤","🎧","🎬","📷","🎮","🕹️","🎲","🎯","🎁","🎈","🎉","🔬","🔭","🌍"],"sports":["⚽","🏀","🏈","⚾","🎾","🏐","🏉","🏓","🏸","🥊","⛳","🏊","🚴","🚲","⛸️","🎿","🏃","🚶","🧘","🏋️","🤸","🏆","🥇"],"pets":["🐶","🐕","🐩","🐱","🐈","🐠","🐟","🐦","🦆","🐔","🐓","🐣","🐤","🐥","🐹","🐇","🐢","🦎","🐴","🐄","🐑","🐾"],"outdoors":["🌱","🌿","🍀","🌳","🌲","🌻","🌷","🌹","🌵","🍂","🍁","🌾","☀️","⛅","🌧️","☔","❄️","🔥","🌊","🌼","⛺","🏕️"],"travel":["🚗","🚙","🚌","🚕","🚓","🏍️","✈️","🚀","⛽","🛒","🛍️","🚏","🅿️","🏪","🏥","🏫","🏦","⛪","🏢"],"health":["💊","💉","😴","🛌","💪","🧠","❤️","😷","🤒","🌡️"],"misc":["✅","✔️","☑️","⭐","🌟","✨","📞","☎️","📱","💻","📧","📅","⏰","⏳","📆","🎁","💰","💳","🔔","📢","🚩","🏷️","📋","📎","🔍","🗓️","🔗","❗","❓","💯","🆗","🆕"]};
 function $(s, r) { return (r || document).querySelector(s); }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 function opts(list, sel) { return list.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === sel ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join(''); }
@@ -216,7 +216,7 @@ function barSoon() { clearTimeout(brTimer); brTimer = setTimeout(barRefresh, 150
 window.addEventListener('beforeunload', function (e) { if (dirtyNames().length) { e.preventDefault(); e.returnValue = ''; } });
 document.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveAll(); } });
 function renderChores() {
-  var h = '<p class="mute">Tip: the frame is an older Android, so emoji newer than about 2017 show as empty boxes. Stick to common ones. Each chore appears on the day(s) ticked, in the routine you pick. Leave all days ticked for every day. Ticks reset every midnight.</p>';
+  var h = '<p class="mute">Icon graphics are bundled with the dashboard so they display on older frames. Each chore appears on the day(s) ticked, in the routine you pick. Leave all days ticked for every day. Ticks reset every midnight.</p>';
   D.people.concat([{ id: 'any', name: 'Anyone', color: 'black' }]).forEach(function (p) {
     h += '<h2><span class="dot" style="background:' + colorHex(p.color) + '"></span>' + esc(p.name) + '</h2>';
     D.chores.forEach(function (c, i) {
@@ -379,12 +379,46 @@ document.addEventListener('change', function (e) { if (e.target.id === 'set-chan
 // ---------------------------------------------------------------- connections (calendars, accounts, integrations, security)
 var CN = null, CN_TAB = 'calendars';
 var WEATHER_RESULTS = [], WEATHER_SEARCH = 0;
-var CN_TABS = [['calendars', 'Calendars'], ['accounts', 'Accounts'], ['proxmenux', 'ProxMenux'], ['weather', 'Weather & time'], ['security', 'Security']];
+var CN_TABS = [['calendars', 'Calendars'], ['accounts', 'Accounts'], ['homeassistant', 'Home Assistant'], ['proxmenux', 'ProxMenux'], ['weather', 'Weather & time'], ['security', 'Security']];
 function cnInit(v) {
   CN = v;
   CN.calendars.forEach(function (c) { c.newUrl = ''; c.result = ''; });
   CN.domReady = false;
   CN.pxToken = ''; CN.pxResult = ''; CN.newPw = ''; CN.confirmPw = ''; CN.shownToken = CN.shownToken || '';
+  CN.homeassistant = CN.homeassistant || { url: '', climate: '', entities: [], tokenSet: false };
+  CN.haToken = ''; CN.haResult = ''; CN.haEntities = [];
+}
+function homeassistantHtml() {
+  var h = CN.homeassistant, choices = CN.haEntities || [], chosen = h.entities || [];
+  var climates = choices.filter(function (e) { return e.domain === 'climate'; });
+  if (h.climate && !climates.some(function (e) { return e.id === h.climate; })) climates.push({ id: h.climate, name: h.climate });
+  var others = choices.filter(function (e) { return e.domain !== 'climate'; });
+  chosen.forEach(function (id) { if (!others.some(function (e) { return e.id === id; })) others.push({ id: id, name: id }); });
+  return '<div class="card"><b>Home Assistant</b><p class="mute">Connect the Home page to your thermostat and Ring readings. The frame displays only the entities you select below. This connection reads status and camera images; it does not change your devices.</p>' +
+    '<div class="fg"><label for="ha-address">Address</label><input id="ha-address" data-ha="url" value="' + esc(h.url) + '" placeholder="http://homeassistant.local"></div>' +
+    '<div class="fg"><label for="ha-token">Access token</label><input id="ha-token" data-ha="token" type="password" autocomplete="new-password" value="' + esc(CN.haToken || '') + '" placeholder="' + (h.tokenSet ? 'Token saved; leave blank to keep it' : 'Paste a long-lived access token') + '"></div>' +
+    '<p class="mute">In Home Assistant, open your profile → Security → Long-lived access tokens and create one named Photo frame hub. Paste it here and save. It stays on this server and is never sent to the frame. The token has the access of the account that created it.</p>' +
+    '<div class="row"><button class="btn ghost" id="test-ha">Find devices</button>' + (h.tokenSet ? '<button class="btn ghost" id="unlink-ha">Disconnect</button>' : '') + '<span class="mute">Save the address and token first.</span></div>' +
+    '<p class="mute" role="status">' + esc(CN.haResult || '') + '</p></div>' +
+    '<div class="card"><b>Show on the frame</b><div class="fg"><label for="ha-climate">Thermostat</label><select id="ha-climate" data-ha="climate">' + opts([['', 'None']].concat(climates.map(function (e) { return [e.id, e.name]; })), h.climate) + '</select></div>' +
+    '<p class="mute">Choose Ring camera status, motion/doorbell events, battery readings, or other home sensors. Up to 16 readings. Find devices again after adding an integration in Home Assistant.</p>' +
+    (others.length ? '<div style="max-height:420px;overflow:auto">' + others.map(function (e) { return '<label style="display:flex;gap:10px;padding:9px 0;align-items:start;overflow-wrap:anywhere"><input type="checkbox" data-ha-entity="' + esc(e.id) + '"' + (chosen.indexOf(e.id) >= 0 ? ' checked' : '') + '><span>' + esc(e.name) + '<small class="mute" style="display:block">' + esc(e.id) + '</small></span></label>'; }).join('') + '</div>' : '<p class="mute">Use Find devices to choose what appears here.</p>') + '</div>';
+}
+function testHA() {
+  collectConnections(); CN.haResult = 'Reading the saved Home Assistant connection…'; renderConnections();
+  api('POST', '/api/admin/test', { what: 'homeassistant' }).then(function (r) {
+    CN.haResult = r.ok ? 'Connected. Choose the devices below, then save changes.' : r.error;
+    if (r.ok) CN.haEntities = r.entities;
+  }).catch(function (e) { CN.haResult = e.message; }).then(renderConnections);
+}
+function unlinkHA() {
+  collectConnections();
+  if (!confirm('Disconnect Home Assistant and remove its saved token from this hub?')) return;
+  api('PUT', '/api/admin/connections', { homeassistant: { unlink: true } }).then(function () {
+    CN.homeassistant = { url: '', climate: '', entities: [], tokenSet: false }; CN.haToken = ''; CN.haEntities = []; CN.haResult = '';
+    var base = JSON.parse(BASE.connections); base.homeassistant = { url: '', climate: '', entities: [] }; BASE.connections = JSON.stringify(base);
+    renderConnections(); return load();
+  }).catch(function (e) { msg(e.message, true); });
 }
 function calendarsHtml() {
   var h = '<div class="card"><b>Calendars</b><p class="mute">Google Calendar on the web: your calendar, <i>Settings and sharing</i>, <i>Secret address in iCal format</i>. The link is saved on the hub and is never shown again. Leave the link box empty to keep the one already saved.</p>';
@@ -522,7 +556,7 @@ function securityHtml() {
 function renderConnections() {
   if (!CN) { $('#s-connections').innerHTML = '<p class="mute">Loading…</p>'; return; }
   var h = '<p class="mute" style="margin-top:0">Accounts and outside services.</p><div class="subtabs">' + CN_TABS.map(function (t) { return '<button data-ct="' + t[0] + '" class="' + (t[0] === CN_TAB ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</div>';
-  h += CN_TAB === 'accounts' ? accountsHtml() : CN_TAB === 'proxmenux' ? proxmenuxHtml() : CN_TAB === 'weather' ? weatherHtml() : CN_TAB === 'security' ? securityHtml() : calendarsHtml();
+  h += CN_TAB === 'accounts' ? accountsHtml() : CN_TAB === 'homeassistant' ? homeassistantHtml() : CN_TAB === 'proxmenux' ? proxmenuxHtml() : CN_TAB === 'weather' ? weatherHtml() : CN_TAB === 'security' ? securityHtml() : calendarsHtml();
   h += '<p class="mute">Saved on the hub in <code>' + esc((CN.files || {}).config || 'config.json') + '</code> and <code>' + esc((CN.files || {}).secrets || 'secrets.json') + '</code>. Photos folder: <code>' + esc(CN.photosDir || '') + '</code> (set when the hub is installed).</p>';
   $('#s-connections').innerHTML = h;
 }
@@ -540,6 +574,11 @@ function collectConnections() {
     });
   }
   if (CN_TAB === 'accounts') { CN.acctInput = CN.acctInput || {}; root.querySelectorAll('[data-acct]').forEach(function (card) { CN.acctInput[card.dataset.acct] = card.querySelector('[data-acct-json]').value; }); }
+  if ((el = root.querySelector('[data-ha=url]'))) {
+    CN.homeassistant.url = el.value; CN.haToken = root.querySelector('[data-ha=token]').value;
+    CN.homeassistant.climate = root.querySelector('[data-ha=climate]').value;
+    CN.homeassistant.entities = Array.from(root.querySelectorAll('[data-ha-entity]:checked')).map(function (e) { return e.dataset.haEntity; });
+  }
   if ((el = root.querySelector('[data-px=url]'))) {
     CN.proxmenux.url = el.value;
     CN.pxToken = root.querySelector('[data-px=token]').value;
@@ -559,6 +598,7 @@ function connPieces() {
     core: {
       timezone: CN.timezone, weather: CN.weather ? { lat: CN.weather.lat === '' ? null : +CN.weather.lat, lon: CN.weather.lon === '' ? null : +CN.weather.lon, units: CN.weather.units, name: CN.weather.name || '' } : null,   // numbers either way, so a field read back from the page is not a "change"
       proxmenux: { url: CN.proxmenux.url, insecureTLS: !!CN.proxmenux.insecureTLS, token: CN.pxToken || undefined },
+      homeassistant: { url: CN.homeassistant.url, climate: CN.homeassistant.climate, entities: CN.homeassistant.entities, token: CN.haToken || undefined },
       calendars: CN.calendars.map(function (c) { return { key: c.key || undefined, name: c.name, people: c.people, url: c.newUrl || undefined }; }),
       adminPassword: CN.newPw || undefined, accounts: undefined
     }
@@ -568,13 +608,13 @@ function connPieces() {
 }
 function connPayload() {
   var p = connPieces(); if (!p) return null;
-  var c = p.core, b = { timezone: c.timezone, weather: c.weather, proxmenux: c.proxmenux, calendars: c.calendars, accounts: c.accounts, adminPassword: c.adminPassword };
+  var c = p.core, b = { timezone: c.timezone, weather: c.weather, proxmenux: c.proxmenux, homeassistant: c.homeassistant, calendars: c.calendars, accounts: c.accounts, adminPassword: c.adminPassword };
   return b;
 }
 function saveConnectionsCall() {
   collectConnections();
   if (CN.newPw !== CN.confirmPw) return Promise.reject(new Error('The two passwords do not match'));
-  return api('PUT', '/api/admin/connections', connPayload()).then(function (r) { CN.acctInput = {}; return r; });
+  return api('PUT', '/api/admin/connections', connPayload()).then(function (r) { CN.acctInput = {}; CN.haToken = ''; return r; });
 }
 function testCalendar(i) {
   collectConnections();
@@ -940,10 +980,9 @@ document.addEventListener('click', function (ev) {
   else if (d.sw !== undefined) { var sp = d.sw.split(':'); D.people[+sp[0]].color = sp[1]; PCP = null; renderPeople(); }
   else if (d.openColor !== undefined) { PCP = (PCP === +d.openColor ? null : +d.openColor); renderPeople(); }
   else if (d.closeColor !== undefined) { PCP = null; renderPeople(); }
-  else if (d.hafind !== undefined) findStreamHA(d.hafind, t);
   else if (t.id === 'test-px') testProxmenux();
   else if (t.id === 'test-ha') testHA();
-  else if (t.id === 'ha-ring') ringHA();
+  else if (t.id === 'unlink-ha') unlinkHA();
   else if (t.id === 'regen-agents') regenAgents();
   else if (d.st !== undefined) { collect(); SET_TAB = d.st; renderSettings(); }
   else if (d.tuneResetPage !== undefined) {
@@ -1000,9 +1039,10 @@ function load() {
       if (keep.people) nd.people = oldD.people;
     }
     D = nd; FEEDS = r[1].feeds || []; PH = (r[1].photos || []).length;
-    var shown = CN && CN.shownToken; cnInit(r[2]); if (shown) CN.shownToken = shown;
+    var shown = CN && CN.shownToken, haChoices = CN && CN.homeassistant.url === r[2].homeassistant.url ? CN.haEntities : [];
+    cnInit(r[2]); if (shown) CN.shownToken = shown; CN.haEntities = haChoices || [];
     if (oldCN) {   // typed values stay; things only the hub knows (accounts, password state) are refreshed
-      var fresh = CN; CN = oldCN;
+      var fresh = CN; CN = oldCN; CN.homeassistant.tokenSet = fresh.homeassistant.tokenSet;
       ['accounts', 'adminPasswordSet', 'agentsTokenSet', 'files', 'photosDir', 'unusedLinks'].forEach(function (k) { CN[k] = fresh[k]; });
     }
     render();

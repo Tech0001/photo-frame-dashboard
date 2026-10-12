@@ -1,0 +1,28 @@
+.ha-home { display:flex; flex-direction:column; height:100%; gap:18px; }
+.ha-top { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex:none; }
+.ha-top h1 { font-size:64px; line-height:.95; }
+.ha-sync { display:flex; align-items:center; gap:16px; text-align:right; }
+.ha-banner { padding:14px 18px; background:var(--paper-2); border-radius:14px; font-size:20px; flex:none; }
+.ha-warning { color:var(--amber); }
+.ha-layout { display:grid; grid-template-columns:1fr 1.45fr; gap:18px; flex:1; min-height:0; }
+.ha-card { background:var(--card); border-radius:var(--r); padding:22px; min-width:0; overflow-wrap:anywhere; }
+.ha-climate { display:flex; flex-direction:column; overflow:auto; }
+.ha-climate h2 { font-size:40px; line-height:1.1; margin:8px 0; }
+.ha-temperature { font-size:126px; line-height:1.2; margin-top:15px; }
+.ha-temperature small { font-size:36px; color:var(--mute); margin-left:8px; }
+.ha-action { font-size:28px; font-weight:800; margin:16px 0; }
+.ha-facts { display:grid; grid-template-columns:1fr 1fr; gap:24px 16px; }
+.ha-facts > div { display:flex; flex-direction:column; gap:6px; }
+.ha-facts b { font-size:28px; }
+.ha-facts b.num { font-size:42px; }
+.ha-facts small { font-size:20px; margin-left:4px; }
+.ha-note { color:var(--mute); font-size:17px; font-weight:600; }
+.ha-climate > .ha-note { margin-top:auto; padding-top:20px; }
+.ha-readings { display:grid; grid-template-columns:1fr 1fr; gap:14px; overflow:auto; align-content:start; min-height:0; }
+.ha-reading { display:flex; flex-direction:column; gap:12px; }
+.ha-value { font-weight:800; font-size:29px; line-height:1.15; }
+.ha-value small { font-size:20px; color:var(--mute); }
+.ha-unavailable { border:2px solid var(--paper-2); color:var(--mute); }
+.ha-image-btn { padding:12px; border:1px solid var(--line); background:var(--paper-2); color:var(--ink); border-radius:12px; font-weight:800; font-size:18px; margin-top:auto; }
+.ha-camera-image { max-width:100%; max-height:440px; object-fit:contain; }
+.ha-layout.is-stale .ha-card { border:2px solid var(--amber); }

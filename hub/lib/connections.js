@@ -9,6 +9,7 @@ const calendar = require('./calendar');
 const nas = require('./nas');
 const weather = require('./weather');
 const accounts = require('./accounts');
+const homeassistant = require('./homeassistant');
 
 const bad = (m) => Object.assign(new Error(m), { userError: true });
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24) || 'cal';
@@ -46,6 +47,7 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
       calendars: (cfg.calendars || []).map((c) => ({ key: c.secret, name: c.name, people: c.people || [], urlSet: !!(secrets.ical && secrets.ical[c.secret]) })),
       unusedLinks: Object.keys(secrets.ical || {}).filter((k) => !(cfg.calendars || []).some((c) => c.secret === k)),
       accounts: accounts.status(secrets),
+      homeassistant: Object.assign(homeassistant.defaults(), cfg.homeassistant, { tokenSet: !!secrets.homeassistant_token }),
       adminPasswordSet: !!secrets.admin_password,
       agentsTokenSet: !!secrets.agents_token,
       photosDir: cfg.photosDir,
@@ -59,6 +61,17 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
     nsec.ical = nsec.ical || {};
     const ncfg = { timezone: cfg.timezone, weather: cfg.weather, proxmenux: clone(cfg.proxmenux), calendars: clone(cfg.calendars || []) };
     const out = { ok: true };
+    ncfg.homeassistant = homeassistant.cleanSettings(cfg.homeassistant);
+
+    if (b.homeassistant) {
+      const h = b.homeassistant;
+      if (h.unlink) { ncfg.homeassistant = homeassistant.defaults(); delete nsec.homeassistant_token; }
+      else {
+        ncfg.homeassistant = homeassistant.cleanSettings(Object.assign({}, ncfg.homeassistant, h));
+        if (h.token && typeof h.token === 'string') nsec.homeassistant_token = homeassistant.cleanToken(h.token);
+        else if (ncfg.homeassistant.url !== (cfg.homeassistant?.url || '') && nsec.homeassistant_token) throw bad('Paste the Home Assistant token again when changing its address.');
+      }
+    }
 
     if (b.timezone !== undefined) ncfg.timezone = cleanTimezone(b.timezone);
     if (b.weather !== undefined) ncfg.weather = cleanWeather(b.weather);
@@ -119,14 +132,16 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
     let raw = {};
     try { raw = JSON.parse(fs.readFileSync(cfgFile, 'utf8').replace(/^﻿/, '')); } catch (e) { raw = {}; }
     raw.timezone = ncfg.timezone; raw.weather = ncfg.weather; raw.calendars = ncfg.calendars;
+    raw.homeassistant = ncfg.homeassistant;
     raw.proxmenux = Object.assign({}, raw.proxmenux || {}, { url: ncfg.proxmenux.url, tokenSecret: ncfg.proxmenux.tokenSecret, insecureTLS: ncfg.proxmenux.insecureTLS });
     writeJsonAtomic(cfgFile, raw, 0o644);
     writeJsonAtomic(secFile, nsec, 0o600);
 
     cfg.timezone = ncfg.timezone; process.env.TZ = ncfg.timezone;
     cfg.weather = ncfg.weather; cfg.proxmenux = ncfg.proxmenux; cfg.calendars = ncfg.calendars;
+    cfg.homeassistant = ncfg.homeassistant;
     Object.keys(secrets).forEach((k) => delete secrets[k]); Object.assign(secrets, nsec);
-    nas.clearCache(); weather.reset();
+    nas.clearCache(); weather.reset(); if (b.homeassistant) homeassistant.clear();
     return out;
   }
 
@@ -164,6 +179,10 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
       return { ok: !!r.ok, error: r.ok ? null : (r.errors && r.errors[0]) || 'no answer', host: r.host && r.host.name, guests: r.guests && r.guests.total };
     }
     if (b.what === 'account') return accounts.test(secrets, b.id);
+    if (b.what === 'homeassistant') {
+      try { const entities = await homeassistant.discover(cfg, secrets); return { ok: true, entities }; }
+      catch (e) { return { ok: false, error: e.message }; }
+    }
     throw bad('unknown test');
   }
 
@@ -172,14 +191,19 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
     if (!raw || typeof raw !== 'object' || !Array.isArray(raw.calendars)) throw bad('That backup is not a Frame settings file');
     cleanTimezone(raw.timezone);
     if (raw.weather) cleanWeather(raw.weather);
+    if (raw.homeassistant) raw.homeassistant = homeassistant.cleanSettings(raw.homeassistant);
     require('./backup').snapshot(cfgFile, true);
     let cur = {};
     try { cur = JSON.parse(fs.readFileSync(cfgFile, 'utf8').replace(/^\uFEFF/, '')); } catch (e) { cur = {}; }
-    ['timezone', 'weather', 'calendars', 'proxmenux', 'photoFolders'].forEach((k) => { if (raw[k] !== undefined) cur[k] = raw[k]; });
+    ['timezone', 'weather', 'calendars', 'proxmenux', 'photoFolders', 'homeassistant'].forEach((k) => { if (raw[k] !== undefined) cur[k] = raw[k]; });
+    if (raw.homeassistant && raw.homeassistant.url !== (cfg.homeassistant?.url || '') && secrets.homeassistant_token) {
+      delete secrets.homeassistant_token;
+      writeJsonAtomic(secFile, secrets, 0o600);
+    }
     writeJsonAtomic(cfgFile, cur, 0o644);
-    ['timezone', 'weather', 'calendars', 'proxmenux', 'photoFolders'].forEach((k) => { if (raw[k] !== undefined) cfg[k] = raw[k]; });
+    ['timezone', 'weather', 'calendars', 'proxmenux', 'photoFolders', 'homeassistant'].forEach((k) => { if (raw[k] !== undefined) cfg[k] = raw[k]; });
     process.env.TZ = cfg.timezone;
-    nas.clearCache(); weather.reset();
+    nas.clearCache(); weather.reset(); homeassistant.clear();
   }
 
   return { view, apply, test, setPhotoFolders, restore };

@@ -25,6 +25,7 @@ const DEFAULT_CONFIG = {
   cacheDir: path.join(ROOT, 'cache'),
   calendars: [],            // [{ name, secret, people: ['alex'] }]  secret = key in secrets.json -> ical
   proxmenux: { url: '', tokenSecret: 'proxmenux_token', insecureTLS: false },
+  homeassistant: { url: '', climate: '', entities: [] },
   weather: null,            // { lat, lon } for Open-Meteo, or null to keep the demo weather
 };
 
@@ -33,6 +34,7 @@ function load() {
   const secFile = process.env.HUB_SECRETS || path.join(ROOT, 'config', 'secrets.json');
   const cfg = Object.assign({}, DEFAULT_CONFIG, readJson(cfgFile, {}));
   cfg.proxmenux = Object.assign({}, DEFAULT_CONFIG.proxmenux, cfg.proxmenux || {});
+  cfg.homeassistant = Object.assign({}, DEFAULT_CONFIG.homeassistant, cfg.homeassistant || {});
   // Environment variables win, so Docker users can set paths without editing files.
   if (process.env.PHOTOS_DIR) cfg.photosDir = process.env.PHOTOS_DIR;
   if (process.env.PHOTOS_ROOT) cfg.photosRoot = process.env.PHOTOS_ROOT;

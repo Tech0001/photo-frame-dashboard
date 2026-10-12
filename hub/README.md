@@ -168,6 +168,38 @@ The hub refreshes linked accounts at startup, after saving, and every five minut
 
 The dashboard bundles Twemoji SVG graphics and serves them from the hub, so supported emoji render even when the tablet's system font lacks them. This also applies to newly added chores and groceries; no emoji CDN or Android font installation is needed. Run `npm ci` and `npm run build` in `dashboard/` when deploying from source. Attribution and the graphics/code licenses are included in `dashboard/public/licenses/` and the built dashboard's `/licenses/` directory.
 
+### Home Assistant: thermostat and Ring
+
+In **/admin → Connections → Home Assistant**, enter the Home Assistant address
+reachable from the hub. A pasted dashboard address is reduced to its server
+address. In Home Assistant, open your profile's **Security** page and create a
+long-lived access token named **Photo frame hub**. Paste it into the hub settings
+and save. Use **Find devices**, select a thermostat and up to 16 camera, sensor
+or event entities, then save again. Ring and ecobee must already be connected in
+Home Assistant; the hub does not need their separate cloud credentials.
+
+The live **Home** page shows the selected thermostat's temperature, humidity,
+mode, activity and targets, plus selected Ring events, battery levels and camera
+status. **View image** requests a still image from Home Assistant when available;
+it is not a live video player, and no capture time is inferred. Ring image
+availability depends on the entities and services available to Home Assistant.
+Live mode shows a setup prompt until connected rather than sample devices.
+
+The hub makes only GET requests to Home Assistant. The token still has the
+permissions of its Home Assistant account: keep it private. It is stored with
+owner-only permissions in `config/secrets.json`, never returned to the editor
+or frame. Only selected readings reach the frame; camera images are proxied
+through the hub without exposing Home Assistant tokens or media URLs. Like
+other frame data, those selected readings are available to clients on the hub's
+home network. Do not expose the hub publicly.
+
+The visible dashboard checks every 30 seconds; the hub caches requests for 20
+seconds. Failed checks retain the last successful readings with a warning, and
+readings older than 90 seconds are marked stale. Missing devices appear as
+unavailable. Blank token fields preserve the saved token; changing servers
+requires a replacement token. **Disconnect** removes the hub's saved connection
+and readings. Revoke the token in Home Assistant as well if it is no longer used.
+
 ## 8. Where settings live, and how /admin saves them
 
 | What | Where it is kept | Edited from |
