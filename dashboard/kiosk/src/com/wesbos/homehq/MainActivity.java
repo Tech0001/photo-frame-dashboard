@@ -99,9 +99,21 @@ public class MainActivity extends Activity {
     applyDebugFlag(intent);
     String url = intent.getDataString();
     if (url != null) web.loadUrl(url);
+    else if (intent.getBooleanExtra("reset_url", false)) web.loadUrl(defaultUrl());
   }
 
   private void saveOptions(Intent intent) {
+    if (intent != null && intent.getBooleanExtra("reset_url", false)) {
+      getSharedPreferences("kiosk", 0).edit().remove("dashboard_url").apply();
+    }
+    if (intent != null && intent.getData() != null) {
+      String scheme = intent.getData().getScheme();
+      if (("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))
+          && intent.getData().getHost() != null) {
+        getSharedPreferences("kiosk", 0).edit()
+            .putString("dashboard_url", intent.getDataString()).apply();
+      }
+    }
     if (intent != null && intent.hasExtra("keep_usb")) {
       getSharedPreferences("kiosk", 0).edit()
           .putBoolean("keep_usb", intent.getBooleanExtra("keep_usb", false)).apply();
@@ -109,6 +121,8 @@ public class MainActivity extends Activity {
   }
 
   private String defaultUrl() {
+    String savedUrl = getSharedPreferences("kiosk", 0).getString("dashboard_url", null);
+    if (savedUrl != null) return savedUrl;
     try (java.io.InputStream ignored = getAssets().open("dashboard/index.html")) {
       return DashboardAssets.URL;
     } catch (IOException e) {
