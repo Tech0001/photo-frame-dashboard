@@ -395,6 +395,8 @@ function cnInit(v) {
   CN.homeassistant = CN.homeassistant || { url: '', climate: '', entities: [], tokenSet: false };
   CN.homelab = CN.homelab || { pihole: '', gitea: '', plane: '', rustdesk: { host: '', idPort: 21116, relayPort: 21117 }, backup: { path: '', destination: '', label: 'VM backup', maxAgeHours: 36 } };
   CN.labResult = '';
+  CN.homelab.piholeToken = ''; CN.homelab.giteaToken = '';
+  CN.homelab.piholeUnlink = false; CN.homelab.giteaUnlink = false;
   CN.haToken = ''; CN.haResult = ''; CN.haEntities = [];
 }
 function homeassistantHtml() {
@@ -499,11 +501,17 @@ function unlinkAccount(id) {
 function homelabHtml() {
   var h = CN.homelab;
   function field(key, label, value, placeholder, type) { return '<div class="fg"><label for="lab-' + key + '">' + label + '</label><input id="lab-' + key + '" data-lab="' + key + '" type="' + (type || 'text') + '" value="' + esc(value) + '" placeholder="' + esc(placeholder || '') + '"></div>'; }
+  function token(id, label) { return field(id + 'Token', label, h[id + 'Token'] || '', h[id + 'TokenSet'] ? 'Saved — leave blank to keep' : 'Paste API token', 'password') + (h[id + 'TokenSet'] ? '<label class="mute"><input type="checkbox" data-lab-clear="' + id + '"' + (h[id + 'Unlink'] ? ' checked' : '') + '> Remove saved token when saving</label>' : ''); }
   return '<div class="card"><b>Homelab services</b><p class="mute">The hub checks these over your network when Homelab opens, then every five minutes while it stays open. Recent results are reused. The frame’s refresh button checks immediately. Leave an address empty to disconnect it.</p>' +
     field('pihole', 'Pi-hole web address', h.pihole, 'http://pi.hole/admin/') +
+    token('pihole', 'Pi-hole v5 API token') +
+    '<p class="mute">Pi-hole v5: Settings → API / Web interface → Show API token. The frame shows DNS totals, blocking, software versions and the last blocklist refresh. The API does not report the last reboot or software installation date. Software update and reboot controls need a separate management connection; they are not run by these checks.</p>' +
     field('gitea', 'Gitea base address', h.gitea, 'http://gitea.local:3000') +
+    token('gitea', 'Gitea API token') +
+    field('giteaOrganization', 'Organization activity (optional)', h.giteaOrganization || '', 'Organization name; blank uses your activity feed') +
+    '<p class="mute">Use a token with read access to your user, repositories, issues and organizations. The frame shows repository counts, open work, contributions and recent push titles. Tokens stay on the server; private repository names and commit titles visible to this account will appear on the household frame.</p>' +
     field('plane', 'Plane web address', h.plane, 'http://plane.local') +
-    '<p class="mute">Pi-hole and Plane report whether their web pages respond. Gitea uses its health endpoint. These checks do not sign in or change anything.</p></div>' +
+    '<p class="mute">Availability checks work without tokens. Adding a token enables the detail pages. All checks are read-only.</p></div>' +
     '<div class="card"><b>RustDesk</b>' + field('host', 'Server hostname or IP', h.rustdesk.host, 'server.local') +
     field('idPort', 'ID server TCP port', h.rustdesk.idPort, '21116', 'number') + field('relayPort', 'Relay TCP port', h.rustdesk.relayPort, '21117', 'number') +
     '<p class="mute">Checks both listening TCP ports. This does not test a complete remote desktop session.</p></div>' +
@@ -518,7 +526,7 @@ function homelabHtml() {
 function testHomelab() {
   collectConnections(); CN.labResult = 'Checking saved connections…'; renderConnections();
   api('POST', '/api/admin/test', { what: 'homelab' }).then(function (r) {
-    CN.labResult = r.services.map(function (s) { return s.name + ': ' + s.detail; }).concat([r.backup.label + ': ' + r.backup.detail]).join('\n');
+    CN.labResult = r.services.map(function (s) { return s.name + ': ' + s.detail; }).concat([r.backup.label + ': ' + r.backup.detail, 'Pi-hole details: ' + r.pihole.detail, 'Gitea activity: ' + r.gitea.detail]).join('\n');
   }).catch(function (e) { CN.labResult = e.message; }).then(renderConnections);
 }
 function proxmenuxHtml() {
@@ -619,6 +627,7 @@ function collectConnections() {
     else if (['path', 'destination', 'label', 'maxAgeHours'].indexOf(k) >= 0) CN.homelab.backup[k] = k === 'maxAgeHours' ? Number(input.value) : input.value;
     else CN.homelab[k] = input.value;
   });
+  root.querySelectorAll('[data-lab-clear]').forEach(function (input) { CN.homelab[input.dataset.labClear + 'Unlink'] = input.checked; });
   if ((el = root.querySelector('[data-px=url]'))) {
     CN.proxmenux.url = el.value;
     CN.pxToken = root.querySelector('[data-px=token]').value;

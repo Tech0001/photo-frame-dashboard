@@ -45,6 +45,39 @@ Addresses stay in server settings; the frame receives only names and results.
   per the [RustDesk server documentation](https://rustdesk.com/docs/en/self-host/rustdesk-server-oss/install/)).
   This does not test UDP, an actual remote desktop session, or client credentials.
 
+The **Overview**, **Pi-hole** and **Gitea** buttons stay inside Homelab. Add API
+tokens in the same server Connections form to enable details. Tokens are
+write-only, stored in `secrets.json` as `homelab_pihole_token` and
+`homelab_gitea_token`, and never sent to the frame. Changing an address requires
+re-entering its token; restoring settings with a different address clears it.
+Blank token fields preserve saved tokens; tick **Remove saved token** to unlink.
+
+- **Pi-hole details** support the v5 PHP API (`admin/api.php`). Copy the token
+  from Pi-hole's **Settings → API / Web interface → Show API token**. The page
+  shows today's DNS queries, blocked queries/percentage, active clients, blocklist
+  size, blocking status, component versions and available updates. The last
+  blocklist refresh comes from `gravity_last_updated`, not a software update.
+  Unknown component versions are never presented as up to date. This API does
+  not report the last host reboot or software installation time. Reboot/software
+  updates need a separate management connection; no such commands are executed
+  by these read-only checks. Pi-hole v6's REST authentication is not supported here.
+- **Gitea details** use a token with read access to user, repository, issue and
+  organization APIs. They show accessible repository totals, open issues/pull
+  requests, the signed-in user's contribution history (in the hub's timezone),
+  and recent pushes. Set an optional organization name to focus the push feed;
+  otherwise it uses the user's activity feed. Counts remain account-wide.
+  Contribution counts include other activity besides commits. Pushes come from
+  at most 100 feed events, with duplicate companion events combined; they are
+  not lifetime totals. API failures leave affected counts unknown, not zero.
+  Private repository names and first-line commit titles accessible to this token
+  appear on the household frame. Raw events, commit bodies, email addresses and
+  server URLs are not exposed. Authenticated requests reject redirects and never
+  follow pagination links to other origins.
+
+Gitea's contribution/feed approach was informed by the
+[Omarchy Git plugin](https://github.com/ariadev/omarchy-dev-git). The hub reads
+Gitea directly, so the desktop plugin and PC need not stay running.
+
 For [Omarchy Time Machine](https://github.com/jankeesvw/omarchy-time-machine),
 enter the absolute path to `~/.local/state/omarchy-time-machine/status.json`
 (expand `~` to the backup user's home directory). The hub must be able to read

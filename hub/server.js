@@ -132,7 +132,7 @@ const routes = {
   'GET /api/photos': async (req, res) => send(res, 200, { photos: await photos.scan(true), skippedHeic: photos.skipped }),
 
   'GET /api/homelab': async (req, res, q) => {
-    const result = await homelab.get(cfg, { refresh: q.get('refresh') === '1' });
+    const result = await homelab.get(cfg, { secrets, refresh: q.get('refresh') === '1' });
     send(res, 200, !result.configured && cfg.proxmenux.url ? { kind: 'proxmenux', legacy: await getNas(cfg, secrets) } : result);
   },
   'GET /api/nas': async (req, res) => send(res, 200, await getNas(cfg, secrets)),
@@ -344,7 +344,7 @@ const routes = {
     try { const n = (await photos.scan(false)).length; add('photos', 'Photos', n ? 'ok' : 'warn', n ? n + ' photos on the frame' : 'No photos found in ' + cfg.photosDir, 'photos'); } catch (e) { add('photos', 'Photos', 'bad', e.message, 'photos'); }
     add('weather', 'Weather', cfg.weather ? 'ok' : 'off', cfg.weather ? cfg.weather.lat + ', ' + cfg.weather.lon : 'No location set: the frame shows sample weather', 'connections#weather');
     const px = connections.view().proxmenux;
-    const lab = await homelab.get(cfg);
+    const lab = await homelab.get(cfg, { secrets });
     if (lab.configured) {
       lab.services.filter(s => s.configured).forEach(s => add('homelab:' + s.id, s.name, s.state === 'ok' ? 'ok' : 'warn', s.detail, 'connections#homelab'));
       if (lab.backup.configured) add('time-machine', 'Time Machine', lab.backup.state === 'ok' ? 'ok' : 'warn', lab.backup.detail, 'connections#homelab');

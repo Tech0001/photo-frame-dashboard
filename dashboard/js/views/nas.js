@@ -1,7 +1,7 @@
 // Homelab service availability and Time Machine backups. Legacy ProxMenux remains available.
 (function () {
   'use strict';
-  var V = { el: null, data: null, error: '', timer: null, at: 0, busy: false };
+  var V = { el: null, data: null, error: '', timer: null, at: 0, busy: false, tab: 'overview' };
   var POLL_MS = 5 * 60 * 1000;
 
   var SAMPLE = {
@@ -103,6 +103,35 @@
       (b.durationSeconds != null ? '<span>Last run <b class="num">' + upfmt(b.durationSeconds) + '</b></span>' : '') + '</div></section>' +
       '<p class="lab-footnote">Checks run from the hub. Web and port checks show availability; backup results come from Time Machine.</p>';
   }
+  function metric(label, value, hint) {
+    return '<div class="lab-metric"><span class="label">' + esc(label) + '</span><strong class="num">' + esc(value == null ? '–' : value) + '</strong><span>' + esc(hint || '') + '</span></div>';
+  }
+  function count(value) { return value == null ? null : value.toLocaleString(); }
+  function detailMessage(d) { return '<section class="nas-card"><h2 class="serif lab-detail-title">Connect ' + (V.tab === 'gitea' ? 'Gitea' : 'Pi-hole') + '</h2><p>' + esc(d && d.detail || 'Add an API token in server Connections → Homelab') + '</p></section>'; }
+  function giteaBody(d) {
+    if (!d || d.state === 'off' || !d.login) return detailMessage(d);
+    var c = d.contributions, days = c ? c.days : [], most = Math.max.apply(null, [1].concat(days.map(function (v) { return v.count; })));
+    var heatmap = days.map(function (v) { var level = v.count === 0 ? 0 : Math.max(1, Math.ceil(v.count / most * 4)); return '<span class="lab-heat-' + level + '" title="' + esc(v.date + ': ' + v.count + ' contributions') + '"></span>'; }).join('');
+    var feed = d.pushes === null ? '<p>Recent activity is unavailable.</p>' : !d.pushes.length ? '<p>No pushes in the recent activity feed.</p>' : '<ol class="lab-pushes">' + d.pushes.map(function (p) {
+      return '<li><div class="lab-push-repo">' + esc(p.repository) + '<span>' + esc(dateTime(p.at)) + '</span></div><div class="lab-push-title">' + esc(p.title) + '</div><div class="lab-push-meta">' + esc(p.actor) + (p.branch ? ' · ' + esc(p.branch) : '') + (p.commits != null ? ' · ' + p.commits + (p.commits === 1 ? ' commit' : ' commits') : '') + '</div></li>';
+    }).join('') + '</ol>';
+    return (d.state !== 'ok' ? '<div class="nas-banner">' + esc(d.detail) + '</div>' : '') +
+      '<div class="lab-details"><section class="nas-card lab-git-summary"><div class="lab-detail-heading"><h2 class="serif lab-detail-title">Gitea</h2><span class="label">' + esc(d.version || 'Version unknown') + '</span></div><p class="lab-footnote">Repositories accessible to ' + esc(d.login) + '</p>' +
+      '<div class="lab-metrics">' + metric('Repositories', count(d.repositories)) + metric('Open pull requests', count(d.openPulls)) + metric('Open issues', count(d.openIssues)) + metric('Contributions', c ? count(c.week) : null, 'Past 7 days · ' + d.login) + '</div>' +
+      '<div class="label">' + esc(d.login) + ' · past 6 weeks</div><div class="lab-heatmap" aria-label="Contribution history">' + heatmap + '</div><p class="lab-footnote">' + (c ? c.today + ' contributions today. ' : 'History unavailable. ') + 'Contributions include more than commits.</p></section>' +
+      '<section class="nas-card lab-git-feed"><div class="label">' + esc(d.organization || 'Your activity feed') + '</div><h2 class="serif lab-detail-title">Recent pushes</h2>' + feed + '<p class="lab-footnote">Latest pushes from up to 100 feed events.</p></section></div>';
+  }
+  function piholeBody(d) {
+    if (!d || d.state === 'off') return detailMessage(d);
+    var versions = (d.versions || []).map(function (v) { return '<div class="lab-version"><div><strong>' + esc(v.name) + '</strong><span>' + esc(v.current || 'Version unavailable') + '</span></div><span class="' + (v.update === true ? 'lab-warning' : '') + '">' + (v.update === true ? 'Update: ' + esc(v.latest) : v.update === false ? 'Up to date' : 'Update unknown') + '</span></div>'; }).join('');
+    return (d.state !== 'ok' ? '<div class="nas-banner">' + esc(d.detail) + '</div>' : '') +
+      '<div class="lab-details"><section class="nas-card lab-pi-summary"><h2 class="serif lab-detail-title">Pi-hole</h2><p class="lab-blocking ' + (d.blocking === true ? 'lab-ok' : d.blocking === false ? 'lab-warning' : 'lab-unknown') + '">' + (d.blocking === true ? 'Blocking enabled' : d.blocking === false ? 'Blocking disabled' : 'Blocking status unknown') + '</p><div class="lab-metrics">' +
+      metric('DNS queries', count(d.queries), 'Today') + metric('Blocked', d.blockedPercent == null ? null : d.blockedPercent.toFixed(1) + '%', d.blocked == null ? '' : count(d.blocked) + ' queries today') + metric('Active clients', count(d.clients), 'Today') + metric('Blocked domains', count(d.domains), 'In blocklists') + '</div></section>' +
+      '<section class="nas-card lab-pi-updates"><h2 class="serif lab-detail-title">Updates</h2>' + versions + '<div class="lab-gravity"><span class="label">Blocklists last refreshed</span><strong>' + esc(dateTime(d.gravityUpdated)) + '</strong></div><p class="lab-footnote">Blocklist refresh is separate from updating Pi-hole itself. This API does not report the last reboot or software installation date.</p></section></div>';
+  }
+  function tabs() {
+    return '<nav class="lab-tabs" aria-label="Homelab sections">' + [['overview', 'Overview'], ['pihole', 'Pi-hole'], ['gitea', 'Gitea']].map(function (t) { return '<button type="button" data-lab-tab="' + t[0] + '" aria-pressed="' + (V.tab === t[0]) + '" class="' + (V.tab === t[0] ? 'is-active' : '') + '">' + t[1] + '</button>'; }).join('') + '</nav>';
+  }
   function render() {
     if (!V.el) return;
     var d = V.data, legacy = d && d.kind === 'proxmenux', old = legacy ? d.legacy : null;
@@ -114,7 +143,7 @@
       '<header class="nas-top"><div><div class="label">' + (legacy ? 'Proxmox · ProxMenux' : 'Services & backups') + (d && d.sample ? ' · sample data' : '') + '</div><h1 class="serif">Homelab</h1></div>' +
       '<div class="nas-sync"><span class="label">' + stamp + '</span><button class="icon-btn" data-refresh aria-label="Refresh">' + App.icon('undo', 26) + '</button></div></header>' +
       (stale ? '<div class="nas-banner">Current status unavailable. Check the hub connection.</div>' : '') +
-      (legacy ? old && old.ok ? body(old) : empty(old) : d ? servicesBody(d, stale) : '<section class="nas-card nas-msg"><p>' + (V.error ? esc(V.error) : 'Checking services…') + '</p></section>') + '</div>';
+      (legacy ? old && old.ok ? body(old) : empty(old) : tabs() + (d ? '<div class="lab-content' + (stale ? ' lab-stale' : '') + '">' + (V.tab === 'gitea' ? giteaBody(d.gitea) : V.tab === 'pihole' ? piholeBody(d.pihole) : servicesBody(d, stale)) + '</div>' : '<section class="nas-card nas-msg"><p>' + (V.error ? esc(V.error) : 'Checking services…') + '</p></section>')) + '</div>';
     V.el.querySelector('.nas').scrollTop = top;
   }
 
@@ -139,7 +168,11 @@
     show: function (el) {
       if (!V.el) {
         V.el = el;
-        el.addEventListener('click', function (e) { if (e.target.closest('[data-refresh]')) load(true); });
+        el.addEventListener('click', function (e) {
+          if (e.target.closest('[data-refresh]')) { load(true); return; }
+          var tab = e.target.closest('[data-lab-tab]');
+          if (tab) { V.tab = tab.getAttribute('data-lab-tab'); render(); V.el.querySelector('.nas').scrollTop = 0; }
+        });
       }
       render();
       start();

@@ -82,7 +82,7 @@ test('admin settings persist across reloads, reject invalid changes atomically a
   c.apply({ homelab: settings() }); assert.equal(c.view().homelab.plane, 'https://plane.example/');
   const saved = fs.readFileSync(cfgFile, 'utf8'); assert.equal(JSON.parse(saved).custom, 'keep-me');
   assert.throws(() => c.apply({ homelab: { rustdesk: { idPort: -1 } } })); assert.equal(fs.readFileSync(cfgFile, 'utf8'), saved);
-  c.apply({ timezone: 'America/Denver' }); assert.deepEqual(c.view().homelab, settings());
+  c.apply({ timezone: 'America/Denver' }); assert.deepEqual(lab.cleanSettings(c.view().homelab), settings());
   c.restore({ ...JSON.parse(saved), homelab: lab.defaults() }); assert.equal(c.view().homelab.pihole, '');
   assert.equal(secrets.admin_password, 'PRIVATE');
 });

@@ -13,6 +13,7 @@
   "homelab": {
     "pihole": "",
     "gitea": "",
+    "giteaOrganization": "",
     "plane": "",
     "rustdesk": { "host": "", "idPort": 21116, "relayPort": 21117 },
     "backup": { "path": "", "destination": "", "label": "VM backup", "maxAgeHours": 36 }
