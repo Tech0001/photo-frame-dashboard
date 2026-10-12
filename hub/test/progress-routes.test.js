@@ -1,0 +1,33 @@
+'use strict';
+const test = require('node:test'), assert = require('node:assert/strict');
+const fs = require('node:fs'), os = require('node:os'), path = require('node:path'), http = require('node:http');
+const { spawn, spawnSync } = require('node:child_process'), { once } = require('node:events');
+test('real progress endpoint and publisher enforce separate auth, strip private fields, and preserve source age', { timeout: 20000 }, async t => {
+  const probe = http.createServer(); probe.listen(0, '127.0.0.1'); await once(probe, 'listening'); const port = probe.address().port; await new Promise(resolve => probe.close(resolve));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'frame-progress-route-')); t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  for (const name of ['photos', 'data', 'cache']) fs.mkdirSync(path.join(dir, name));
+  const cfg = { port, photosDir: path.join(dir, 'photos'), dataDir: path.join(dir, 'data'), cacheDir: path.join(dir, 'cache'), calendars: [], weather: null };
+  fs.writeFileSync(path.join(dir, 'config.json'), JSON.stringify(cfg)); fs.writeFileSync(path.join(dir, 'secrets.json'), JSON.stringify({ admin_password: 'test-admin', agents_token: 'USAGE_ONLY_TOKEN' }));
+  const child = spawn(process.execPath, [path.resolve(__dirname, '../server.js')], { env: { ...process.env, HUB_CONFIG: path.join(dir, 'config.json'), HUB_SECRETS: path.join(dir, 'secrets.json'), PORT: String(port), PHOTOS_DIR: cfg.photosDir, DATA_DIR: cfg.dataDir, CACHE_DIR: cfg.cacheDir }, stdio: 'ignore' });
+  t.after(async () => { if (child.exitCode === null) { child.kill(); await once(child, 'exit'); } });
+  const base = 'http://127.0.0.1:' + port;
+  let r; for (let i = 0; i < 60; i++) { try { r = await fetch(base + '/api/progress/evergreen'); break; } catch { await new Promise(resolve => setTimeout(resolve, 50)); } }
+  assert(r?.ok); assert.equal((await r.json()).report, null);
+  const publish = (body, token) => fetch(base + '/api/progress/evergreen', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Progress-Token': token }, body: JSON.stringify(body) });
+  assert.equal((await publish({}, 'anything')).status, 503);
+  const admin = { Authorization: 'Basic ' + Buffer.from('admin:test-admin').toString('base64'), 'Content-Type': 'application/json' };
+  r = await fetch(base + '/api/admin/connections', { method: 'PUT', headers: admin, body: JSON.stringify({ progressToken: 'regenerate' }) }); assert(r.ok);
+  const token = (await r.json()).generatedProgressToken; assert(token);
+  const settings = await (await fetch(base + '/api/admin/connections', { headers: admin })).json(); assert(settings.progressTokenSet); assert(!JSON.stringify(settings).includes(token));
+  assert.equal((await publish({}, 'USAGE_ONLY_TOKEN')).status, 401);
+  const report = { schemaVersion: 1, project: 'evergreen', source: 'Disposable test', updatedAt: new Date(Date.now() - 25 * 3600000).toISOString(), objective: 'Test only', next: '', work: [], recent: [], blockers: [], decisions: [], memory: 'PRIVATE_MEMORY', path: '/PRIVATE_PATH' };
+  const tokenFile = path.join(dir, 'token'); fs.writeFileSync(tokenFile, token, { mode: 0o600 });
+  const reportFile = path.join(dir, 'report.json'); fs.writeFileSync(reportFile, JSON.stringify(report));
+  const configFile = path.join(dir, 'publisher.json'); fs.writeFileSync(configFile, JSON.stringify({ hub: base, tokenFile, report: reportFile }));
+  const run = () => spawnSync('python3', [path.resolve(__dirname, '../../tools/project-progress/publish.py'), '--config', configFile], { encoding: 'utf8', timeout: 5000 });
+  let result = run(); assert.equal(result.status, 0, result.stderr); assert(!result.stdout.includes(token));
+  const reading = await (await fetch(base + '/api/progress/evergreen')).json(); assert(reading.reportStale); assert.equal(reading.feedStale, false); assert.equal(reading.report.updatedAt, report.updatedAt); assert(!JSON.stringify(reading).includes('PRIVATE'));
+  assert.equal((await publish({ ...report, objective: '' }, token)).status, 400);
+  assert.deepEqual((await (await fetch(base + '/api/progress/evergreen')).json()).report, reading.report);
+  fs.chmodSync(tokenFile, 0o644); result = run(); assert.notEqual(result.status, 0); assert(!result.stderr.includes(token));
+});

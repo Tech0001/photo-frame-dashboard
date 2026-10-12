@@ -1,0 +1,410 @@
+[
+  {
+    "id": "common1",
+    "name": "Apples",
+    "cat": "Produce",
+    "usual": true
+  },
+  {
+    "id": "common2",
+    "name": "Avocados",
+    "cat": "Produce",
+    "usual": false
+  },
+  {
+    "id": "common3",
+    "name": "Bananas",
+    "cat": "Produce",
+    "usual": true
+  },
+  {
+    "id": "common4",
+    "name": "Baby spinach",
+    "cat": "Produce",
+    "usual": true
+  },
+  {
+    "id": "common5",
+    "name": "Blueberries",
+    "cat": "Produce",
+    "usual": false
+  },
+  {
+    "id": "common6",
+    "name": "Broccoli",
+    "cat": "Produce",
+    "usual": false
+  },
+  {
+    "id": "common7",
+    "name": "Carrots",
+    "cat": "Produce",
+    "usual": false
+  },
+  {
+    "id": "common8",
+    "name": "Cucumber",
+    "cat": "Produce",
+    "usual": false
+  },
+  {
+    "id": "common9",
+    "name": "Garlic",
+    "cat": "Produce",
+    "usual": false
+  },
+  {
+    "id": "common10",
+    "name": "Grapes",
+    "cat": "Produce",
+    "usual": false
+  },
+  {
+    "id": "common11",
+    "name": "Lemons",
+    "cat": "Produce",
+    "usual": false
+  },
+  {
+    "id": "common12",
+    "name": "Limes",
+    "cat": "Produce",
+    "usual": false
+  },
+  {
+    "id": "common13",
+    "name": "Onions",
+    "cat": "Produce",
+    "usual": false
+  },
+  {
+    "id": "common14",
+    "name": "Potatoes",
+    "cat": "Produce",
+    "usual": false
+  },
+  {
+    "id": "common15",
+    "name": "Strawberries",
+    "cat": "Produce",
+    "usual": false
+  },
+  {
+    "id": "common16",
+    "name": "Tomatoes",
+    "cat": "Produce",
+    "usual": false
+  },
+  {
+    "id": "common17",
+    "name": "Bread",
+    "cat": "Bakery",
+    "usual": true
+  },
+  {
+    "id": "common18",
+    "name": "Bagels",
+    "cat": "Bakery",
+    "usual": false
+  },
+  {
+    "id": "common19",
+    "name": "Croissants",
+    "cat": "Bakery",
+    "usual": false
+  },
+  {
+    "id": "common20",
+    "name": "Sourdough loaf",
+    "cat": "Bakery",
+    "usual": false
+  },
+  {
+    "id": "common21",
+    "name": "Tortillas",
+    "cat": "Bakery",
+    "usual": false
+  },
+  {
+    "id": "common22",
+    "name": "Hamburger buns",
+    "cat": "Bakery",
+    "usual": false
+  },
+  {
+    "id": "common23",
+    "name": "Bacon",
+    "cat": "Meat & Fish",
+    "usual": false
+  },
+  {
+    "id": "common24",
+    "name": "Chicken breasts",
+    "cat": "Meat & Fish",
+    "usual": false
+  },
+  {
+    "id": "common25",
+    "name": "Chicken thighs",
+    "cat": "Meat & Fish",
+    "usual": true
+  },
+  {
+    "id": "common26",
+    "name": "Ground beef",
+    "cat": "Meat & Fish",
+    "usual": false
+  },
+  {
+    "id": "common27",
+    "name": "Salmon fillets",
+    "cat": "Meat & Fish",
+    "usual": false
+  },
+  {
+    "id": "common28",
+    "name": "Shrimp",
+    "cat": "Meat & Fish",
+    "usual": false
+  },
+  {
+    "id": "common29",
+    "name": "Butter",
+    "cat": "Dairy & Eggs",
+    "usual": true
+  },
+  {
+    "id": "common30",
+    "name": "Cheddar",
+    "cat": "Dairy & Eggs",
+    "usual": true
+  },
+  {
+    "id": "common31",
+    "name": "Cream cheese",
+    "cat": "Dairy & Eggs",
+    "usual": false
+  },
+  {
+    "id": "common32",
+    "name": "Eggs",
+    "cat": "Dairy & Eggs",
+    "usual": true
+  },
+  {
+    "id": "common33",
+    "name": "Greek yogurt",
+    "cat": "Dairy & Eggs",
+    "usual": true
+  },
+  {
+    "id": "common34",
+    "name": "Milk 2%",
+    "cat": "Dairy & Eggs",
+    "usual": true
+  },
+  {
+    "id": "common35",
+    "name": "Oat milk",
+    "cat": "Dairy & Eggs",
+    "usual": false
+  },
+  {
+    "id": "common36",
+    "name": "Parmesan",
+    "cat": "Dairy & Eggs",
+    "usual": false
+  },
+  {
+    "id": "common37",
+    "name": "Black beans",
+    "cat": "Pantry",
+    "usual": false
+  },
+  {
+    "id": "common38",
+    "name": "Cereal",
+    "cat": "Pantry",
+    "usual": false
+  },
+  {
+    "id": "common39",
+    "name": "Coffee beans",
+    "cat": "Pantry",
+    "usual": true
+  },
+  {
+    "id": "common40",
+    "name": "Flour",
+    "cat": "Pantry",
+    "usual": false
+  },
+  {
+    "id": "common41",
+    "name": "Honey",
+    "cat": "Pantry",
+    "usual": false
+  },
+  {
+    "id": "common42",
+    "name": "Maple syrup",
+    "cat": "Pantry",
+    "usual": false
+  },
+  {
+    "id": "common43",
+    "name": "Olive oil",
+    "cat": "Pantry",
+    "usual": false
+  },
+  {
+    "id": "common44",
+    "name": "Pasta sauce",
+    "cat": "Pantry",
+    "usual": false
+  },
+  {
+    "id": "common45",
+    "name": "Peanut butter",
+    "cat": "Pantry",
+    "usual": false
+  },
+  {
+    "id": "common46",
+    "name": "Rice",
+    "cat": "Pantry",
+    "usual": false
+  },
+  {
+    "id": "common47",
+    "name": "Rigatoni",
+    "cat": "Pantry",
+    "usual": false
+  },
+  {
+    "id": "common48",
+    "name": "Spaghetti",
+    "cat": "Pantry",
+    "usual": false
+  },
+  {
+    "id": "common49",
+    "name": "Sugar",
+    "cat": "Pantry",
+    "usual": false
+  },
+  {
+    "id": "common50",
+    "name": "Tea",
+    "cat": "Pantry",
+    "usual": false
+  },
+  {
+    "id": "common51",
+    "name": "Frozen peas",
+    "cat": "Frozen",
+    "usual": false
+  },
+  {
+    "id": "common52",
+    "name": "Frozen berries",
+    "cat": "Frozen",
+    "usual": false
+  },
+  {
+    "id": "common53",
+    "name": "Ice cream",
+    "cat": "Frozen",
+    "usual": false
+  },
+  {
+    "id": "common54",
+    "name": "Pizza",
+    "cat": "Frozen",
+    "usual": false
+  },
+  {
+    "id": "common55",
+    "name": "Waffles",
+    "cat": "Frozen",
+    "usual": false
+  },
+  {
+    "id": "common56",
+    "name": "Chips",
+    "cat": "Snacks",
+    "usual": false
+  },
+  {
+    "id": "common57",
+    "name": "Crackers",
+    "cat": "Snacks",
+    "usual": false
+  },
+  {
+    "id": "common58",
+    "name": "Dark chocolate",
+    "cat": "Snacks",
+    "usual": false
+  },
+  {
+    "id": "common59",
+    "name": "Goldfish crackers",
+    "cat": "Snacks",
+    "usual": false
+  },
+  {
+    "id": "common60",
+    "name": "Granola bars",
+    "cat": "Snacks",
+    "usual": false
+  },
+  {
+    "id": "common61",
+    "name": "Popcorn",
+    "cat": "Snacks",
+    "usual": false
+  },
+  {
+    "id": "common62",
+    "name": "Dish soap",
+    "cat": "Household",
+    "usual": false
+  },
+  {
+    "id": "common63",
+    "name": "Dishwasher pods",
+    "cat": "Household",
+    "usual": false
+  },
+  {
+    "id": "common64",
+    "name": "Garbage bags",
+    "cat": "Household",
+    "usual": false
+  },
+  {
+    "id": "common65",
+    "name": "Laundry detergent",
+    "cat": "Household",
+    "usual": false
+  },
+  {
+    "id": "common66",
+    "name": "Paper towels",
+    "cat": "Household",
+    "usual": true
+  },
+  {
+    "id": "common67",
+    "name": "Toilet paper",
+    "cat": "Household",
+    "usual": false
+  },
+  {
+    "id": "common68",
+    "name": "Toothpaste",
+    "cat": "Household",
+    "usual": false
+  }
+]

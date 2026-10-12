@@ -14,6 +14,7 @@ import './views/photos.js';
 import './views/control.js';
 import './views/homeassistant.js';
 import './views/nas.js';
+import './views/evergreen.js';
 import './views/agents.js';
 import './views/ambient.js';
 import './diag.js';

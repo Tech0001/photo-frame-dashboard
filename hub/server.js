@@ -20,6 +20,7 @@ const { getNas, fetchRaw, ENDPOINTS } = require('./lib/nas');
 const { getWeather } = require('./lib/weather');
 const { searchLocations } = require('./lib/locations');
 const { AgentsStore } = require('./lib/agents');
+const { ProgressStore, authorize: authorizeProgress } = require('./lib/progress');
 const makeConnections = require('./lib/connections');
 const accounts = require('./lib/accounts');
 const homeassistant = require('./lib/homeassistant');
@@ -31,6 +32,7 @@ const store = new Store(cfg.dataDir);
 tune.setLive(tune.resolve(tune.fromState(store.state.settings)));
 const photos = new Photos(cfg);
 const agents = new AgentsStore(cfg.dataDir);
+const progress = new ProgressStore(cfg.dataDir);
 const connections = makeConnections({ cfg, secrets, cfgFile, secFile, getPeopleIds: () => store.state.people.map((p) => p.id) });
 const startedAt = new Date();
 const uploadMax = () => tune.get('uploadMaxMb') * 1024 * 1024;   // /admin > Photos > Uploads
@@ -92,6 +94,7 @@ async function buildState() {
     week: kids.reduce((o, p) => { o[p.id] = store.weekFor(p.id); return o; }, {}),
     groceries: store.state.groceries,
     stores: store.state.stores, categories: store.state.categories,
+    commonItems: store.state.commonItems,
     events: cal.events,
     feeds: cal.feeds,
     photos: list.map((p) => ({ id: p.id, url: '/photo/' + p.id, o: p.o, date: p.date, dated: p.dated !== false, place: p.place, from: p.from, tag: p.tag })),
@@ -162,6 +165,14 @@ const routes = {
   },
 
   'GET /api/agents': async (req, res) => send(res, 200, agents.get()),
+  'GET /api/progress/evergreen': async (req, res) => send(res, 200, progress.get()),
+  'PUT /api/progress/evergreen': async (req, res) => {
+    try {
+      authorizeProgress(req, secrets.progress_token);
+      const data = progress.update(await readBody(req, 128 * 1024));
+      send(res, 200, { ok: true, updatedAt: data.report.updatedAt, receivedAt: data.receivedAt });
+    } catch (e) { if (!e.userError) throw e; send(res, e.httpStatus || 400, { error: e.message }); }
+  },
   'POST /api/agents/refresh': async (req, res) => {
     const requestedAt = agents.request();
     accounts.refreshAll(secrets, agents).catch((e) => console.error('account refresh failed:', e.message));   // linked accounts are read by the hub itself
@@ -202,7 +213,7 @@ const routes = {
 
   // --- admin: everything you can edit from a phone or computer
   'GET /api/admin/data': async (req, res) => send(res, 200, {
-    people: store.state.people, chores: store.state.chores, groceries: store.state.groceries, stores: store.state.stores, categories: store.state.categories,
+    people: store.state.people, chores: store.state.chores, groceries: store.state.groceries, stores: store.state.stores, categories: store.state.categories, commonItems: store.state.commonItems,
     events: store.state.events, rev: store.state.rev, settings: store.state.settings,
     tune: tune.resolve(tune.fromState(store.state.settings)), tuneSchema: tune.SCHEMA,
     config: { timezone: cfg.timezone, calendars: cfg.calendars.map((c) => ({ name: c.name, people: c.people, configured: !!(secrets.ical && secrets.ical[c.secret]) })),

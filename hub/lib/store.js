@@ -1,7 +1,7 @@
 'use strict';
 // Everything you edit lives in one JSON file (data/state.json): people, chores, groceries, events.
 const path = require('path');
-const { categoriesFor } = require('./groceries');
+const { categoriesFor, commonFor } = require('./groceries');
 const { readJson, writeJsonAtomic, ymd, uid } = require('./util');
 
 const PALETTE = {
@@ -83,6 +83,7 @@ class Store {
     s.events = s.events || []; s.history = s.history || {}; s.stars = s.stars || {};
     s.stores = s.stores && s.stores.length ? s.stores : [{ id: 'grocer', name: 'Grocery store' }];
     s.categories = categoriesFor(s);
+    s.commonItems = commonFor(s);
     s.settings = s.settings || {};
     s.settings.display = Object.assign({ homeSec: 60, ambientSec: 120 }, s.settings.display || {});
     // tunable values (lib/tune.js)

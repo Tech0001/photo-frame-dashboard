@@ -134,6 +134,10 @@
     D.catOrder.all = order.slice();
     s.stores.forEach(function (st) { D.catOrder[st.id] = order.slice(); });
     replace(D.groceries, s.groceries);
+    if (Array.isArray(s.commonItems)) {
+      replace(D.catalog, s.commonItems.map(function (item) { return [item.name, item.cat]; }));
+      replace(D.usuals, s.commonItems.filter(function (item) { return item.usual; }).map(function (item) { return item.name; }));
+    }
 
     replace(D.photos, s.photos.map(function (p) {
       return { url: p.url, o: p.o, date: p.date, dated: p.dated !== false, place: p.place || '', from: p.from || 'family', tag: p.tag || 'frame' };
@@ -147,7 +151,7 @@
 
   // Only the fields that matter for display, so a changing "now" does not look like new data.
   function keyOf(s) {
-    return JSON.stringify([s.rev, s.people, s.chores, s.stars, s.week, s.groceries, s.stores, s.categories, s.events, s.weather, s.weatherConfigured, s.photos.length, s.display, s.tune, s.agents && s.agents.services && s.agents.services.map(function (x) { return [x.id, x.updated, x.error, x.errorAt, x.meters, x.credits]; }), s.agents && s.agents.requestedAt]);
+    return JSON.stringify([s.rev, s.people, s.chores, s.stars, s.week, s.groceries, s.stores, s.categories, s.commonItems, s.events, s.weather, s.weatherConfigured, s.photos.length, s.display, s.tune, s.agents && s.agents.services && s.agents.services.map(function (x) { return [x.id, x.updated, x.error, x.errorAt, x.meters, x.credits]; }), s.agents && s.agents.requestedAt]);
   }
 
   // Is the hub answering? Shown on the Today screen. A failed read marks it reconnecting, a second one in a row offline.

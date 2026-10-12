@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var D = window.DATA;
-  var V = { el: null, loaded: Date.now(), synced: Date.now() - 2 * 60000 };
+  var V = { el: null, loaded: Date.now(), synced: Date.now() - 2 * 60000, tab: 'usage' };
 
   function pstyle(a) { return '--c:' + a.color + ';--c-rgb:' + a.rgb; }
   function minsLeft(m) { if (m.resetAt) return Math.max(0, (m.resetAt - Date.now()) / 60000); return Math.max(0, m.left - (Date.now() - V.loaded) / 60000); }
@@ -106,6 +106,7 @@
   // Minute tick: update countdown + pace text in place (no rebuild, so switching here stays instant).
   function tick() {
     if (!V.el || !V.el.firstChild) return;
+    if (V.tab === 'evergreen') { render(); return; }
     App.$$('[data-meter]', V.el).forEach(function (foot) {
       var ix = foot.dataset.meter.split(','), m = D.agents[+ix[0]].meters[+ix[1]], p = paceOf(m);
       foot.querySelector('[data-reset]').textContent = fmtLeft(p.left);
@@ -136,30 +137,40 @@
   }
 
   function render() {
+    var progress = V.tab === 'evergreen', scroller = V.el.querySelector('.ag-progress'), scrollTop = scroller ? scroller.scrollTop : 0;
+    App.evergreen.active = progress && App.current === 'agents';
     var showSummary = !App.live || D.agents.some(function (a) { return a.status !== 'off' && !a.limits && !a.credits; });
     V.el.innerHTML = '<div class="agents">' +
-      '<header class="ag-top"><div><div class="label">' + (App.live ? 'AI accounts · usage' : 'AI plans · usage limits') + '</div><h1 class="serif">Agents</h1></div>' +
-      '<div class="ag-sync"><span class="label">' + synced() + '</span>' +
+      '<header class="ag-top"><div><div class="label">' + (progress ? 'Project progress' : App.live ? 'AI accounts · usage' : 'AI plans · usage limits') + '</div><h1 class="serif">Agents</h1></div>' +
+      '<div class="ag-sync"><span class="label">' + App.esc(progress ? App.evergreen.stamp() : synced()) + '</span>' +
       '<button class="icon-btn" data-refresh aria-label="Refresh">' + App.icon('undo', 26) + '</button></div></header>' +
-      '<div class="ag-grid' + (!showSummary ? ' ag-grid--accounts' : '') + '">' + D.agents.map(function (a) { var h = card(a); return a.limits ? h.replace('class="ag-card"', 'class="ag-card ag-card--limits"') : h; }).join('') + (showSummary ? summary() : '') + '</div>' +
+      '<nav class="ag-tabs" aria-label="Agents sections"><button data-ag-tab="usage" aria-pressed="' + !progress + '">Usage</button><button data-ag-tab="evergreen" aria-pressed="' + progress + '">Evergreen</button></nav>' +
+      (progress ? App.evergreen.render() : '<div class="ag-grid' + (!showSummary ? ' ag-grid--accounts' : '') + '">' + D.agents.map(function (a) { var h = card(a); return a.limits ? h.replace('class="ag-card"', 'class="ag-card ag-card--limits"') : h; }).join('') + (showSummary ? summary() : '') + '</div>') +
       '</div>';
+    scroller = V.el.querySelector('.ag-progress'); if (scroller) scroller.scrollTop = scrollTop;
   }
 
   App.register('agents', {
     show: function (el) {
-      if (App.live && window.liveRefreshAgents && Date.now() - (D.agentsUpdated || 0) > 300000) window.liveRefreshAgents(true);   // opening the tab with stale numbers asks for fresh ones
+      if (V.tab === 'usage' && App.live && window.liveRefreshAgents && Date.now() - (D.agentsUpdated || 0) > 300000) window.liveRefreshAgents(true);   // opening the tab with stale numbers asks for fresh ones
       if (!V.el) {
         V.el = el;
         el.addEventListener('click', function (e) {
+          var tab = e.target.closest('[data-ag-tab]');
+          if (tab) { V.tab = tab.dataset.agTab; render(); if (V.tab === 'evergreen') App.evergreen.refresh(false); return; }
           var b = e.target.closest('[data-refresh]');
           if (!b) return;
+          if (V.tab === 'evergreen') { App.evergreen.refresh(true); return; }
           V.synced = Date.now();
           if (App.live && window.liveRefreshAgents) window.liveRefreshAgents();
           render();
         });
       }
       render();
-    }
+      if (V.tab === 'evergreen') App.evergreen.refresh(false);
+    },
+    resume: function () { render(); if (V.tab === 'evergreen') App.evergreen.refresh(false); },
+    hide: function () { App.evergreen.active = false; }
   });
   App.on('minute', tick);
 })();

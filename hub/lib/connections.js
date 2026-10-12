@@ -52,6 +52,7 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
       homeassistant: Object.assign(homeassistant.defaults(), cfg.homeassistant, { tokenSet: !!secrets.homeassistant_token }),
       adminPasswordSet: !!secrets.admin_password,
       agentsTokenSet: !!secrets.agents_token,
+      progressTokenSet: !!secrets.progress_token,
       photosDir: cfg.photosDir,
       files: { config: cfgFile, secrets: secFile }
     };
@@ -146,6 +147,10 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
       if (b.agentsToken === 'regenerate') { nsec.agents_token = crypto.randomBytes(24).toString('hex'); out.generatedAgentsToken = nsec.agents_token; }
       else if (typeof b.agentsToken === 'string' && b.agentsToken.length >= 16) nsec.agents_token = b.agentsToken;
       else throw bad('The collector token needs at least 16 characters');
+    }
+    if (b.progressToken !== undefined) {
+      if (b.progressToken === 'regenerate') { nsec.progress_token = crypto.randomBytes(24).toString('hex'); out.generatedProgressToken = nsec.progress_token; }
+      else throw bad('Use Generate token to create the Evergreen progress credential.');
     }
 
     // ---- commit: files first (config keeps any keys this page does not manage), then the running process
