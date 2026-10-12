@@ -239,6 +239,33 @@ automatically after a further reboot. The buttons were absent inside the kiosk.
 The APK serves local dashboard assets from `https://appassets.androidplatform.net/`;
 no PC web server or SD card is required. Fonts and sample photos still need internet.
 
+For a hosted dashboard, Home HQ 1.3 remembers the HTTP(S) URL supplied with its
+VIEW intent across app restarts and boot. On this SI006, starting the hosted page
+at boot produced `net::ERR_ADDRESS_UNREACHABLE`; reloading after Wi-Fi connected
+worked. Home HQ 1.4 retries failed main-page network loads every five seconds,
+with a **Waiting for dashboard** screen and **Retry now** button. Retries stop
+when the page loads, when another URL is selected, or when the activity is
+destroyed; they pause while Android Settings or another app is in front.
+Temporary HTTP server errors also retry. Failed images and API requests do not
+reload the whole page, and certificate errors retain WebView's default handling.
+This follows the boot-race fix suggested in [upstream PR #9](https://github.com/wesbos/photo-frame-dashboard/pull/9),
+adapted for bundled assets and the native controls. To select a host, substitute
+an address that the frame can resolve:
+
+```sh
+adb -d shell am start -a android.intent.action.VIEW -d http://SERVER:8099/ -n com.wesbos.homehq/.MainActivity
+# Return to the bundled dashboard:
+adb -d shell am start -n com.wesbos.homehq/.MainActivity --ez reset_url true
+```
+
+On-device 1.4 checks passed: loading with Wi-Fi disabled showed the waiting screen
+and repeated retries; enabling Wi-Fi brought back the live dashboard without a
+tap or further reloads. A temporary HTTP 503 also recovered, a failed image did
+not restart the page, and changing URLs cancelled the old retry. A normal reboot
+reproduced five network failures before loading the live dashboard automatically
+about one minute after the reboot command. Navigation stayed enabled, and WebView
+debugging was turned off after testing.
+
 After backing up their APKs and package state, these packages were disabled with
 `pm disable-user --user 0` and force-stopped. Their files and data remain for undo:
 

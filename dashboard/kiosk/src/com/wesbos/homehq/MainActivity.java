@@ -5,16 +5,22 @@ import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.ResolveInfo;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import java.io.IOException;
 
 /**
@@ -33,6 +39,7 @@ public class MainActivity extends Activity {
   static final float EXIT_SLOP_PX = 60;
 
   private WebView web;
+  private DashboardClient dashboard;
   private final Handler handler = new Handler(Looper.getMainLooper());
   private final int[] exitIds = new int[2];
   private final float[] exitX = new float[2];
@@ -50,7 +57,7 @@ public class MainActivity extends Activity {
               (dialog, which) -> {
                 if (which == 0) openLauncher();
                 else if (which == 1) startActivity(new Intent(Settings.ACTION_SETTINGS));
-                else web.reload();
+                else dashboard.reload();
               })
           .setNegativeButton("Back to dashboard", null).show();
     }
@@ -72,22 +79,47 @@ public class MainActivity extends Activity {
     s.setMediaPlaybackRequiresUserGesture(false);
     s.setAllowFileAccess(false);
     s.setAllowContentAccess(false);
-    web.setWebViewClient(new DashboardAssets(getAssets()));
-    setContentView(web);
+    FrameLayout content = new FrameLayout(this);
+    content.addView(web);
+    LinearLayout waiting = new LinearLayout(this);
+    waiting.setOrientation(LinearLayout.VERTICAL);
+    waiting.setGravity(Gravity.CENTER);
+    waiting.setBackgroundColor(Color.rgb(243, 239, 230));
+    waiting.setClickable(true);
+    TextView message = new TextView(this);
+    message.setText("Waiting for dashboard\nIt will open automatically when the connection is ready.");
+    message.setTextColor(Color.rgb(32, 32, 32));
+    message.setTextSize(24);
+    message.setGravity(Gravity.CENTER);
+    message.setPadding(32, 24, 32, 24);
+    waiting.addView(message);
+    Button retry = new Button(this);
+    retry.setText("Retry now");
+    retry.setOnClickListener(v -> dashboard.reload());
+    waiting.addView(retry, new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+    waiting.setVisibility(View.GONE);
+    content.addView(waiting, new FrameLayout.LayoutParams(
+        FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+    dashboard = new DashboardClient(getAssets(), web, waiting);
+    web.setWebViewClient(dashboard);
+    setContentView(content);
 
     String url = getIntent().getDataString();
-    web.loadUrl(url != null ? url : defaultUrl());
+    dashboard.load(url != null ? url : defaultUrl());
   }
 
   @Override
   protected void onResume() {
     super.onResume();
     NavigationService.setDashboardVisible(true);
+    dashboard.resume();
   }
 
   @Override
   protected void onPause() {
     NavigationService.setDashboardVisible(false);
+    dashboard.pause();
     super.onPause();
   }
 
@@ -98,8 +130,8 @@ public class MainActivity extends Activity {
     saveOptions(intent);
     applyDebugFlag(intent);
     String url = intent.getDataString();
-    if (url != null) web.loadUrl(url);
-    else if (intent.getBooleanExtra("reset_url", false)) web.loadUrl(defaultUrl());
+    if (url != null) dashboard.load(url);
+    else if (intent.getBooleanExtra("reset_url", false)) dashboard.load(defaultUrl());
   }
 
   private void saveOptions(Intent intent) {
@@ -144,6 +176,7 @@ public class MainActivity extends Activity {
   @Override
   protected void onDestroy() {
     handler.removeCallbacksAndMessages(null);
+    if (dashboard != null) dashboard.destroy();
     if (web != null) web.destroy();
     super.onDestroy();
   }

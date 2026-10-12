@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.util.Collections;
 
 /** Serves the bundled dashboard from a private HTTPS origin without a network server. */
-final class DashboardAssets extends WebViewClient {
+class DashboardAssets extends WebViewClient {
   static final String HOST = "appassets.androidplatform.net";
   static final String URL = "https://" + HOST + "/index.html";
   private final AssetManager assets;

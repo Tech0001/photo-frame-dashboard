@@ -42,6 +42,9 @@ WebView Android app, built without Gradle, that shows it. Hold two fingers still
 open launcher, settings, and reload controls. Build with `KIOSK_BUNDLE=1` after `npm run build`
 to include the dashboard in the APK instead of requiring a web server. External fonts and
 sample photos still require internet access.
+For a hosted dashboard, the kiosk remembers a URL supplied through its VIEW intent.
+If Wi-Fi or the server is unavailable at startup, it shows **Waiting for dashboard**
+and retries every five seconds until the page loads. The two-finger controls remain available.
 On frames without system navigation, enable **Home HQ navigation** in Android's
 Accessibility settings for floating Back/Dashboard buttons outside the kiosk.
 
