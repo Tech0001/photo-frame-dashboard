@@ -1,0 +1,176 @@
+# frame-hub
+
+The small service that sits behind the wall frame. It runs on your NAS and does these things:
+
+- serves the dashboard to the frame (`http://<nas>:8099/`)
+- stores your **chores, groceries, schedule and people**, and lets you edit them from any phone or computer at `/admin`
+- reads your **Google Calendar** (a read-only iCal link) and merges it with schedule items you add
+- serves your **photos** from the NAS, resized so the frame's 1 GB of RAM can cope
+- reads **ProxMenux Monitor** for the Homelab screen, with the API token kept on the NAS
+- shows the **weather** (Open-Meteo, no key needed) and the **AI usage** the Agents screen reads from `tools/agent-usage/`
+
+The frame itself never sees a calendar link or a token. If the hub is down it shows a clock and keeps retrying.
+
+## 0. Once it is running, change settings in /admin
+
+Open `http://<hub>:8099/admin` and use the **Connections** page (Calendars & services). You can add or remove calendars (iCal links) and choose who each one is for, set the
+ProxMenux address and token, set the weather location, units and timezone, change the admin password, and generate a new collector token. Links, tokens and
+passwords are **write-only**: the page shows that one is saved, but never the value. Changes apply immediately, with no restart. There are "Test" buttons for
+each calendar link and for ProxMenux.
+
+**The hub's own copy of `config.json` and `secrets.json` is the master once it is running.** In the LXC they live in `/etc/frame-hub/`, and the
+Connections tab edits those. The files in `hub/config/` on the share only seed the first install. The update script therefore **keeps** the container's
+settings; to replace them with the share's copies on purpose, run it with `SYNC_CONFIG=1`.
+
+## 1. First install: put the secrets in one file
+
+Create **`hub/config/secrets.json`** (this repo's `hub/config/` folder, on the NAS share it is `path/to/photo-frame-dashboard/hub/config/`). It is ignored by git and is the only place secrets live:
+
+```json
+{
+  "ical": {
+    "google": "https://calendar.google.com/calendar/ical/.../private-.../basic.ics"
+  },
+  "proxmenux_token": "the token from ProxMenux Monitor",
+  "admin_password": "something you will remember"
+}
+```
+
+- **Google calendar link:** Google Calendar on the web, the three dots by your calendar, *Settings and sharing*, scroll to **Secret address in iCal format**. Anyone with that link can read the calendar, so keep it private.
+- **ProxMenux token:** open `https://proxmenux.example.lan`, *Settings*, *API Access Tokens*, create one. ProxMenux cannot limit a token to read-only, so treat it like a password. The hub only ever makes read (`GET`) requests with it.
+- **admin_password:** protects `/admin`. Optional but recommended.
+
+`hub/config/secrets.example.json` shows the shape. `hub/config/config.example.json` has the non-secret settings: copy it to `config.json` and edit.
+
+## 2. Settings: `hub/config/config.json`
+
+```json
+{
+  "timezone": "UTC",
+  "calendars": [ { "name": "Family (Google)", "secret": "google", "people": [] } ],
+  "proxmenux": { "url": "https://proxmenux.example.lan", "tokenSecret": "proxmenux_token", "insecureTLS": false },
+  "weather": { "lat": 32.22, "lon": -110.97, "units": "f" }
+}
+```
+
+- `timezone`: an IANA name. Controls "today", chore resets at midnight and all-day events.
+- `calendars[].people`: who a calendar's events belong to. Leave empty for everyone. An event titled "Jordan: dentist" is assigned to Jordan automatically.
+- `weather`: latitude and longitude (decimal degrees) for [Open-Meteo](https://open-meteo.com/), `"units": "f"` or `"c"`. Leave out for the demo weather.
+- `insecureTLS`: set `true` only if ProxMenux uses a certificate your NAS does not trust.
+- `photosDir`: folder with your photos (not needed in Docker, see below).
+
+## 3. Run it
+
+### Proxmox LXC (recommended if your NAS is a Proxmox host)
+
+A small unprivileged Debian container with the repo and photos mounted **read-only**, a pinned and checksum-verified Node.js, and a systemd service. Your `config.json` and `secrets.json` are copied into the container, so the secrets live only there.
+
+In the Proxmox web UI open your node, then **Shell**, and run:
+
+```sh
+bash /path/to/photo-frame-dashboard/hub/deploy/proxmox-create-lxc.sh
+```
+
+It checks that everything it needs exists, downloads a Debian template if you have none, creates the container, installs the hub and prints the address. Options (set before the command): `CTID`, `STORAGE` (default `local-lvm`), `BRIDGE` (`vmbr0`), `CT_IP` and `CT_GW` for a fixed address (default DHCP), `REPO_DIR` and `PHOTOS_DIR` if your host paths differ.
+
+After changing hub code, refresh the container: `MODE=update CTID=<id> bash .../proxmox-create-lxc.sh`. This keeps the settings you edited in `/admin`; add `SYNC_CONFIG=1` to replace them with `hub/config/` from the share. After rebuilding only the dashboard (`npm run build` on the PC) nothing needs doing; the container serves `dashboard/dist` straight from the share. Your chores, groceries and schedule live in the container (`/var/lib/frame-hub/data`), so Proxmox backups of the container include them. Logs: `pct exec <id> -- journalctl -u frame-hub -f`.
+
+If it reports that the container cannot read `/srv/repo`, the files on the share are not readable by "other" users on the host; `chmod -R o+rX` on `hub/` and `dashboard/dist/` fixes that (keep `hub/config/secrets.json` out of it, it is copied in by root).
+
+### Docker (alternative)
+
+On the NAS, in this `hub/` folder:
+
+```sh
+cp .env.example .env        # then edit PHOTOS_HOST_DIR to the photo folder's real path on the NAS
+docker compose up -d --build
+docker compose logs -f      # you should see: frame-hub listening on :8099 ... photos found: N
+```
+
+`PHOTOS_HOST_DIR` is the path the NAS itself uses for `photos/frame photos` (for example `/volume1/photos/frame photos` on Synology, `/mnt/user/photos/frame photos` on Unraid, `/mnt/tank/photos/frame photos` on TrueNAS). Update after changes with `docker compose up -d --build`.
+
+### Without Docker
+
+Needs Node.js 22 or newer (the calendar parser requires it).
+
+```sh
+cd hub
+npm install --omit=dev
+PHOTOS_DIR="/path/to/frame photos" node server.js
+```
+
+Keep it running with your NAS's service manager (systemd, a Synology task scheduler "boot-up" task, and so on).
+
+### Check it
+
+Open `http://<nas-ip>:8099/` in a browser: you should see the dashboard. `http://<nas-ip>:8099/admin` is the editor.
+
+## 4. Edit things remotely: `/admin`
+
+Works on a phone. A sidebar groups the pages: **Connections** (calendars, accounts, ProxMenux, weather and time zone, security), **Frame content** and **Frame**:
+
+- **Chores**: add, rename, choose the routine (morning, after school, evening), who does it, stars, and which days. Ticks reset at midnight.
+- **Groceries**: the same list the frame shows, plus store names.
+- **Schedule**: one-off or repeating events (daily, weekly, monthly). Your Google events appear on top automatically.
+- **People**: name, colour, whether they earn stars.
+- **Status**: whether the calendar, ProxMenux and photos are working.
+
+Changes show up on the frame within about 20 seconds. Ticking a chore or editing groceries on the frame goes back to the hub straight away.
+
+## 5. Photos
+
+Put JPEG, PNG or WebP files in the folder (subfolders are fine; the folder name is used as the photo's "place"). The date comes from the photo's EXIF data, then the filename (`20230708_160947.jpg`), then the file date. **HEIC files are skipped** (convert them to JPEG first). Resized copies are cached in `hub/cache/` and can be deleted at any time.
+
+## 6. Point the frame at the hub
+
+The kiosk app opens any address you give it. With the frame connected over ADB:
+
+```sh
+adb shell am start -a android.intent.action.VIEW -d http://<nas-ip>:8099/ -n com.wesbos.homehq/.MainActivity
+```
+
+(Run `npm run build` in `dashboard/` first whenever the dashboard code changed. The hub serves `dashboard/dist`, so rebuilding it updates the frame without touching the app.) Give the NAS a fixed IP, or a DHCP reservation, so the frame can always find it. If the hub is unreachable the dashboard keeps running on its demo data and retries.
+
+**Status.** `GET /api/status` reports the hub, its uptime, the time zone and how many calendars are set up.
+
+After changing hub code, update the container (see section 3). Dashboard-only changes need just `npm run build` in `dashboard/` and a reload.
+
+### Unofficial: linked AI accounts (`lib/accounts.js`)
+
+/admin > Connections > Accounts can read your ChatGPT/Codex plan limits for the Agents screen. **This is unofficial.** It calls an undocumented ChatGPT endpoint with your own Codex login token, so it can change or stop working without notice, and it may not be permitted by the provider's terms. The token is stored only on the hub (write-only, never sent to the frame) and the refresh token is not kept. It is optional: leave Accounts unlinked and nothing is sent. Claude usage does not use this; it comes from the collector in `tools/agent-usage/`.
+
+## 8. Where settings live, and how /admin saves them
+
+| What | Where it is kept | Edited from |
+| --- | --- | --- |
+| Passwords, tokens, calendar links | `config/secrets.json` (write-only in /admin, never backed up or shown) | Connections |
+| Calendars, ProxMenux, weather, time zone | `config/config.json` | Connections |
+| Chores, groceries, schedule, people | `data/state.json` | their own tabs |
+| Everything adjustable about behaviour, **including the away-from-screen timers** | `data/state.json`, validated by one list in `lib/tune.js` | Settings |
+
+**One list of settings.** Add a row to `SCHEMA` in `lib/tune.js` and /admin builds the control, search finds it, "Changed only" lists it when it differs from the default, and the hub validates every save. A row's `store` says where its value is kept; the timers stay where the frame already reads them, so nothing on the frame had to change.
+
+**Two ways to save, never mixed on a page.**
+- *Settings, photo folders and the Status page save as you go.* A dot marks anything not at its default; each setting is tagged Frame or Hub.
+- *Everything else is a form* (chores, groceries, schedule, people, connections). Edits stay on the page until you press **Save changes**. A dot on the tab and "Unsaved changes: ..." at the bottom show what is waiting, one Save writes every changed form (so nothing typed on one tab is lost by saving on another), and the browser warns before you leave with unsaved changes. Ctrl+S saves.
+
+**Automatic backups.** Before the hub changes `state.json` or `config.json` it keeps a copy in `backups/` beside the file: at most one every 10 minutes, the newest 40 of each. **Status > Backups** lists them with a Restore button; a restore first keeps what you have now, so it can be undone. `secrets.json` is never copied.
+
+**Status** lists what is working (hub, admin password, each calendar, photos, weather, ProxMenux, backups) with a Fix or Set up button that jumps to the right page.
+
+## Security notes
+
+- The hub has no login except the optional admin password, and the frame's own edits are unauthenticated. It is meant for your home network only. **Do not expose port 8099 to the internet.**
+- `config/secrets.json` holds your private calendar link and a ProxMenux token that can control your VMs. Do not commit it, share it or put it in a cloud-synced folder.
+- Back up `hub/data/state.json`: it is your chores, groceries and schedule.
+
+## Files
+
+| Path | What |
+| --- | --- |
+| `server.js`, `lib/` | the service |
+| `public/admin.html` | the editor |
+| `config/config.json` | settings (you create from the example) |
+| `config/secrets.json` | calendar link, ProxMenux token, admin password (you create) |
+| `data/state.json` | your chores, groceries, events, people (created on first run) |
+| `cache/` | resized photos |

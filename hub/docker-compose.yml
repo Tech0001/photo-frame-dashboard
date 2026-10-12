@@ -1,0 +1,15 @@
+# Run on the NAS:   docker compose up -d --build
+# Set PHOTOS_HOST_DIR in a .env file next to this one (see .env.example).
+services:
+  frame-hub:
+    build: .
+    container_name: frame-hub
+    restart: unless-stopped
+    ports:
+      - "8099:8099"
+    volumes:
+      - ./config:/app/config:ro                 # config.json + secrets.json (you create these)
+      - ./data:/app/data                        # chores, groceries, schedule, people (back this up)
+      - ./cache:/app/cache                      # resized photos, safe to delete
+      - ../dashboard/dist:/app/dashboard:ro     # the built dashboard
+      - "${PHOTOS_HOST_DIR}:/photos:ro"         # your 'frame photos' folder, read-only

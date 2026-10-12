@@ -1,0 +1,14 @@
+{
+  "timezone": "UTC",
+  "port": 8099,
+  "photosDir": "/photos",
+  "calendars": [
+    { "name": "Family (Google)", "secret": "google", "people": [] }
+  ],
+  "proxmenux": {
+    "url": "https://proxmenux.example.lan",
+    "tokenSecret": "proxmenux_token",
+    "insecureTLS": false
+  },
+  "weather": null
+}

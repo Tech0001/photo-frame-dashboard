@@ -10,6 +10,8 @@
   var handlers = {};
   App.on = function (e, fn) { (handlers[e] = handlers[e] || []).push(fn); };
   App.emit = function (e, a) { (handlers[e] || []).forEach(function (fn) { fn(a); }); };
+  // Tunable setting from /admin (hub/lib/tune.js), with the fallback to use before the hub has answered or in demo mode.
+  App.tune = function (key, fallback) { var t = window.TUNE; return t && t[key] != null ? t[key] : fallback; };
 
   // ------------------------------------------------------------ time (demo clock)
   var offset = 0;
@@ -326,8 +328,14 @@
   }
 
   // ------------------------------------------------------------ boot
+  // Wait (briefly) for live data from the hub; without it we run on the demo data and demo clock.
   App.start = function () {
-    App.setTime(15, 18); // demo default: a busy weekday afternoon
+    var boot = window.liveBoot ? window.liveBoot() : Promise.resolve(false);
+    boot.then(begin, function () { begin(false); });
+  };
+  function begin(live) {
+    App.live = !!live;
+    if (!live) App.setTime(15, 18); // demo default: a busy weekday afternoon
     fit();
     window.addEventListener('resize', fit);
     // Switch tabs the instant a finger lands (pointerdown), not on release. Keyboard "clicks"
@@ -347,7 +355,7 @@
     setInterval(tick, 1000);
     App.emit('ready');
     refreshStale(1500);
-    setTimeout(function () { App.toast('Tip: press and hold the <b>clock</b> in the sidebar for demo controls', { ms: 6000, icon: 'bolt' }); }, 1200);
-  };
+    if (!live) setTimeout(function () { App.toast('Tip: press and hold the <b>clock</b> in the sidebar for demo controls', { ms: 6000, icon: 'bolt' }); }, 1200);
+  }
   document.addEventListener('DOMContentLoaded', function () { App.start(); });
 })();
