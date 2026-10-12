@@ -56,21 +56,22 @@ test('bounded body rejects malformed health response; connection failure cannot 
   let now = 0, fail = false;
   const reader = createReader({ clock: () => now, request: async () => { if (fail) throw Error('PRIVATE'); return Response.json({ status: 'pass' }); }, port: async () => !fail });
   const first = await reader.get({ homelab: settings() }); assert(first.services.every(s => s.state === 'ok'));
-  fail = true; now += 31000;
+  fail = true; now += 301000;
   const next = await reader.get({ homelab: settings() }); assert(next.services.every(s => s.state === 'error'));
   assert(!JSON.stringify(next).includes('PRIVATE'));
   const malformed = createReader({ request: async () => new Response('a'.repeat(65537)) });
   assert.equal((await malformed.get({ homelab: { gitea: 'http://git.example' } })).services[1].state, 'error');
 });
-test('polls coalesce and cache for 30 seconds; changing settings or clearing invalidates cached readings', async () => {
+test('polls coalesce and cache for five minutes; changing settings or clearing invalidates cached readings', async () => {
   let now = 0, calls = 0;
   const reader = createReader({ clock: () => now, request: async () => { calls++; return new Response('ok'); } });
   const cfg = { homelab: { pihole: 'http://pi.example' } };
   await Promise.all([reader.get(cfg), reader.get(cfg)]); assert.equal(calls, 1);
   await reader.get(cfg); assert.equal(calls, 1);
-  now = 30001; await reader.get(cfg); assert.equal(calls, 2);
+  now = 300001; await reader.get(cfg); assert.equal(calls, 2);
   cfg.homelab.pihole = 'http://other.example'; await reader.get(cfg); assert.equal(calls, 3);
-  reader.clear(); await reader.get(cfg); assert.equal(calls, 4);
+  await reader.get(cfg, { refresh: true }); assert.equal(calls, 4);
+  reader.clear(); await reader.get(cfg); assert.equal(calls, 5);
 });
 test('admin settings persist across reloads, reject invalid changes atomically and restore from backup', t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lab-settings-')); t.after(() => fs.rmSync(dir, { recursive: true, force: true }));

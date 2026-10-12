@@ -131,8 +131,8 @@ const routes = {
 
   'GET /api/photos': async (req, res) => send(res, 200, { photos: await photos.scan(true), skippedHeic: photos.skipped }),
 
-  'GET /api/homelab': async (req, res) => {
-    const result = await homelab.get(cfg);
+  'GET /api/homelab': async (req, res, q) => {
+    const result = await homelab.get(cfg, { refresh: q.get('refresh') === '1' });
     send(res, 200, !result.configured && cfg.proxmenux.url ? { kind: 'proxmenux', legacy: await getNas(cfg, secrets) } : result);
   },
   'GET /api/nas': async (req, res) => send(res, 200, await getNas(cfg, secrets)),

@@ -60,8 +60,10 @@ repository keys, logs, or backup contents. A missing/unreadable report is unknow
 not successful. The status describes the configured backup destination; use its
 label to identify what it actually covers.
 
-Checks refresh every 30 seconds while the Homelab page is visible. Requests have
-four-second network deadlines and share a 30-second cache across frames. If the
+Homelab loads when opened, then refreshes every five minutes while visible.
+Recent results share a five-minute cache across frames; the refresh button
+bypasses that cache for an immediate check. Hidden tabs, the screensaver and
+background view preparation do not poll Homelab. Network deadlines are four seconds. If the
 frame loses its hub connection, it labels the retained readings as last known
 and removes their green status. The collapsed **Optional Proxmox / ProxMenux**
 section preserves the original integration; it supplies the Homelab view only
@@ -159,7 +161,7 @@ Open `http://<nas-ip>:8099/` in a browser: you should see the dashboard. `http:/
 
 Works on a phone. A sidebar groups the pages: **Connections** (calendars, accounts, Home Assistant, Homelab, weather and time zone, security), **Frame content** and **Frame**:
 
-- **Chores**: add, rename, choose the routine (morning, after school, evening), who does it, stars, and which days. Ticks reset at midnight.
+- **Chores**: add, rename, choose the routine (morning, midday, evening), who does it, stars, and which days. Ticks reset at midnight.
 - **Groceries**: the same list the frame shows, plus editable stores and categories.
   Expand **Stores** or **Categories** to add or rename them, then **Save changes**.
   You can keep up to 8 stores and 32 categories. Renaming a category updates its

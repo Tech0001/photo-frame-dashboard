@@ -147,7 +147,7 @@ var TABS = [].concat.apply([], TAB_GROUPS.map(function (g) { return g[1]; }));
 var HASH = location.hash.slice(1);
 if (TABS.some(function (t) { return t[0] === HASH; })) TAB = HASH;   // /admin#connections opens that page
 var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-var ROUT = [['morning', 'Morning'], ['after', 'After school / midday'], ['evening', 'Evening']];
+var ROUT = [['morning', 'Morning'], ['after', 'Midday'], ['evening', 'Evening']];
 var COLORS = ['black', 'purple', 'red', 'blue', 'green', 'yellow', 'pink', 'orange'];
 var HEX = { black: '#111111', purple: '#8957E5', red: '#E5252A', blue: '#2D5BFF', green: '#00A36C', yellow: '#FFB000', pink: '#E4007C', orange: '#FF6A13' };
 // Emoji this frame can actually draw (tested on the frame itself; newer ones show as empty boxes).
@@ -499,7 +499,7 @@ function unlinkAccount(id) {
 function homelabHtml() {
   var h = CN.homelab;
   function field(key, label, value, placeholder, type) { return '<div class="fg"><label for="lab-' + key + '">' + label + '</label><input id="lab-' + key + '" data-lab="' + key + '" type="' + (type || 'text') + '" value="' + esc(value) + '" placeholder="' + esc(placeholder || '') + '"></div>'; }
-  return '<div class="card"><b>Homelab services</b><p class="mute">The hub checks these over your network every 30 seconds while Homelab is open. Leave an address empty to disconnect it.</p>' +
+  return '<div class="card"><b>Homelab services</b><p class="mute">The hub checks these over your network when Homelab opens, then every five minutes while it stays open. Recent results are reused. The frame’s refresh button checks immediately. Leave an address empty to disconnect it.</p>' +
     field('pihole', 'Pi-hole web address', h.pihole, 'http://pi.hole/admin/') +
     field('gitea', 'Gitea base address', h.gitea, 'http://gitea.local:3000') +
     field('plane', 'Plane web address', h.plane, 'http://plane.local') +

@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var V = { el: null, data: null, error: '', timer: null, at: 0, busy: false };
-  var POLL_MS = 30000;
+  var POLL_MS = 5 * 60 * 1000;
 
   var SAMPLE = {
     ok: true, configured: true, sample: true, updated: new Date().toISOString(),
@@ -107,7 +107,7 @@
     if (!V.el) return;
     var d = V.data, legacy = d && d.kind === 'proxmenux', old = legacy ? d.legacy : null;
     var at = legacy ? V.at : d && d.updated ? Date.parse(d.updated) : 0;
-    var stale = !!V.error || (!!at && Date.now() - at > 90000);
+    var stale = !!V.error || (!!at && Date.now() - at > POLL_MS + 15000);
     var stamp = stale ? 'Connection lost · last known status' : at ? 'Checked ' + App.fmt.time(new Date(at)) : 'Loading…';
     var scroll = V.el.querySelector('.nas'), top = scroll ? scroll.scrollTop : 0;
     V.el.innerHTML = '<div class="nas' + (legacy ? '' : ' nas-services') + '">' +
@@ -118,24 +118,28 @@
     V.el.querySelector('.nas').scrollTop = top;
   }
 
-  function load() {
-    if (V.busy) return;
+  function visible() { return App.current === 'nas' && !document.hidden && (App.mode === 'day' || App.mode === 'nightdash'); }
+  function load(force) {
+    if (V.busy || !visible()) return;
     if (!App.live) { V.data = { kind: 'proxmenux', legacy: SAMPLE, sample: true }; V.at = Date.now(); render(); return; }
     V.busy = true;
     var controller = new AbortController(), timeout = setTimeout(function () { controller.abort(); }, 10000);
-    fetch('/api/homelab', { cache: 'no-store', signal: controller.signal }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    fetch('/api/homelab' + (force ? '?refresh=1' : ''), { cache: 'no-store', signal: controller.signal }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function (d) { V.data = d; V.error = ''; V.at = Date.now(); })
       .catch(function (e) { V.error = 'The hub could not be reached (' + e.message + ')';  })
       .then(function () { clearTimeout(timeout); V.busy = false; render(); });
   }
-  function start() { stop(); load(); V.timer = setInterval(load, POLL_MS); }
+  function start() { stop(); if (!visible()) return; load(); V.timer = setInterval(load, POLL_MS); }
   function stop() { if (V.timer) { clearInterval(V.timer); V.timer = null; } }
+
+  document.addEventListener('visibilitychange', start);
+  App.on('mode', start);
 
   App.register('nas', {
     show: function (el) {
       if (!V.el) {
         V.el = el;
-        el.addEventListener('click', function (e) { if (e.target.closest('[data-refresh]')) load(); });
+        el.addEventListener('click', function (e) { if (e.target.closest('[data-refresh]')) load(true); });
       }
       render();
       start();

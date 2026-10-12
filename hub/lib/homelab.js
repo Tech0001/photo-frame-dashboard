@@ -98,9 +98,9 @@ function createReader({ request = fetch, port = checkPort, backup = readBackup, 
     const services = [pihole, gitea, plane, rustdesk];
     return { kind: 'services', configured: services.some(s => s.configured) || b.configured, updated: new Date(clock()).toISOString(), services, backup: b };
   }
-  async function get(cfg) {
+  async function get(cfg, { refresh = false } = {}) {
     const settings = cleanSettings(cfg.homelab), key = JSON.stringify(settings), now = clock();
-    if (cached?.key === key && now - cached.at < 30000) return cached.data;
+    if (!refresh && cached?.key === key && now - cached.at < 5 * 60 * 1000) return cached.data;
     if (pending?.key === key) return pending.promise;
     const gen = generation, promise = read(settings).then(data => {
       if (generation === gen) cached = { key, data, at: clock() };
