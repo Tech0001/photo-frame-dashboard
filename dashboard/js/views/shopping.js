@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var D = window.DATA;
-  var V = { el: null, store: 'all', category: '', query: '', drawer: false, pending: {}, flash: null };
+  var V = { el: null, store: 'all', query: '', drawer: false, pending: {}, flash: null };
 
   function alphabetical(a, b) { return a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }); }
   function open() { return D.groceries.filter(function (g) { return !g.done && (V.store === 'all' || g.store === V.store); }).sort(function (a, b) { return alphabetical(a.name, b.name); }); }
@@ -10,7 +10,6 @@
   function storeName(id) { var s = D.stores.filter(function (s) { return s.id === id; })[0]; return s ? s.name : 'Store unavailable'; }
 
   function categorize(name) {
-    if (V.category && D.catOrder.all.indexOf(V.category) >= 0) return V.category;
     var n = name.toLowerCase();
     var hit = D.catalog.filter(function (c) { return c[0].toLowerCase() === n; })[0] ||
       D.catalog.filter(function (c) { var a = c[0].toLowerCase(); return a.indexOf(n) > -1 || n.indexOf(a) > -1; })[0] ||
@@ -133,26 +132,40 @@
     var listScroll = oldList ? oldList.scrollTop : 0, usualScroll = oldUsuals ? oldUsuals.scrollTop : 0;
     V.el.innerHTML = '<div class="shop">' +
       '<header class="s-head"><div><div class="label">Shared list</div><h1 class="serif">Groceries</h1></div><div class="s-count"></div></header>' +
-      '<div class="s-shopping"><div class="s-list-heading"><h2>To buy</h2><div class="seg s-stores" aria-label="Shopping list store"></div></div><div class="s-list"></div></div>' +
-      '<aside class="s-side">' +
-      '  <div class="s-add">' +
-      '    <label class="s-input-wrap">' + App.icon('plus', 30) + '<input class="s-input" placeholder="Add an item…" autocomplete="off" enterkeyhint="done"></label>' +
-      '    <label class="s-category">Add to category <select aria-label="Category for new item" class="s-category-select"><option value="">Automatic</option>' + D.catOrder.all.map(function (c) { return '<option value="' + App.esc(c) + '"' + (V.category === c ? ' selected' : '') + '>' + App.esc(c) + '</option>'; }).join('') + '</select></label>' +
-      '  </div>' +
-      '  <div class="s-suggest"></div>' +
-      '</aside></div>';
+      '<div class="s-toolbar"><div class="seg s-stores" aria-label="Shopping list store"></div>' +
+      '<div class="s-input-wrap">' + App.icon('plus', 24) + '<input aria-label="Find or add an item" class="s-input" maxlength="80" placeholder="Find or add an item…" autocomplete="off" enterkeyhint="done"><button class="s-search-clear" data-clear-search aria-label="Clear item search"' + (!V.query ? ' hidden' : '') + '>' + App.icon('x', 22) + '</button></div></div>' +
+      '<div class="s-shopping"><div class="s-list-heading"><h2>To buy</h2><span class="label">By category · A–Z</span></div><div class="s-list"></div></div>' +
+      '<aside class="s-side"><div class="s-suggest"></div></aside></div>';
     var input = V.el.querySelector('.s-input');
     input.value = V.query;
-    V.el.querySelector('.s-category-select').addEventListener('change', function () { V.category = this.value; paintSuggest(); });
-    input.addEventListener('input', function () { V.query = input.value; paintSuggest(); });
+    input.addEventListener('input', function () { V.query = input.value; V.el.querySelector('.s-search-clear').hidden = !V.query; paintSuggest(); });
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && input.value.trim()) { add(input.value); } });
     paintList(); paintSuggest();
     V.el.querySelector('.s-list').scrollTop = listScroll;
     var usuals = V.el.querySelector('.s-usuals'); if (usuals) usuals.scrollTop = usualScroll;
   }
 
-  function add(name) {
+  function newItem(name) {
+    var input = V.el.querySelector('.s-input'); if (input) input.blur();
+    function options(values, selected) { return values.map(function (item) { return '<option value="' + App.esc(item[0]) + '"' + (item[0] === selected ? ' selected' : '') + '>' + App.esc(item[1]) + '</option>'; }).join(''); }
+    App.sheet('<div class="sheet-pad"><div class="label">Add to shopping list</div><h2 class="serif sheet-h">' + App.esc(name) + '</h2>' +
+      '<label class="s-new-field">Category<select data-new-category>' + options(D.catOrder.all.map(function (c) { return [c, c]; }), categorize(name)) + '</select></label>' +
+      '<label class="s-new-field">Store<select data-new-store>' + options(D.stores.map(function (s) { return [s.id, s.name]; }), V.store === 'all' ? D.stores[0].id : V.store) + '</select></label>' +
+      '<p class="s-new-status" role="status"></p><button class="btn" data-confirm-item>Add item</button></div>', {
+      cls: 's-new-sheet', onMount: function (el, close) {
+        el.querySelector('[data-confirm-item]').addEventListener('click', function () {
+          var category = el.querySelector('[data-new-category]').value, store = el.querySelector('[data-new-store]').value;
+          if (D.catOrder.all.indexOf(category) < 0 || !D.stores.some(function (s) { return s.id === store; })) { el.querySelector('.s-new-status').textContent = 'Stores or categories changed. Close this and try again.'; return; }
+          close(); add(name, { category: category, store: store });
+        });
+      }
+    });
+  }
+  function add(name, selection) {
     name = name.trim();
+    if (!name) return;
+    var known = D.catalog.find(function (c) { return c[0].toLowerCase() === name.toLowerCase(); });
+    if (!selection && !known && !find(name, false) && !find(name, true)) return newItem(name);
     var g = find(name, false), msg;
     if (g) {
       g.qty++;
@@ -164,8 +177,7 @@
       msg = 'Added back <b>' + App.esc(g.name) + '</b>';
       paintList();
     } else {
-      var cat = D.catalog.filter(function (c) { return c[0].toLowerCase() === name.toLowerCase(); })[0];
-      g = { id: App.live ? 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) : D._gid(), name: cat ? cat[0] : name.charAt(0).toUpperCase() + name.slice(1), cat: categorize(name), qty: 1, store: V.store === 'all' ? D.stores[0].id : V.store, done: false, note: '' };
+      g = { id: App.live ? 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) : D._gid(), name: known ? known[0] : name.charAt(0).toUpperCase() + name.slice(1), cat: selection ? selection.category : categorize(name), qty: 1, store: selection ? selection.store : V.store === 'all' ? D.stores[0].id : V.store, done: false, note: '' };
       D.groceries.push(g);
       msg = 'Added <b>' + App.esc(g.name) + '</b> to ' + App.esc(g.cat);
       insertRow(g);
@@ -174,6 +186,7 @@
     V.query = '';
     var input = V.el.querySelector('.s-input');
     if (input) input.value = '';
+    V.el.querySelector('.s-search-clear').hidden = true;
     if (hadQuery) paintSuggest(); else refreshSuggestFor(g);
     flash(g);
     App.emit('data');
@@ -222,7 +235,8 @@
       return;
     }
     if ((t = e.target.closest('[data-add]'))) return add(t.dataset.add);
-    if ((t = e.target.closest('[data-store]'))) { V.store = t.dataset.store; return paintList(); }
+    if ((t = e.target.closest('[data-clear-search]'))) { V.query = ''; V.el.querySelector('.s-input').value = ''; t.hidden = true; return paintSuggest(); }
+    if ((t = e.target.closest('[data-store]'))) { V.store = t.dataset.store; paintList(); return paintSuggest(); }
     if ((t = e.target.closest('[data-drawer]'))) { V.drawer = !V.drawer; return paintList(); }
     if ((t = e.target.closest('[data-revive]'))) {
       var r = D.groceries.filter(function (x) { return x.id === t.dataset.revive; })[0];

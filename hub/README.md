@@ -211,7 +211,10 @@ Works on a phone. A sidebar groups the pages: **Connections** (calendars, accoun
   Open **Usuals & suggestions** to add, rename or remove reusable search suggestions.
   Search by item/category or tick **Usuals only** to find Quick-add items.
   Tick **Quick-add** for the items shown as usuals on the frame. The tablet sorts
-  usuals A–Z in a scrolling grid and shopping entries A–Z within their category.
+  usuals A–Z in a compact three-column grid and shopping entries A–Z within
+  their category. A single toolbar holds store filters and item search. Known
+  suggestions add with one tap; adding a new custom name opens category/store
+  choices, so those fields do not consume space on the main page.
   Server **Shopping list**, **Usuals & suggestions**, and **Stores & categories**
   tabs retain edits until saving. Save changes to
   sync them automatically; editing common items does not alter the shopping
