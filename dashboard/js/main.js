@@ -4,6 +4,7 @@ import './emoji.js';
 import './data.js';
 import './live.js';
 import './app.js';
+import './themes.js';
 import './system.js';
 import './slideshow.js';
 import './views/home.js';

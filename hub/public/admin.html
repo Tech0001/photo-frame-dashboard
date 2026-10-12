@@ -37,6 +37,17 @@
   .tune.mod .tune-l::after { content:' ●'; color:var(--acc); font-size:10px; vertical-align:2px; } .tune button:disabled { opacity:.35; cursor:default; }
   details.adv > summary { cursor:pointer; list-style:none; } details.adv > summary::-webkit-details-marker { display:none; } details.adv > summary::before { content:'▸ '; } details.adv[open] > summary::before { content:'▾ '; }
   .tune { margin:12px 0; } .tune-l { font-size:14px; }
+  .theme-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:16px; }
+  .theme-option { padding:0; border:2px solid var(--line); border-radius:12px; overflow:hidden; background:var(--card); text-align:left; color:var(--ink); cursor:pointer; }
+  .theme-option[aria-pressed=true] { border-color:var(--acc); box-shadow:0 0 0 1px var(--acc); }
+  .theme-sample { display:flex; gap:10px; align-items:center; min-height:88px; padding:12px; background:var(--sample-paper); color:var(--sample-ink); }
+  .theme-sample > i { display:block; width:9px; height:60px; border-radius:4px; background:var(--sample-accent); flex:none; }
+  .theme-sample > span { flex:1; border-radius:8px; padding:10px; background:var(--sample-card); }
+  .theme-sample b { display:block; font-size:26px; line-height:1; font-variant-numeric:tabular-nums; }
+  .theme-sample small { display:block; margin-top:6px; font-size:12px; }
+  .theme-caption { display:block; padding:10px 12px; font-size:14px; font-weight:600; }
+  .theme-caption small { display:block; margin-top:4px; font-size:12px; font-weight:400; color:var(--mute); }
+  @media (max-width:700px) { .theme-options { grid-template-columns:repeat(2,minmax(0,1fr)); } }
   section { display:none; } section.on { display:block; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; }
   .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
@@ -790,7 +801,7 @@ function phIncluded(p) { return PHF.sel.some(function (s) { return s === '.' || 
 // and reach the frame on its next poll. To add one, add a row to lib/tune.js, nothing here changes.
 function tuneRow(r) {
   var v = D.tune ? D.tune[r.key] : r.def, c;
-  if (r.type === 'select') c = '<select data-tune="' + r.key + '">' + opts(r.options, v) + '</select>';
+  if (r.type === 'select') c = '<select aria-label="' + esc(r.label) + '" data-tune="' + r.key + '">' + opts(r.options, v) + '</select>';
   else {
     c = (r.slider === false ? '' : '<input type="range" min="' + r.min + '" max="' + r.max + '" step="' + (r.step || 1) + '" data-tune="' + r.key + '" value="' + v + '">') +
       '<input type="number" min="' + r.min + '" max="' + r.max + '" step="' + (r.step || 1) + '" style="width:80px;flex:none" data-tune="' + r.key + '" value="' + v + '"><span class="mute" style="flex:none">' + esc(r.unit || '') + '</span>';
@@ -798,7 +809,10 @@ function tuneRow(r) {
   var dv = r.type === 'select' ? (r.options.filter(function (o) { return o[0] === r.def; })[0] || [0, r.def])[1] : r.def + (r.unit ? ' ' + r.unit : '');
   return '<div class="tune"><div class="tune-g"><span class="tune-ln"><span class="tune-l tt">' + esc(r.label) + '</span><span class="tag" title="Where this setting takes effect">' + (WHERE[r.where] || 'Frame') + '</span></span><span class="tune-c">' + c + '</span>' +
     '<button type="button" class="btn ghost tt" data-tune-reset="' + r.key + '" title="Back to the default: ' + esc(String(dv)) + '">Default: ' + esc(String(dv)) + '</button></div>' +
-    (r.hint ? '<div class="mute" style="font-size:13px;margin-top:2px">' + esc(r.hint) + '</div>' : '') + '</div>';
+    (r.hint ? '<div class="mute" style="font-size:13px;margin-top:2px">' + esc(r.hint) + '</div>' : '') +
+    (r.previews ? '<div class="theme-options">' + r.previews.map(function (p) {
+      return '<button type="button" class="theme-option" data-theme-choice="' + esc(p.id) + '" aria-label="Apply ' + esc(p.label) + ' theme" aria-pressed="' + (v === p.id) + '"><span class="theme-sample" style="--sample-paper:' + esc(p.paper) + ';--sample-card:' + esc(p.card) + ';--sample-ink:' + esc(p.ink) + ';--sample-accent:' + esc(p.accent) + '"><i></i><span><b>10:24</b><small>Home · 72°</small></span></span><span class="theme-caption">' + esc(p.label) + '<small>' + esc(p.description) + '</small></span></button>';
+    }).join('') + '</div>' : '') + '</div>';
 }
 function tuneGroups(rows, wrap) {
   var groups = [], by = {};
@@ -832,6 +846,7 @@ var tunePending = {}, tuneTimer = null;
 function tuneSchemaRow(k) { return (D.tuneSchema || []).filter(function (r) { return r.key === k; })[0]; }
 function tuneSync() {   // put the stored values back into every control
   document.querySelectorAll('[data-tune]').forEach(function (i) { if (D.tune && D.tune[i.dataset.tune] !== undefined && document.activeElement !== i) i.value = D.tune[i.dataset.tune]; });
+  document.querySelectorAll('[data-theme-choice]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.themeChoice === D.tune.theme)); });
   tuneMark();
 }
 function setTune(key, val, now) {
@@ -1150,6 +1165,7 @@ document.addEventListener('click', function (ev) {
     if (!confirm('Reset every setting on this page to its default?')) return;
     (D.tuneSchema || []).filter(function (r) { return r.tab === 'settings' && r.sub === d.tuneResetPage; }).forEach(function (r) { setTune(r.key, r.def, true); });
   }
+  else if (d.themeChoice !== undefined) { setTune('theme', d.themeChoice, true); }
   else if (d.tuneReset !== undefined) { var tr = tuneSchemaRow(d.tuneReset); if (tr) setTune(d.tuneReset, tr.def, true); }
   else if (t.id === 'save') saveAll();
 });

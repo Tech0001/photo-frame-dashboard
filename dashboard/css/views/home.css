@@ -58,6 +58,7 @@
 .h-hero-count small { font-size: 22px; letter-spacing: .1em; text-transform: uppercase; font-stretch: 80%; margin-top: 10px; }
 .h-hero--empty { background: var(--ink); color: var(--paper); flex-direction: column; justify-content: center; }
 .h-hero--empty .h-hero-title { white-space: normal; font-size: 56px; }
+.stage[data-theme]:not([data-theme="paper"]) .h-hero--empty .label--light { color: var(--paper); opacity: .72; }
 
 .h-lanes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; min-height: 0; }
 .h-lane { display: flex; flex-direction: column; gap: 6px; min-width: 0; border-top: 6px solid var(--c); padding-top: 10px; }
@@ -106,5 +107,5 @@
 .h-st-row { display: flex; align-items: center; gap: 8px; font-size: 17px; min-height: 30px; }
 .h-st-row b { font-size: 24px; }
 .h-st-row span { color: var(--ink-2); }
-.h-st-row.is-warn { color: #B45F00; font-weight: 800; }
+.h-st-row.is-warn { color: var(--warning-emphasis); font-weight: 800; }
 .h-st-row.is-warn span { color: inherit; }

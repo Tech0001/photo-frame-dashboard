@@ -9,6 +9,16 @@
   --ink-2: #3B3934;
   --mute: #7A756B;
   --line: #D6CFC0;
+  --accent: var(--ink);
+  --accent-ink: var(--paper);
+  --inverse-muted: rgba(255, 255, 255, .6);
+  --inverse-ink: #fff;
+  --inverse-soft: rgba(255, 255, 255, .8);
+  --success-bg: #E4EBDD;
+  --success-ink: #34532F;
+  --warning-bg: #F3E2C4;
+  --warning-ink: #8A4A00;
+  --warning-emphasis: #B45F00;
 
   /* signal colours */
   --alert: #E5261E;
