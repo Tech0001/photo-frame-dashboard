@@ -4,8 +4,9 @@
   var D = window.DATA;
   var V = { el: null, store: 'all', category: '', query: '', drawer: false, pending: {}, flash: null };
 
-  function open() { return D.groceries.filter(function (g) { return !g.done && (V.store === 'all' || g.store === V.store); }); }
-  function done() { return D.groceries.filter(function (g) { return g.done && (V.store === 'all' || g.store === V.store); }); }
+  function alphabetical(a, b) { return a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }); }
+  function open() { return D.groceries.filter(function (g) { return !g.done && (V.store === 'all' || g.store === V.store); }).sort(function (a, b) { return alphabetical(a.name, b.name); }); }
+  function done() { return D.groceries.filter(function (g) { return g.done && (V.store === 'all' || g.store === V.store); }).sort(function (a, b) { return alphabetical(a.name, b.name); }); }
   function storeName(id) { var s = D.stores.filter(function (s) { return s.id === id; })[0]; return s ? s.name : 'Store unavailable'; }
 
   function categorize(name) {
@@ -50,15 +51,16 @@
   function suggestHTML() {
     var q = V.query.trim().toLowerCase();
     if (q) {
-      var matches = D.catalog.filter(function (c) { return c[0].toLowerCase().indexOf(q) === 0; })
-        .concat(D.catalog.filter(function (c) { var i = c[0].toLowerCase().indexOf(q); return i > 0; })).slice(0, 5);
+      var catalog = D.catalog.slice().sort(function (a, b) { return alphabetical(a[0], b[0]); });
+      var matches = catalog.filter(function (c) { return c[0].toLowerCase().indexOf(q) === 0; })
+        .concat(catalog.filter(function (c) { var i = c[0].toLowerCase().indexOf(q); return i > 0; })).slice(0, 5);
       var exact = matches.some(function (m) { return m[0].toLowerCase() === q; });
       return '<div class="label">Suggestions</div><div class="s-ac">' + matches.map(function (m) {
         var on = find(m[0], false);
         return '<button class="s-ac-row" data-add="' + App.esc(m[0]) + '"><b>' + App.esc(m[0]) + '</b><span class="label">' + (on ? 'On list · ×' + on.qty : App.esc(categorize(m[0]))) + '</span>' + App.icon('plus', 26) + '</button>';
       }).join('') + (exact ? '' : '<button class="s-ac-row s-ac-row--new" data-add="' + App.esc(V.query.trim()) + '"><b>Add “' + App.esc(V.query.trim()) + '”</b><span class="label">' + App.esc(categorize(V.query)) + '</span>' + App.icon('plus', 26) + '</button>') + '</div>';
     }
-    return '<div class="label">Usuals · tap to add</div><div class="s-usuals">' + D.usuals.map(usualTile).join('') + '</div>';
+    return '<div class="s-usuals-heading"><h2>Usuals <span>' + D.usuals.length + '</span></h2><span class="label">A–Z · tap to add</span></div><div class="s-usuals">' + D.usuals.slice().sort(alphabetical).map(usualTile).join('') + '</div>';
   }
   function usualTile(name) {
     var on = find(name, false);
@@ -91,7 +93,11 @@
     if (!cat) return paintList();
     var tmp = document.createElement('div');
     tmp.innerHTML = row(g);
-    cat.appendChild(tmp.firstChild);
+    var before = Array.from(cat.querySelectorAll('.s-row')).find(function (el) {
+      var existing = D.groceries.find(function (item) { return item.id === el.dataset.id; });
+      return existing && alphabetical(g.name, existing.name) < 0;
+    });
+    cat.insertBefore(tmp.firstChild, before || null);
     catCount(g.cat);
     paintHead();
   }
@@ -123,13 +129,15 @@
     }).join('');
   }
   function render() {
+    var oldList = V.el.querySelector('.s-list'), oldUsuals = V.el.querySelector('.s-usuals');
+    var listScroll = oldList ? oldList.scrollTop : 0, usualScroll = oldUsuals ? oldUsuals.scrollTop : 0;
     V.el.innerHTML = '<div class="shop">' +
-      '<header class="s-head"><div><div class="label">Shared list</div><h1 class="serif">Groceries</h1></div><div class="s-count"></div><div class="seg s-stores"></div></header>' +
-      '<div class="s-list"></div>' +
+      '<header class="s-head"><div><div class="label">Shared list</div><h1 class="serif">Groceries</h1></div><div class="s-count"></div></header>' +
+      '<div class="s-shopping"><div class="s-list-heading"><h2>To buy</h2><div class="seg s-stores" aria-label="Shopping list store"></div></div><div class="s-list"></div></div>' +
       '<aside class="s-side">' +
       '  <div class="s-add">' +
       '    <label class="s-input-wrap">' + App.icon('plus', 30) + '<input class="s-input" placeholder="Add an item…" autocomplete="off" enterkeyhint="done"></label>' +
-      '    <label class="s-category">Category <select aria-label="Category for new item" class="s-category-select"><option value="">Automatic</option>' + D.catOrder.all.map(function (c) { return '<option value="' + App.esc(c) + '"' + (V.category === c ? ' selected' : '') + '>' + App.esc(c) + '</option>'; }).join('') + '</select></label>' +
+      '    <label class="s-category">Add to category <select aria-label="Category for new item" class="s-category-select"><option value="">Automatic</option>' + D.catOrder.all.map(function (c) { return '<option value="' + App.esc(c) + '"' + (V.category === c ? ' selected' : '') + '>' + App.esc(c) + '</option>'; }).join('') + '</select></label>' +
       '  </div>' +
       '  <div class="s-suggest"></div>' +
       '</aside></div>';
@@ -139,6 +147,8 @@
     input.addEventListener('input', function () { V.query = input.value; paintSuggest(); });
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && input.value.trim()) { add(input.value); } });
     paintList(); paintSuggest();
+    V.el.querySelector('.s-list').scrollTop = listScroll;
+    var usuals = V.el.querySelector('.s-usuals'); if (usuals) usuals.scrollTop = usualScroll;
   }
 
   function add(name) {

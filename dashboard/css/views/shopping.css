@@ -5,7 +5,10 @@
 .s-count { margin-right: auto; font-size: 22px; color: var(--mute); padding-top: 22px; }
 .s-count .num { font-size: 34px; color: var(--ink); }
 
-.s-list { min-height: 0; overflow-y: auto; padding-bottom: 110px; }
+.s-shopping { min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.s-list-heading { display: flex; align-items: center; gap: 14px; flex: none; }
+.s-list-heading h2, .s-usuals-heading h2 { font-size: 24px; font-weight: 800; flex: none; }
+.s-list { min-height: 0; overflow-y: auto; padding-bottom: 24px; flex: 1; }
 .s-cat { margin-bottom: 14px; }
 .s-cat-h { display: flex; justify-content: space-between; padding: 6px 4px 8px; border-bottom: 2px solid var(--ink); margin-bottom: 4px; }
 .s-row {
@@ -44,34 +47,37 @@
 .s-clear { margin-top: 8px; align-self: flex-start; }
 
 /* right column */
-.s-side { min-height: 0; display: flex; flex-direction: column; gap: 18px; }
-.s-add { background: var(--ink); color: #fff; border-radius: var(--r); padding: 16px; display: flex; flex-direction: column; gap: 14px; }
-.s-input-wrap { display: flex; align-items: center; gap: 12px; height: 80px; padding: 0 20px; border-radius: 14px; background: #fff; color: var(--ink); }
-.s-input { flex: 1; min-width: 0; height: 100%; border: 0; outline: none; background: transparent; font-size: 28px; font-weight: 600; }
+.s-side { min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.s-add { background: var(--card); color: var(--ink); border-radius: var(--r); padding: 12px; display: flex; flex-direction: column; gap: 8px; flex: none; }
+.s-input-wrap { display: flex; align-items: center; gap: 12px; height: 58px; padding: 0 14px; border-radius: 12px; background: var(--paper-2); color: var(--ink); }
+.s-input { flex: 1; min-width: 0; height: 100%; border: 0; outline: none; background: transparent; font-size: 24px; font-weight: 600; }
 .s-input::placeholder { color: #AAA59B; font-weight: 500; }
 
-.s-suggest { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
-.s-usuals { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; gap: 8px; flex: 1; min-height: 0; }
+.s-suggest { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+.s-usuals-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: none; }
+.s-usuals-heading h2 span { font-size: 18px; color: var(--mute); margin-left: 4px; }
+.s-usuals-heading .label { font-size: 12px; }
+.s-usuals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(84px, auto); align-content: start; gap: 8px; flex: 1; min-height: 0; overflow-y: auto; }
 .s-tile {
   display: flex; flex-direction: column; justify-content: space-between;
   padding: 12px 14px; border-radius: 14px; background: var(--card);
   text-align: left;
-  min-height: 64px;
+  min-height: 84px; gap: 10px; min-width: 0;
 }
 .s-tile:active { transform: scale(.94); }
-.s-tile b { font-size: 19px; font-weight: 800; font-stretch: 75%; line-height: 1.05; text-transform: uppercase; letter-spacing: .01em; }
+.s-tile b { font-size: 22px; font-weight: 800; font-stretch: 75%; line-height: 1.1; overflow-wrap: anywhere; }
 .s-tile span { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--mute); text-transform: uppercase; letter-spacing: .06em; }
 .s-tile.is-on { background: var(--ink); color: var(--paper); }
 .s-tile.is-on span { color: inherit; opacity: .85; }
-.s-ac { display: flex; flex-direction: column; gap: 8px; }
+.s-ac { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; min-height: 0; }
 .s-ac-row { display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 0 18px 0 22px; border-radius: 14px; background: var(--card); }
 .s-ac-row b { flex: 1; font-size: 22px; }
 .s-ac-row--new { background: transparent; box-shadow: inset 0 0 0 2px var(--line); }
 
 /* Store names and custom categories are edited on the hub. */
 .s-head { flex-wrap:wrap; }
-.s-stores { max-width:100%; overflow-x:auto; flex-shrink:1; }
+.s-stores { max-width:100%; min-width:0; overflow-x:auto; flex-shrink:1; }
 .s-stores button { white-space:nowrap; flex:none; }
 .s-store { max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.s-category { display:flex; align-items:center; gap:12px; font-size:18px; }
+.s-category { display:flex; align-items:center; gap:12px; font-size:16px; }
 .s-category-select { flex:1; min-width:0; padding:10px; border-radius:10px; background:var(--paper); color:var(--ink); font-size:18px; }

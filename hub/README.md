@@ -207,13 +207,17 @@ Open `http://<nas-ip>:8099/` in a browser: you should see the dashboard. `http:/
 Works on a phone. A sidebar groups the pages: **Connections** (calendars, accounts, Home Assistant, Homelab, weather and time zone, security), **Frame content** and **Frame**:
 
 - **Chores**: add, rename, choose the routine (morning, midday, evening), who does it, stars, and which days. Ticks reset at midnight.
-- **Groceries**: the shopping list, editable stores/categories, and **Common items**.
-  Expand **Common items** to add, rename or remove reusable search suggestions.
-  Tick **Quick-add** for the items shown as usuals on the frame. Save changes to
+- **Groceries**: the shopping list, editable stores/categories, and **Usuals & suggestions**.
+  Open **Usuals & suggestions** to add, rename or remove reusable search suggestions.
+  Search by item/category or tick **Usuals only** to find Quick-add items.
+  Tick **Quick-add** for the items shown as usuals on the frame. The tablet sorts
+  usuals A–Z in a scrolling grid and shopping entries A–Z within their category.
+  Server **Shopping list**, **Usuals & suggestions**, and **Stores & categories**
+  tabs retain edits until saving. Save changes to
   sync them automatically; editing common items does not alter the shopping
   entries. You can keep up to 500 common items, with unique names. Renaming a
   category updates both shopping and common items.
-  Expand **Stores** or **Categories** to add or rename them, then **Save changes**.
+  Open **Stores & categories** to add or rename them, then **Save changes**.
   You can keep up to 8 stores and 32 categories. Renaming a category updates its
   items; removing a category or store requires moving its items first. Changes
   save together, so an invalid store or category cannot partially save the list.

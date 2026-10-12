@@ -28,6 +28,8 @@
   .fg > select, .fg > input:not([type=checkbox]) { width:100%; max-width:380px; flex:none; } .fg-h { grid-column:2; color:var(--mute); font-size:13px; margin-top:-2px; }
   .fg > .fg-w { display:flex; gap:8px; align-items:center; flex-wrap:wrap; min-width:0; }
   .row select { width:240px; max-width:100%; }
+  .grocery-pane[hidden], [data-common][hidden] { display:none !important; }
+  #common-count { margin:8px 0 12px; }
   .tune-g { display:grid; grid-template-columns:minmax(150px,240px) minmax(0,1fr) 170px; gap:6px 12px; align-items:center; }
   .tune-c { display:flex; gap:8px; align-items:center; min-width:0; } .tune-c select { width:100%; max-width:260px; } .tune-c input[type=range] { flex:1; min-width:80px; } .tune-ln { display:flex; gap:6px; align-items:center; min-width:0; } .tune-ln .tag { flex:none; margin-left:0; }
   .tune-g .btn.ghost { width:100%; padding:8px 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; }
@@ -235,23 +237,30 @@ function renderChores() {
   });
   $('#s-chores').innerHTML = h;
 }
+var GROC_TAB = 'list', COMMON_Q = '', COMMON_ONLY = false;
+function groceryNameOrder(a, b) { return a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }); }
+function filterCommonItems() {
+  var visible = 0, rows = $('#s-groceries').querySelectorAll('[data-common]'), query = COMMON_Q.trim().toLowerCase();
+  rows.forEach(function (row) {
+    var name = row.querySelector('[data-common-name]').value, cat = row.querySelector('[data-common-cat]').value;
+    row.hidden = (COMMON_ONLY && !row.querySelector('[data-common-usual]').checked) || (name + ' ' + cat).toLowerCase().indexOf(query) < 0;
+    if (!row.hidden) visible++;
+  });
+  $('#common-count').textContent = visible + ' of ' + rows.length + ' items';
+}
 function renderGroceries() {
-  var commonOpen = $('#common-items') && $('#common-items').open;
-  var stores = D.stores.map(function (s) { return [s.id, s.name]; });
-  var cats = D.categories.map(function (c) { return [c, c]; });
-  var h = '<p class="mute">Manage the shopping list, common items, stores and categories here, then Save changes. Common items supply search suggestions; Quick-add items appear as usuals on the frame. Move shopping and common items before removing their category.</p>' +
-    '<details class="card"><summary><b>Stores (' + D.stores.length + ')</b></summary>' + D.stores.map(function (s, i) {
-      var used = D.groceries.some(function (g) { return g.store === s.id; });
-      return '<div class="row"><input aria-label="Store name" maxlength="30" data-store="' + i + '" value="' + esc(s.name) + '"><button class="btn ghost" data-remove-store="' + i + '"' + (used || D.stores.length === 1 ? ' disabled title="Move this store’s items first; keep at least one store"' : '') + '>Remove store</button></div>';
-    }).join('') + '<div class="row"><input id="new-store" maxlength="30" aria-label="New store name" placeholder="New store name"><button class="btn ghost" id="add-store"' + (D.stores.length >= 8 ? ' disabled' : '') + '>+ Add store</button></div></details>' +
-    '<details class="card"><summary><b>Categories (' + D.categories.length + ')</b></summary>' + D.categories.map(function (c, i) {
-      var used = D.groceries.some(function (g) { return g.cat === c; }) || D.commonItems.some(function (g) { return g.cat === c; });
-      return '<div class="row"><input aria-label="Category name" maxlength="40" data-category="' + i + '" value="' + esc(c) + '"><button class="btn ghost" data-remove-category="' + i + '"' + (used || D.categories.length === 1 ? ' disabled title="Move this category’s items first; keep at least one category"' : '') + '>Remove category</button></div>';
-    }).join('') + '<div class="row"><input id="new-category" maxlength="40" aria-label="New category name" placeholder="New category name"><button class="btn ghost" id="add-category"' + (D.categories.length >= 32 ? ' disabled' : '') + '>+ Add category</button></div></details>' +
-    '<details class="card" id="common-items"' + (commonOpen ? ' open' : '') + '><summary><b>Common items (' + D.commonItems.length + ')</b></summary><p class="mute">Add, rename or remove reusable items. Tick Quick-add to show an item in the frame’s usuals. Changing these does not add or remove anything from your current shopping list.</p>' + '<button class="btn ghost" id="add-common"' + (D.commonItems.length >= 500 ? ' disabled' : '') + '>+ Add common item</button>' + D.commonItems.map(function (g, i) {
-      return '<div class="row" data-common="' + i + '"><input aria-label="Common item name" maxlength="80" data-common-name value="' + esc(g.name) + '" placeholder="Item name"><select aria-label="Common item category" data-common-cat>' + opts(cats, g.cat) + '</select><label><input type="checkbox" data-common-usual' + (g.usual ? ' checked' : '') + '> Quick-add</label><button class="btn ghost" data-remove-common="' + i + '">Remove item</button></div>';
-    }).join('') + '</details><h2>Shopping list</h2>';
-  D.groceries.forEach(function (g, i) {
+  var stores = D.stores.map(function (s) { return [s.id, s.name]; }), cats = D.categories.map(function (c) { return [c, c]; });
+  var usualCount = D.commonItems.filter(function (g) { return g.usual; }).length;
+  var h = '<div class="subtabs" aria-label="Grocery sections">' + [['list','Shopping list'],['common','Usuals & suggestions'],['setup','Stores & categories']].map(function (tab) {
+    return '<button data-grocery-tab="' + tab[0] + '" class="' + (GROC_TAB === tab[0] ? 'on' : '') + '">' + tab[1] + '</button>';
+  }).join('') + '</div><p class="mute">Changes in all three tabs are kept until you press Save changes.</p>';
+  h += '<div class="grocery-pane"' + (GROC_TAB !== 'list' ? ' hidden' : '') + '><h2>Shopping list</h2><p class="mute">Items to buy, grouped by category and sorted A–Z. Checked items are at the end.</p><button class="btn ghost" id="add-g">+ Add shopping item</button>';
+  var entries = D.groceries.map(function (g, i) { return { g: g, i: i }; }).sort(function (a, b) {
+    return Number(a.g.done) - Number(b.g.done) || (a.g.done ? 0 : D.categories.indexOf(a.g.cat) - D.categories.indexOf(b.g.cat)) || groceryNameOrder(a.g.name, b.g.name);
+  }), heading = '';
+  entries.forEach(function (entry) {
+    var g = entry.g, i = entry.i, group = g.done ? 'Checked items' : g.cat;
+    if (group !== heading) { h += '<h3 style="margin:18px 0 10px">' + esc(group) + '</h3>'; heading = group; }
     h += '<div class="card" data-i="' + i + '"><div class="row">' +
       '<input type="checkbox" data-f="done"' + (g.done ? ' checked' : '') + ' title="Got it">' +
       '<input data-f="name" value="' + esc(g.name) + '" placeholder="Item">' +
@@ -261,8 +270,26 @@ function renderGroceries() {
       '<button class="x" data-del-g="' + i + '" title="Delete">×</button></div>' +
       '<input data-f="note" value="' + esc(g.note) + '" placeholder="Note (optional)" style="width:100%"></div>';
   });
-  h += '<div class="row"><button class="btn ghost" id="add-g">+ Add item</button><button class="btn ghost" id="clear-done">Remove checked items</button></div>';
+  h += '<button class="btn ghost" id="clear-done">Remove checked items</button></div>';
+  h += '<div class="grocery-pane"' + (GROC_TAB !== 'common' ? ' hidden' : '') + '><div class="card" id="common-items"><h2>Usuals & suggestions</h2><p class="mute">' + usualCount + ' usuals appear as Quick-add tiles on the frame. All reusable items supply search suggestions. Items are sorted A–Z.</p>' +
+    '<div class="row"><input id="common-search" aria-label="Search common items" placeholder="Search items or categories…" value="' + esc(COMMON_Q) + '"><label><input type="checkbox" id="common-only"' + (COMMON_ONLY ? ' checked' : '') + '> Usuals only</label><button class="btn ghost" id="add-common"' + (D.commonItems.length >= 500 ? ' disabled' : '') + '>+ Add common item</button></div><p class="mute" id="common-count"></p>';
+  D.commonItems.map(function (g, i) { return { g: g, i: i }; }).sort(function (a, b) {
+    return Number(!a.g.name) - Number(!b.g.name) || groceryNameOrder(a.g.name, b.g.name);
+  }).forEach(function (entry) {
+    var g = entry.g, i = entry.i;
+    h += '<div class="row" data-common="' + i + '"><input aria-label="Common item name" maxlength="80" data-common-name value="' + esc(g.name) + '" placeholder="Item name"><select aria-label="Common item category" data-common-cat>' + opts(cats, g.cat) + '</select><label><input type="checkbox" data-common-usual' + (g.usual ? ' checked' : '') + '> Quick-add</label><button class="btn ghost" data-remove-common="' + i + '">Remove item</button></div>';
+  });
+  h += '</div></div><div class="grocery-pane"' + (GROC_TAB !== 'setup' ? ' hidden' : '') + '><p class="mute">Rename stores and categories here. Move shopping and common items before removing their category.</p>' +
+    '<details class="card" open><summary><b>Stores (' + D.stores.length + ')</b></summary>' + D.stores.map(function (st, i) {
+      var used = D.groceries.some(function (g) { return g.store === st.id; });
+      return '<div class="row"><input aria-label="Store name" maxlength="30" data-store="' + i + '" value="' + esc(st.name) + '"><button class="btn ghost" data-remove-store="' + i + '"' + (used || D.stores.length === 1 ? ' disabled' : '') + '>Remove store</button></div>';
+    }).join('') + '<div class="row"><input id="new-store" maxlength="30" aria-label="New store name" placeholder="New store name"><button class="btn ghost" id="add-store"' + (D.stores.length >= 8 ? ' disabled' : '') + '>+ Add store</button></div></details>' +
+    '<details class="card" open><summary><b>Categories (' + D.categories.length + ')</b></summary>' + D.categories.map(function (c, i) {
+      var used = D.groceries.some(function (g) { return g.cat === c; }) || D.commonItems.some(function (g) { return g.cat === c; });
+      return '<div class="row"><input aria-label="Category name" maxlength="40" data-category="' + i + '" value="' + esc(c) + '"><button class="btn ghost" data-remove-category="' + i + '"' + (used || D.categories.length === 1 ? ' disabled' : '') + '>Remove category</button></div>';
+    }).join('') + '<div class="row"><input id="new-category" maxlength="40" aria-label="New category name" placeholder="New category name"><button class="btn ghost" id="add-category"' + (D.categories.length >= 32 ? ' disabled' : '') + '>+ Add category</button></div></details></div>';
   $('#s-groceries').innerHTML = h;
+  filterCommonItems();
 }
 function renderEvents() {
   var h = '<p class="mute">One-off or repeating events that live on the frame. Your Google calendar events appear as well, automatically.</p>';
@@ -1022,7 +1049,10 @@ function collect() {
 // ---------------------------------------------------------------- actions
 $('#picker').addEventListener('click', function (e) { if (e.target.id === 'picker') closePicker(); });
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#picker').hidden) closePicker(); });
+document.addEventListener('input', function (ev) { if (ev.target.id === 'common-search') { COMMON_Q = ev.target.value; filterCommonItems(); } });
 document.addEventListener('change', function (ev) {
+  if (ev.target.id === 'common-only') { COMMON_ONLY = ev.target.checked; filterCommonItems(); }
+  if (ev.target.hasAttribute('data-common-usual')) filterCommonItems();
   if (ev.target.dataset.lab === 'piholeVersion') { collectConnections(); renderConnections(); barRefresh(); return; }
   var ph = ev.target.dataset && ev.target.dataset.ph;
   if (ph !== undefined && PHF) {   // a photo folder was ticked or unticked
@@ -1071,10 +1101,11 @@ document.addEventListener('click', function (ev) {
   if (t.dataset.restore) { restoreBackup(t.dataset.restore, t.dataset.name, t.parentNode.firstChild.textContent); return; }
   collect();
   var d = t.dataset;
+  if (d.groceryTab) { GROC_TAB = d.groceryTab; renderGroceries(); barRefresh(); return; }
   if (d.addChore) { D.chores.push({ id: '', r: 'after', who: d.addChore, title: '', emoji: '✅', stars: 0, days: null }); renderChores(); }
   else if (d.delChore !== undefined) { D.chores.splice(+d.delChore, 1); renderChores(); }
-  else if (t.id === 'add-g') { D.groceries.push({ id: '', name: '', cat: D.categories.indexOf('Pantry') >= 0 ? 'Pantry' : D.categories[0], qty: 1, store: D.stores[0].id, done: false, note: '' }); renderGroceries(); }
-  else if (t.id === 'add-common') { D.commonItems.push({ id: '', name: '', cat: D.categories.indexOf('Pantry') >= 0 ? 'Pantry' : D.categories[0], usual: true }); renderGroceries(); $('#common-items').open = true; var commonFields = $('#common-items').querySelectorAll('[data-common-name]'); commonFields[commonFields.length - 1].focus(); }
+  else if (t.id === 'add-g') { D.groceries.push({ id: '', name: '', cat: D.categories.indexOf('Pantry') >= 0 ? 'Pantry' : D.categories[0], qty: 1, store: D.stores[0].id, done: false, note: '' }); renderGroceries(); var fields = $('#s-groceries').querySelectorAll('[data-f=name]'); var newField = Array.from(fields).find(function (el) { return el.value === ''; }); if (newField) newField.focus(); }
+  else if (t.id === 'add-common') { COMMON_Q = ''; COMMON_ONLY = false; D.commonItems.push({ id: '', name: '', cat: D.categories.indexOf('Pantry') >= 0 ? 'Pantry' : D.categories[0], usual: true }); renderGroceries(); var commonFields = $('#common-items').querySelectorAll('[data-common-name]'); commonFields[commonFields.length - 1].focus(); }
   else if (d.removeCommon !== undefined) { D.commonItems.splice(+d.removeCommon, 1); renderGroceries(); }
   else if (t.id === 'add-store' || t.id === 'add-category') {
     var isStore = t.id === 'add-store', input = $(isStore ? '#new-store' : '#new-category'), name = input.value.trim();
