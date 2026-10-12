@@ -88,7 +88,12 @@
     var day = V.date;
     var fam = App.timedOn(day).filter(App.isFamily);
     var allDay = App.allDayOn(day);
-    var ad = allDay.length ? '<div class="allday"><div class="gutter label">All day</div><div class="allday-grid">' + allDay.map(function (e) {
+    var n = Math.max(1, D.people.length), cols = 'grid-template-columns:repeat(' + n + ',1fr)';   // one column per person, however many there are
+    var head = '<div class="lanes-head" style="grid-template-columns:64px repeat(' + n + ',1fr)"><div class="gutter"></div>' + D.people.map(function (p) {
+      var c = App.timedOn(day, p.id).filter(function (e) { return !App.isFamily(e); }).length;
+      return '<div class="lane-head" style="' + App.pstyle(p) + '">' + App.avatar(p, 28) + '<b>' + App.esc(p.name) + '</b>' + (c ? '<small>' + c + ' event' + (c === 1 ? '' : 's') + '</small>' : '') + '</div>';
+    }).join('') + '</div>';
+    var ad = allDay.length ? '<div class="allday"><div class="gutter label">All day</div><div class="allday-grid" style="' + cols + '">' + allDay.map(function (e) {
       var fam2 = App.isFamily(e);
       var idx = D.people.map(function (p) { return p.id; }).indexOf(e.people[0]);
       var col = fam2 ? '1 / -1' : (idx + 1) + ' / span 1';
@@ -98,7 +103,7 @@
     }).join('') + '</div></div>' : '';
     var grid = '<div class="grid-scroll"><div class="grid" style="height:' + (END - START) * PX + 'px">' +
       '<div class="hours">' + hoursCol() + '</div>' +
-      '<div class="lanes">' + D.people.map(function (p) {
+      '<div class="lanes" style="' + cols + '">' + D.people.map(function (p) {
         var list = App.timedOn(day, p.id).filter(function (e) { return !App.isFamily(e); });
         return '<div class="lane" style="' + App.pstyle(p) + '">' + placeBlocks(list, null, p.id) + '</div>';
       }).join('') +
@@ -109,7 +114,7 @@
       nowLine([day]) + '</div>' +
       '</div></div>';
     var empty = !App.timedOn(day).length ? '<div class="cal-empty serif">Nothing on the calendar.<br><i>A rare, quiet day.</i></div>' : '';
-    return '<div class="cal-day">' + ad + grid + empty + '</div>';
+    return '<div class="cal-day">' + head + ad + grid + empty + '</div>';
   }
 
   // ------------------------------------------------------------ 3 day
@@ -324,7 +329,7 @@
           });
           if (t.hasAttribute('data-save')) {
             var title = input.value.trim() || 'New event';
-            var who = st.who.length ? st.who.slice() : ['jordan'];
+            var who = st.who.length ? st.who.slice() : [D.people[0].id];
             var start = App.addDays(App.dayStart(now), st.day), p = st.time.split(':');
             start.setHours(+p[0], +p[1]);
             var e = { id: D._eid(), title: title, people: who, start: start, end: new Date(+start + st.dur * 60000) };

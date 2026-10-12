@@ -66,3 +66,22 @@
 .ag-legend span { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 700; color: rgba(255, 255, 255, .8); }
 .ag-legend i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
 .ag-legend span[style*="#111111"] i { background: #F2EEE6; }
+
+/* live services (totals, no limit meters) and services without a data source */
+.ag-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; flex: 1; align-content: center; }
+.ag-stat { display: flex; flex-direction: column; gap: 2px; }
+.ag-stat-l { font-size: 14px; font-weight: 800; font-stretch: 80%; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+.ag-stat-v { font-size: 46px; line-height: 1; }
+.ag-stat small { font-size: 13px; color: var(--mute); font-weight: 700; }
+.ag-foot--solo { align-items: flex-end; gap: 12px; }
+.ag-foot--solo .ag-note { flex: 1; font-size: 12px; line-height: 1.3; color: var(--mute); }
+.ag-card--off { opacity: .85; }
+.ag-card--off .ag-swatch { opacity: .45; }
+.ag-status.is-off { color: var(--mute); }
+.ag-note { font-size: 17px; line-height: 1.35; color: var(--ink-2); margin: auto 0; }
+.ag-sum--wide { grid-column: span 2; }
+
+.ag-foot--solo .ag-note { text-transform: none; letter-spacing: 0; font-weight: 600; }
+.ag-stack[style*="height:0%"] { display: none; }
+
+.ag-card--limits .ag-foot { display: none; }
