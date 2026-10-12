@@ -10,6 +10,7 @@ const nas = require('./nas');
 const weather = require('./weather');
 const accounts = require('./accounts');
 const homeassistant = require('./homeassistant');
+const homelab = require('./homelab');
 
 const bad = (m) => Object.assign(new Error(m), { userError: true });
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24) || 'cal';
@@ -41,6 +42,7 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
   function view() {
     const tokenKey = cfg.proxmenux.tokenSecret || 'proxmenux_token';
     return {
+      homelab: homelab.cleanSettings(cfg.homelab),
       timezone: cfg.timezone,
       weather: cfg.weather || null,
       proxmenux: { url: cfg.proxmenux.url || '', insecureTLS: !!cfg.proxmenux.insecureTLS, tokenSet: !!secrets[tokenKey] },
@@ -61,6 +63,7 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
     nsec.ical = nsec.ical || {};
     const ncfg = { timezone: cfg.timezone, weather: cfg.weather, proxmenux: clone(cfg.proxmenux), calendars: clone(cfg.calendars || []) };
     const out = { ok: true };
+    ncfg.homelab = homelab.cleanSettings(b.homelab === undefined ? cfg.homelab : b.homelab);
     ncfg.homeassistant = homeassistant.cleanSettings(cfg.homeassistant);
 
     if (b.homeassistant) {
@@ -132,6 +135,7 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
     let raw = {};
     try { raw = JSON.parse(fs.readFileSync(cfgFile, 'utf8').replace(/^﻿/, '')); } catch (e) { raw = {}; }
     raw.timezone = ncfg.timezone; raw.weather = ncfg.weather; raw.calendars = ncfg.calendars;
+    raw.homelab = ncfg.homelab;
     raw.homeassistant = ncfg.homeassistant;
     raw.proxmenux = Object.assign({}, raw.proxmenux || {}, { url: ncfg.proxmenux.url, tokenSecret: ncfg.proxmenux.tokenSecret, insecureTLS: ncfg.proxmenux.insecureTLS });
     writeJsonAtomic(cfgFile, raw, 0o644);
@@ -139,9 +143,10 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
 
     cfg.timezone = ncfg.timezone; process.env.TZ = ncfg.timezone;
     cfg.weather = ncfg.weather; cfg.proxmenux = ncfg.proxmenux; cfg.calendars = ncfg.calendars;
+    cfg.homelab = ncfg.homelab;
     cfg.homeassistant = ncfg.homeassistant;
     Object.keys(secrets).forEach((k) => delete secrets[k]); Object.assign(secrets, nsec);
-    nas.clearCache(); weather.reset(); if (b.homeassistant) homeassistant.clear();
+    homelab.clear(); nas.clearCache(); weather.reset(); if (b.homeassistant) homeassistant.clear();
     return out;
   }
 
@@ -174,6 +179,7 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
       if (!url) throw bad('No link to test yet');
       return calendar.testFeed(url);
     }
+    if (b.what === 'homelab') { homelab.clear(); return homelab.get(cfg); }
     if (b.what === 'proxmenux') {
       const r = await nas.getNas(cfg, secrets);
       return { ok: !!r.ok, error: r.ok ? null : (r.errors && r.errors[0]) || 'no answer', host: r.host && r.host.name, guests: r.guests && r.guests.total };
@@ -191,19 +197,20 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
     if (!raw || typeof raw !== 'object' || !Array.isArray(raw.calendars)) throw bad('That backup is not a Frame settings file');
     cleanTimezone(raw.timezone);
     if (raw.weather) cleanWeather(raw.weather);
+    if (raw.homelab) raw.homelab = homelab.cleanSettings(raw.homelab);
     if (raw.homeassistant) raw.homeassistant = homeassistant.cleanSettings(raw.homeassistant);
     require('./backup').snapshot(cfgFile, true);
     let cur = {};
     try { cur = JSON.parse(fs.readFileSync(cfgFile, 'utf8').replace(/^\uFEFF/, '')); } catch (e) { cur = {}; }
-    ['timezone', 'weather', 'calendars', 'proxmenux', 'photoFolders', 'homeassistant'].forEach((k) => { if (raw[k] !== undefined) cur[k] = raw[k]; });
+    ['timezone', 'weather', 'calendars', 'proxmenux', 'photoFolders', 'homeassistant', 'homelab'].forEach((k) => { if (raw[k] !== undefined) cur[k] = raw[k]; });
     if (raw.homeassistant && raw.homeassistant.url !== (cfg.homeassistant?.url || '') && secrets.homeassistant_token) {
       delete secrets.homeassistant_token;
       writeJsonAtomic(secFile, secrets, 0o600);
     }
     writeJsonAtomic(cfgFile, cur, 0o644);
-    ['timezone', 'weather', 'calendars', 'proxmenux', 'photoFolders', 'homeassistant'].forEach((k) => { if (raw[k] !== undefined) cfg[k] = raw[k]; });
+    ['timezone', 'weather', 'calendars', 'proxmenux', 'photoFolders', 'homeassistant', 'homelab'].forEach((k) => { if (raw[k] !== undefined) cfg[k] = raw[k]; });
     process.env.TZ = cfg.timezone;
-    nas.clearCache(); weather.reset(); homeassistant.clear();
+    homelab.clear(); nas.clearCache(); weather.reset(); homeassistant.clear();
   }
 
   return { view, apply, test, setPhotoFolders, restore };

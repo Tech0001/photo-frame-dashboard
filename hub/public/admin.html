@@ -319,10 +319,10 @@ function renderStatus() {
 }
 // Jump to the tab (and page inside it) that fixes something: "connections#integrations", "settings#cameras", "photos".
 function goFix(where) {
-  var alias = { 'connections#integrations': 'connections#proxmenux' };   // the name the hub used for the services page
+  var alias = { 'connections#integrations': 'connections#homelab', 'connections#proxmenux': 'connections#homelab' };   // the name the hub used for the services page
   var p = String(alias[where] || where).split('#'), t = p[0], sub = p[1];
   if (!TABS.some(function (x) { return x[0] === t; })) return;
-  if (t === 'connections' && sub) CN_TAB = sub === 'integrations' ? 'proxmenux' : sub;
+  if (t === 'connections' && sub) CN_TAB = sub === 'integrations' || sub === 'proxmenux' ? 'homelab' : sub;
   if (t === 'settings' && sub) SET_TAB = sub;
   enterTab(t); renderConnections(); renderSettings();
 }
@@ -386,13 +386,15 @@ document.addEventListener('change', function (e) { if (e.target.id === 'set-chan
 // ---------------------------------------------------------------- connections (calendars, accounts, integrations, security)
 var CN = null, CN_TAB = 'calendars';
 var WEATHER_RESULTS = [], WEATHER_SEARCH = 0;
-var CN_TABS = [['calendars', 'Calendars'], ['accounts', 'Accounts'], ['homeassistant', 'Home Assistant'], ['proxmenux', 'ProxMenux'], ['weather', 'Weather & time'], ['security', 'Security']];
+var CN_TABS = [['calendars', 'Calendars'], ['accounts', 'Accounts'], ['homeassistant', 'Home Assistant'], ['homelab', 'Homelab'], ['weather', 'Weather & time'], ['security', 'Security']];
 function cnInit(v) {
   CN = v;
   CN.calendars.forEach(function (c) { c.newUrl = ''; c.result = ''; });
   CN.domReady = false;
   CN.pxToken = ''; CN.pxResult = ''; CN.newPw = ''; CN.confirmPw = ''; CN.shownToken = CN.shownToken || '';
   CN.homeassistant = CN.homeassistant || { url: '', climate: '', entities: [], tokenSet: false };
+  CN.homelab = CN.homelab || { pihole: '', gitea: '', plane: '', rustdesk: { host: '', idPort: 21116, relayPort: 21117 }, backup: { path: '', destination: '', label: 'VM backup', maxAgeHours: 36 } };
+  CN.labResult = '';
   CN.haToken = ''; CN.haResult = ''; CN.haEntities = [];
 }
 function homeassistantHtml() {
@@ -494,10 +496,35 @@ function unlinkAccount(id) {
   api('PUT', '/api/admin/connections', { accounts: (function () { var o = {}; o[id] = { unlink: true }; return o; })() })
     .then(function () { if (CN.acctInput) delete CN.acctInput[id]; if (CN.acctResult) delete CN.acctResult[id]; msg('Unlinked. The saved login is deleted.'); return load(); }).catch(function (e) { msg('Not done: ' + e.message, true); });
 }
+function homelabHtml() {
+  var h = CN.homelab;
+  function field(key, label, value, placeholder, type) { return '<div class="fg"><label for="lab-' + key + '">' + label + '</label><input id="lab-' + key + '" data-lab="' + key + '" type="' + (type || 'text') + '" value="' + esc(value) + '" placeholder="' + esc(placeholder || '') + '"></div>'; }
+  return '<div class="card"><b>Homelab services</b><p class="mute">The hub checks these over your network every 30 seconds while Homelab is open. Leave an address empty to disconnect it.</p>' +
+    field('pihole', 'Pi-hole web address', h.pihole, 'http://pi.hole/admin/') +
+    field('gitea', 'Gitea base address', h.gitea, 'http://gitea.local:3000') +
+    field('plane', 'Plane web address', h.plane, 'http://plane.local') +
+    '<p class="mute">Pi-hole and Plane report whether their web pages respond. Gitea uses its health endpoint. These checks do not sign in or change anything.</p></div>' +
+    '<div class="card"><b>RustDesk</b>' + field('host', 'Server hostname or IP', h.rustdesk.host, 'server.local') +
+    field('idPort', 'ID server TCP port', h.rustdesk.idPort, '21116', 'number') + field('relayPort', 'Relay TCP port', h.rustdesk.relayPort, '21117', 'number') +
+    '<p class="mute">Checks both listening TCP ports. This does not test a complete remote desktop session.</p></div>' +
+    '<div class="card"><b>Time Machine backup</b><p class="mute">Read the Omarchy Time Machine plugin’s cached status file on this server. No backup passwords are needed. This does not start backups or change their schedule.</p>' +
+    field('path', 'Status file on the hub server', h.backup.path, '/home/your-user/.local/state/omarchy-time-machine/status.json') +
+    field('destination', 'Destination name', h.backup.destination, 'Leave blank if there is only one destination') +
+    field('label', 'Name on the frame', h.backup.label, 'VM backup') +
+    field('maxAgeHours', 'Warn after this many hours without success', h.backup.maxAgeHours, '36', 'number') + '</div>' +
+    '<div class="card"><button class="btn ghost" id="test-lab">Check saved connections</button><p class="mute">Save changes first.</p><div role="status" style="white-space:pre-wrap">' + esc(CN.labResult || '') + '</div></div>' +
+    '<details class="adv"><summary>Optional Proxmox / ProxMenux connection</summary><p class="mute">Used on the frame when none of the services or Time Machine above are connected.</p>' + proxmenuxHtml() + '</details>';
+}
+function testHomelab() {
+  collectConnections(); CN.labResult = 'Checking saved connections…'; renderConnections();
+  api('POST', '/api/admin/test', { what: 'homelab' }).then(function (r) {
+    CN.labResult = r.services.map(function (s) { return s.name + ': ' + s.detail; }).concat([r.backup.label + ': ' + r.backup.detail]).join('\n');
+  }).catch(function (e) { CN.labResult = e.message; }).then(renderConnections);
+}
 function proxmenuxHtml() {
   return '<div class="card"><b>ProxMenux</b><p class="mute">The Homelab screen reads this. The token is write-only here: ' + (CN.proxmenux.tokenSet ? 'one is saved.' : 'none saved yet.') + ' Save first, then test.</p>' +
     '<div class="fg"><label>Address</label><input data-px="url" value="' + esc(CN.proxmenux.url) + '" placeholder="https://menux.example.com"></div>' +
-    '<div class="fg"><label>API token</label><input type="password" autocomplete="off" data-px="token" placeholder="' + (CN.proxmenux.tokenSet ? 'Paste a new token to replace the saved one' : 'Paste an API token') + '"></div>' +
+    '<div class="fg"><label>API token</label><input type="password" autocomplete="off" data-px="token" value="' + esc(CN.pxToken || '') + '" placeholder="' + (CN.proxmenux.tokenSet ? 'Paste a new token to replace the saved one' : 'Paste an API token') + '"></div>' +
     '<div class="row"><label class="mute"><input type="checkbox" data-px="insecure"' + (CN.proxmenux.insecureTLS ? ' checked' : '') + '> allow a certificate this hub does not trust</label>' +
     '<button class="btn ghost" id="test-px">Test connection</button></div><div class="mute" id="px-res">' + esc(CN.pxResult) + '</div></div>';
 }
@@ -563,7 +590,7 @@ function securityHtml() {
 function renderConnections() {
   if (!CN) { $('#s-connections').innerHTML = '<p class="mute">Loading…</p>'; return; }
   var h = '<p class="mute" style="margin-top:0">Accounts and outside services.</p><div class="subtabs">' + CN_TABS.map(function (t) { return '<button data-ct="' + t[0] + '" class="' + (t[0] === CN_TAB ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</div>';
-  h += CN_TAB === 'accounts' ? accountsHtml() : CN_TAB === 'homeassistant' ? homeassistantHtml() : CN_TAB === 'proxmenux' ? proxmenuxHtml() : CN_TAB === 'weather' ? weatherHtml() : CN_TAB === 'security' ? securityHtml() : calendarsHtml();
+  h += CN_TAB === 'accounts' ? accountsHtml() : CN_TAB === 'homeassistant' ? homeassistantHtml() : CN_TAB === 'homelab' ? homelabHtml() : CN_TAB === 'weather' ? weatherHtml() : CN_TAB === 'security' ? securityHtml() : calendarsHtml();
   h += '<p class="mute">Saved on the hub in <code>' + esc((CN.files || {}).config || 'config.json') + '</code> and <code>' + esc((CN.files || {}).secrets || 'secrets.json') + '</code>. Photos folder: <code>' + esc(CN.photosDir || '') + '</code> (set when the hub is installed).</p>';
   $('#s-connections').innerHTML = h;
 }
@@ -586,6 +613,12 @@ function collectConnections() {
     CN.homeassistant.climate = root.querySelector('[data-ha=climate]').value;
     CN.homeassistant.entities = Array.from(root.querySelectorAll('[data-ha-entity]:checked')).map(function (e) { return e.dataset.haEntity; });
   }
+  root.querySelectorAll('[data-lab]').forEach(function (input) {
+    var k = input.dataset.lab;
+    if (['host', 'idPort', 'relayPort'].indexOf(k) >= 0) CN.homelab.rustdesk[k] = k === 'host' ? input.value : Number(input.value);
+    else if (['path', 'destination', 'label', 'maxAgeHours'].indexOf(k) >= 0) CN.homelab.backup[k] = k === 'maxAgeHours' ? Number(input.value) : input.value;
+    else CN.homelab[k] = input.value;
+  });
   if ((el = root.querySelector('[data-px=url]'))) {
     CN.proxmenux.url = el.value;
     CN.pxToken = root.querySelector('[data-px=token]').value;
@@ -605,6 +638,7 @@ function connPieces() {
     core: {
       timezone: CN.timezone, weather: CN.weather ? { lat: CN.weather.lat === '' ? null : +CN.weather.lat, lon: CN.weather.lon === '' ? null : +CN.weather.lon, units: CN.weather.units, name: CN.weather.name || '' } : null,   // numbers either way, so a field read back from the page is not a "change"
       proxmenux: { url: CN.proxmenux.url, insecureTLS: !!CN.proxmenux.insecureTLS, token: CN.pxToken || undefined },
+      homelab: CN.homelab,
       homeassistant: { url: CN.homeassistant.url, climate: CN.homeassistant.climate, entities: CN.homeassistant.entities, token: CN.haToken || undefined },
       calendars: CN.calendars.map(function (c) { return { key: c.key || undefined, name: c.name, people: c.people, url: c.newUrl || undefined }; }),
       adminPassword: CN.newPw || undefined, accounts: undefined
@@ -615,7 +649,7 @@ function connPieces() {
 }
 function connPayload() {
   var p = connPieces(); if (!p) return null;
-  var c = p.core, b = { timezone: c.timezone, weather: c.weather, proxmenux: c.proxmenux, homeassistant: c.homeassistant, calendars: c.calendars, accounts: c.accounts, adminPassword: c.adminPassword };
+  var c = p.core, b = { timezone: c.timezone, weather: c.weather, homelab: c.homelab, proxmenux: c.proxmenux, homeassistant: c.homeassistant, calendars: c.calendars, accounts: c.accounts, adminPassword: c.adminPassword };
   return b;
 }
 function saveConnectionsCall() {
@@ -1004,6 +1038,7 @@ document.addEventListener('click', function (ev) {
   else if (d.sw !== undefined) { var sp = d.sw.split(':'); D.people[+sp[0]].color = sp[1]; PCP = null; renderPeople(); }
   else if (d.openColor !== undefined) { PCP = (PCP === +d.openColor ? null : +d.openColor); renderPeople(); }
   else if (d.closeColor !== undefined) { PCP = null; renderPeople(); }
+  else if (t.id === 'test-lab') testHomelab();
   else if (t.id === 'test-px') testProxmenux();
   else if (t.id === 'test-ha') testHA();
   else if (t.id === 'unlink-ha') unlinkHA();

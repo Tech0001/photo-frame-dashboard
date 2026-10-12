@@ -6,7 +6,7 @@ The small service that sits behind the wall frame. It runs on your NAS and does 
 - stores your **chores, groceries, schedule and people**, and lets you edit them from any phone or computer at `/admin`
 - reads your **Google Calendar** (a read-only iCal link) and merges it with schedule items you add
 - serves your **photos** from the NAS, resized so the frame's 1 GB of RAM can cope
-- reads **ProxMenux Monitor** for the Homelab screen, with the API token kept on the NAS
+- checks **Pi-hole, Gitea, Plane and RustDesk**, and reads **Omarchy Time Machine** backup status for Homelab; ProxMenux remains optional
 - shows the **weather** (Open-Meteo, no key needed) and the **AI usage** the Agents screen reads from `tools/agent-usage/`
 
 The frame itself never sees a calendar link or a token. If the hub is down it shows a clock and keeps retrying.
@@ -14,7 +14,7 @@ The frame itself never sees a calendar link or a token. If the hub is down it sh
 ## 0. Once it is running, change settings in /admin
 
 Open `http://<hub>:8099/admin` and use the **Connections** page (Calendars & services). You can add or remove calendars (iCal links) and choose who each one is for, set the
-ProxMenux address and token, set the weather location, units and timezone, change the admin password, and generate a new collector token. Links, tokens and
+Homelab service addresses and backup status file, set the weather location, units and timezone, change the admin password, and generate a new collector token. Links, tokens and
 passwords are **write-only**: the page shows that one is saved, but never the value. Changes apply immediately, with no restart. There are "Test" buttons for
 each calendar link and for ProxMenux.
 
@@ -29,6 +29,43 @@ The live dashboard shows a setup prompt until weather is configured.
 **The hub's own copy of `config.json` and `secrets.json` is the master once it is running.** In the LXC they live in `/etc/frame-hub/`, and the
 Connections tab edits those. The files in `hub/config/` on the share only seed the first install. The update script therefore **keeps** the container's
 settings; to replace them with the share's copies on purpose, run it with `SYNC_CONFIG=1`.
+
+### Homelab services and Time Machine
+
+Open **Connections → Homelab**. Enter the Pi-hole web interface address, Gitea
+base address, Plane web address, and RustDesk hostname/IP and TCP ports. Save,
+then use **Check saved connections**. Blank addresses disconnect that service.
+Addresses stay in server settings; the frame receives only names and results.
+
+- **Pi-hole / Plane:** an HTTP GET checks whether the web interface responds.
+  This does not establish DNS blocking status or complete application health.
+- **Gitea:** checks `/api/healthz` beneath the configured base address and requires
+  `status: "pass"`. An older server without this endpoint shows an unavailable check.
+- **RustDesk:** connects to the ID and relay TCP ports (defaults 21116 and 21117,
+  per the [RustDesk server documentation](https://rustdesk.com/docs/en/self-host/rustdesk-server-oss/install/)).
+  This does not test UDP, an actual remote desktop session, or client credentials.
+
+For [Omarchy Time Machine](https://github.com/jankeesvw/omarchy-time-machine),
+enter the absolute path to `~/.local/state/omarchy-time-machine/status.json`
+(expand `~` to the backup user's home directory). The hub must be able to read
+this file on its own server. In Docker, mount the status **directory** read-only
+and use the container path; mounting the directory follows atomic file replacements.
+Choose the destination name when there is more than one. You can set the display
+name and the overdue threshold (default 36 hours for a nightly backup).
+
+The frame shows the last successful backup, latest failure or overdue warning,
+snapshot count, repository size, and latest run duration. It reads the plugin's
+cached version-1 report; it does not run backups, verify restoration, or read
+repository keys, logs, or backup contents. A missing/unreadable report is unknown,
+not successful. The status describes the configured backup destination; use its
+label to identify what it actually covers.
+
+Checks refresh every 30 seconds while the Homelab page is visible. Requests have
+four-second network deadlines and share a 30-second cache across frames. If the
+frame loses its hub connection, it labels the retained readings as last known
+and removes their green status. The collapsed **Optional Proxmox / ProxMenux**
+section preserves the original integration; it supplies the Homelab view only
+when no service or Time Machine connection is configured.
 
 ## 1. First install: put the secrets in one file
 
@@ -120,7 +157,7 @@ Open `http://<nas-ip>:8099/` in a browser: you should see the dashboard. `http:/
 
 ## 4. Edit things remotely: `/admin`
 
-Works on a phone. A sidebar groups the pages: **Connections** (calendars, accounts, ProxMenux, weather and time zone, security), **Frame content** and **Frame**:
+Works on a phone. A sidebar groups the pages: **Connections** (calendars, accounts, Home Assistant, Homelab, weather and time zone, security), **Frame content** and **Frame**:
 
 - **Chores**: add, rename, choose the routine (morning, after school, evening), who does it, stars, and which days. Ticks reset at midnight.
 - **Groceries**: the same list the frame shows, plus editable stores and categories.

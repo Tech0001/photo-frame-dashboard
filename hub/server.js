@@ -14,6 +14,7 @@ process.env.TZ = cfg.timezone;            // makes "today" and all-day events fo
 const { Store, colorFields, PALETTE } = require('./lib/store');
 const { getEvents } = require('./lib/calendar');
 const { Photos } = require('./lib/photos');
+const homelab = require('./lib/homelab');
 const { getNas, fetchRaw, ENDPOINTS } = require('./lib/nas');
 const { getWeather } = require('./lib/weather');
 const { searchLocations } = require('./lib/locations');
@@ -130,6 +131,10 @@ const routes = {
 
   'GET /api/photos': async (req, res) => send(res, 200, { photos: await photos.scan(true), skippedHeic: photos.skipped }),
 
+  'GET /api/homelab': async (req, res) => {
+    const result = await homelab.get(cfg);
+    send(res, 200, !result.configured && cfg.proxmenux.url ? { kind: 'proxmenux', legacy: await getNas(cfg, secrets) } : result);
+  },
   'GET /api/nas': async (req, res) => send(res, 200, await getNas(cfg, secrets)),
   'GET /api/home': async (req, res) => send(res, 200, await homeassistant.get(cfg, secrets)),
   'GET /api/home/camera': async (req, res, q) => {
@@ -339,7 +344,12 @@ const routes = {
     try { const n = (await photos.scan(false)).length; add('photos', 'Photos', n ? 'ok' : 'warn', n ? n + ' photos on the frame' : 'No photos found in ' + cfg.photosDir, 'photos'); } catch (e) { add('photos', 'Photos', 'bad', e.message, 'photos'); }
     add('weather', 'Weather', cfg.weather ? 'ok' : 'off', cfg.weather ? cfg.weather.lat + ', ' + cfg.weather.lon : 'No location set: the frame shows sample weather', 'connections#weather');
     const px = connections.view().proxmenux;
-    add('proxmenux', 'ProxMenux (Homelab page)', px.url && px.tokenSet ? 'ok' : 'off', px.url ? (px.tokenSet ? px.url : 'No token saved') : 'Not set up', 'connections#proxmenux');
+    const lab = await homelab.get(cfg);
+    if (lab.configured) {
+      lab.services.filter(s => s.configured).forEach(s => add('homelab:' + s.id, s.name, s.state === 'ok' ? 'ok' : 'warn', s.detail, 'connections#homelab'));
+      if (lab.backup.configured) add('time-machine', 'Time Machine', lab.backup.state === 'ok' ? 'ok' : 'warn', lab.backup.detail, 'connections#homelab');
+    }
+    if (!lab.configured || px.url) add('proxmenux', 'ProxMenux (optional)', px.url && px.tokenSet ? 'ok' : 'off', px.url ? (px.tokenSet ? px.url : 'No token saved') : 'Not set up', 'connections#proxmenux');
     const bs = backup.list(path.join(cfg.dataDir, 'state.json'))[0], bc = backup.list(cfgFile)[0];
     add('backups', 'Automatic backups', bs || bc ? 'ok' : 'off', (bs ? 'Settings and data: ' + localStamp(bs.at) : 'None yet') + (bc ? ' · connections: ' + localStamp(bc.at) : ''), 'status');
     send(res, 200, { checks, at: new Date().toISOString() });

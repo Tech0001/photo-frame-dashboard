@@ -1,9 +1,8 @@
-// Homelab: Proxmox host, storage and guests from ProxMenux Monitor, via the hub (hub/lib/nas.js).
-// The ProxMenux token never reaches this page; the hub returns summary numbers only.
+// Homelab service availability and Time Machine backups. Legacy ProxMenux remains available.
 (function () {
   'use strict';
   var V = { el: null, data: null, error: '', timer: null, at: 0, busy: false };
-  var POLL_MS = 15000;
+  var POLL_MS = 30000;
 
   var SAMPLE = {
     ok: true, configured: true, sample: true, updated: new Date().toISOString(),
@@ -79,24 +78,55 @@
       (cfg ? '<p class="nas-sub">' + esc(why) + '</p>' : '') + '</section>';
   }
 
+  function dateTime(value) {
+    if (!value) return 'Not recorded';
+    var d = new Date(value), today = new Date();
+    return (d.toDateString() === today.toDateString() ? 'Today' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })) + ' · ' + App.fmt.time(d);
+  }
+  function servicesBody(d, stale) {
+    var services = d.services || [], b = d.backup || {}, active = services.filter(function (s) { return s.configured; });
+    var labels = { ok: 'Responding', error: 'Needs attention', warning: 'Check sign-in', off: 'Not connected', unknown: 'Unknown', overdue: 'Overdue' };
+    var count = active.filter(function (s) { return s.state === 'ok'; }).length;
+    var summary = stale ? 'Status is out of date' : !active.length ? 'Connect your services' : count === active.length ? 'Services responding' : 'Check your services';
+    var rows = services.map(function (s) {
+      var state = stale && s.configured ? 'unknown' : s.state;
+      return '<div class="lab-service"><i class="lab-dot lab-' + esc(state) + '"></i><div class="lab-service-name">' + esc(s.name) + '<span>' + esc(s.detail) + '</span></div><span class="lab-state lab-' + esc(state) + '">' + esc(stale && s.configured ? 'Last known' : labels[state] || 'Unknown') + '</span></div>';
+    }).join('');
+    var backupState = stale && b.configured ? 'unknown' : b.state;
+    var backupTitle = stale && b.configured ? 'Last known backup' : b.state === 'ok' ? 'Backed up' : b.state === 'overdue' ? 'Backup overdue' : b.state === 'error' ? 'Backup needs attention' : b.configured ? 'Backup status unknown' : 'Connect Time Machine';
+    return '<div class="lab-overview"><span class="lab-overview-title">' + summary + '</span><span>' + (active.length ? count + ' of ' + active.length + ' checks passed' : 'Set up in server Connections → Homelab') + '</span></div>' +
+      '<section class="nas-card lab-services" aria-label="Services">' + rows + '</section>' +
+      '<section class="nas-card lab-backup"><div class="lab-backup-heading"><div><div class="label">Time Machine · ' + esc(b.label || 'VM backup') + '</div><h2 class="serif lab-' + esc(backupState) + '">' + backupTitle + '</h2></div><div class="lab-last"><span class="label">Last successful backup</span><strong>' + esc(dateTime(b.lastSuccess)) + '</strong></div></div>' +
+      '<div class="lab-backup-detail"><span>' + esc(b.detail || 'Add the backup status file in server settings') + '</span>' +
+      (b.snapshots != null ? '<span><b class="num">' + b.snapshots + '</b> snapshots</span>' : '') +
+      (b.repoBytes != null ? '<span><b class="num">' + bytes(b.repoBytes) + '</b> stored</span>' : '') +
+      (b.durationSeconds != null ? '<span>Last run <b class="num">' + upfmt(b.durationSeconds) + '</b></span>' : '') + '</div></section>' +
+      '<p class="lab-footnote">Checks run from the hub. Web and port checks show availability; backup results come from Time Machine.</p>';
+  }
   function render() {
     if (!V.el) return;
-    var d = V.data, ok = d && d.ok;
-    var stamp = V.at ? 'Updated ' + App.fmt.time(new Date(V.at)) : 'Loading…';
-    V.el.innerHTML = '<div class="nas">' +
-      '<header class="nas-top"><div><div class="label">Proxmox · ProxMenux' + (d && d.sample ? ' · sample data' : '') + '</div><h1 class="serif">Homelab</h1></div>' +
+    var d = V.data, legacy = d && d.kind === 'proxmenux', old = legacy ? d.legacy : null;
+    var at = legacy ? V.at : d && d.updated ? Date.parse(d.updated) : 0;
+    var stale = !!V.error || (!!at && Date.now() - at > 90000);
+    var stamp = stale ? 'Connection lost · last known status' : at ? 'Checked ' + App.fmt.time(new Date(at)) : 'Loading…';
+    var scroll = V.el.querySelector('.nas'), top = scroll ? scroll.scrollTop : 0;
+    V.el.innerHTML = '<div class="nas' + (legacy ? '' : ' nas-services') + '">' +
+      '<header class="nas-top"><div><div class="label">' + (legacy ? 'Proxmox · ProxMenux' : 'Services & backups') + (d && d.sample ? ' · sample data' : '') + '</div><h1 class="serif">Homelab</h1></div>' +
       '<div class="nas-sync"><span class="label">' + stamp + '</span><button class="icon-btn" data-refresh aria-label="Refresh">' + App.icon('undo', 26) + '</button></div></header>' +
-      (ok ? body(d) : empty(d)) + '</div>';
+      (stale ? '<div class="nas-banner">Current status unavailable. Check the hub connection.</div>' : '') +
+      (legacy ? old && old.ok ? body(old) : empty(old) : d ? servicesBody(d, stale) : '<section class="nas-card nas-msg"><p>' + (V.error ? esc(V.error) : 'Checking services…') + '</p></section>') + '</div>';
+    V.el.querySelector('.nas').scrollTop = top;
   }
 
   function load() {
     if (V.busy) return;
-    if (!App.live) { V.data = SAMPLE; V.at = Date.now(); render(); return; }
+    if (!App.live) { V.data = { kind: 'proxmenux', legacy: SAMPLE, sample: true }; V.at = Date.now(); render(); return; }
     V.busy = true;
-    fetch('/api/nas', { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    var controller = new AbortController(), timeout = setTimeout(function () { controller.abort(); }, 10000);
+    fetch('/api/homelab', { cache: 'no-store', signal: controller.signal }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function (d) { V.data = d; V.error = ''; V.at = Date.now(); })
-      .catch(function (e) { V.error = 'The hub could not be reached (' + e.message + ')'; V.data = V.data && V.data.ok ? V.data : null; })
-      .then(function () { V.busy = false; render(); });
+      .catch(function (e) { V.error = 'The hub could not be reached (' + e.message + ')';  })
+      .then(function () { clearTimeout(timeout); V.busy = false; render(); });
   }
   function start() { stop(); load(); V.timer = setInterval(load, POLL_MS); }
   function stop() { if (V.timer) { clearInterval(V.timer); V.timer = null; } }
