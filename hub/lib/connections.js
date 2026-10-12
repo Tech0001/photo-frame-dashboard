@@ -26,10 +26,14 @@ function cleanTimezone(tz) {
 }
 function cleanWeather(w) {
   if (w === null) return null;
+  if (!w || w.lat == null || w.lon == null || String(w.lat).trim() === '' || String(w.lon).trim() === '') {
+    throw bad('Choose a location or enter both latitude and longitude');
+  }
   const lat = Number(w && w.lat), lon = Number(w && w.lon);
   if (!isFinite(lat) || lat < -90 || lat > 90) throw bad('latitude must be between -90 and 90');
   if (!isFinite(lon) || lon < -180 || lon > 180) throw bad('longitude must be between -180 and 180');
-  return { lat: Math.round(lat * 1e4) / 1e4, lon: Math.round(lon * 1e4) / 1e4, units: w.units === 'c' ? 'c' : 'f' };
+  return { lat: Math.round(lat * 1e4) / 1e4, lon: Math.round(lon * 1e4) / 1e4,
+    units: w.units === 'c' ? 'c' : 'f', name: String(w.name || '').trim().slice(0, 160) };
 }
 
 module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds }) {

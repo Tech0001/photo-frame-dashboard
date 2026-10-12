@@ -10,13 +10,19 @@
   }
 
   function weather() {
+    if (App.live && !D.weatherLive) {
+      return '<div class="h-wx-top"><span class="h-wx-meta"><b>' +
+        (D.weatherConfigured ? 'Weather unavailable' : 'Set up your weather') +
+        '</b><span>' + (D.weatherConfigured ? 'Waiting for an updated forecast.' : 'Choose a city in Frame admin → Weather & time.') +
+        '</span></span></div>';
+    }
     var w = App.weatherNow();
     var hours = App.hourly(7);
     var tmin = Math.min.apply(null, hours.map(function (h) { return h.t; }));
     var tmax = Math.max.apply(null, hours.map(function (h) { return h.t; }));
     return '<div class="h-wx-top">' +
       '<span class="h-wx-icon">' + App.icon(w.cond, 60) + '</span>' +
-      '<span class="h-wx-temp num">' + w.temp + '°</span>' +
+      '<span class="h-wx-temp num">' + w.temp + '°' + (D.weather.units || '') + '</span>' +
       '<span class="h-wx-meta"><b>' + w.label + '</b><span>H ' + w.hi + '°  L ' + w.lo + '°</span></span>' +
       '</div>' +
       '<div class="h-wx-say"><b>' + w.summary + '.</b> ' + w.advice + '.</div>' +

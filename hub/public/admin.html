@@ -376,6 +376,7 @@ document.addEventListener('input', function (e) { if (e.target.id === 'set-q') {
 document.addEventListener('change', function (e) { if (e.target.id === 'set-changed') { SET_CHANGED = e.target.checked; settingsRefresh(); } });
 // ---------------------------------------------------------------- connections (calendars, accounts, integrations, security)
 var CN = null, CN_TAB = 'calendars';
+var WEATHER_RESULTS = [], WEATHER_SEARCH = 0;
 var CN_TABS = [['calendars', 'Calendars'], ['accounts', 'Accounts'], ['proxmenux', 'ProxMenux'], ['weather', 'Weather & time'], ['security', 'Security']];
 function cnInit(v) {
   CN = v;
@@ -437,13 +438,56 @@ function proxmenuxHtml() {
 }
 function weatherHtml() {
   var w = CN.weather || {};
-  return '<div class="card"><b>Weather and time</b><p class="mute">Weather comes from Open-Meteo for these coordinates. Leave both empty to keep the demo weather. The timezone sets "today", chore resets and all-day events.</p>' +
-    '<div class="fg"><label>Time zone</label><input data-w="tz" list="tzlist" value="' + esc(CN.timezone) + '" placeholder="America/New_York">' +
+  return '<div class="card"><b>Weather and time</b><p class="mute">Choose your city or postal code, then save. Weather comes from Open-Meteo. Your location stays in the hub settings and can be changed any time.</p>' +
+    '<div class="fg"><label for="weather-search">City or postal code</label><div class="fg-w"><input id="weather-search" type="search" placeholder="City or postal code" style="flex:1;min-width:140px"><button class="btn ghost" id="weather-find">Search</button></div></div>' +
+    '<div id="weather-results" role="status" aria-live="polite"></div>' +
+    ((window.isSecureContext && navigator.geolocation) ? '<div class="row"><button class="btn ghost" id="weather-locate">Use this device’s location</button></div>' : '') +
+    '<p class="mute">' + (w.name ? 'Selected: ' + esc(w.name) : w.lat != null ? 'Selected coordinates below.' : 'No weather location selected.') + '</p>' +
+    '<div class="fg"><label>Temperature</label><select data-w="units">' + opts([['f', 'Fahrenheit (°F)'], ['c', 'Celsius (°C)']], w.units || 'f') + '</select></div>' +
+    '<div class="fg"><label>Time zone</label><input data-w="tz" list="tzlist" value="' + esc(CN.timezone) + '" placeholder="Choose a city to fill this in">' +
     '<datalist id="tzlist">' + ['America/Phoenix', 'America/Los_Angeles', 'America/Denver', 'America/Chicago', 'America/New_York', 'America/Toronto', 'Europe/London', 'Europe/Paris', 'Australia/Sydney', 'UTC'].map(function (z) { return '<option value="' + z + '">'; }).join('') + '</datalist></div>' +
-    '<div class="fg"><label>Location</label><div class="fg-w"><input type="number" step="any" style="width:130px" data-w="lat" value="' + (w.lat == null ? '' : w.lat) + '" placeholder="Latitude"> ' +
-    '<input type="number" step="any" style="width:130px" data-w="lon" value="' + (w.lon == null ? '' : w.lon) + '" placeholder="Longitude"> ' +
-    '<select data-w="units" style="width:80px">' + opts([['f', '\u00B0F'], ['c', '\u00B0C']], w.units || 'f') + '</select></div></div></div>';
+    '<details class="adv"><summary>Enter coordinates manually</summary><div class="fg" style="margin-top:12px"><label>Coordinates</label><div class="fg-w"><input aria-label="Latitude" type="number" min="-90" max="90" step="any" style="width:130px" data-w="lat" value="' + (w.lat == null ? '' : w.lat) + '" placeholder="Latitude"> ' +
+    '<input aria-label="Longitude" type="number" min="-180" max="180" step="any" style="width:130px" data-w="lon" value="' + (w.lon == null ? '' : w.lon) + '" placeholder="Longitude"></div></div></details>' +
+    '<div class="row" style="margin-top:12px"><button class="btn ghost" id="weather-clear">Clear location</button></div>' +
+    '<p class="mute">Location search: Open-Meteo / GeoNames. The time zone also controls calendar dates and chore resets.</p></div>';
 }
+function searchWeather() {
+  var query = $('#weather-search').value.trim(), output = $('#weather-results'), seq = ++WEATHER_SEARCH;
+  WEATHER_RESULTS = [];
+  output.textContent = 'Searching…';
+  api('GET', '/api/admin/locations?q=' + encodeURIComponent(query)).then(function (r) {
+    if (seq !== WEATHER_SEARCH || !output.isConnected) return;
+    WEATHER_RESULTS = r.results;
+    output.innerHTML = r.results.length ? r.results.map(function (p, i) {
+      return '<div class="row"><button class="btn ghost" data-weather-place="' + i + '">' + esc(p.name) + '</button></div>';
+    }).join('') : '<p class="mute">No places found. Try a nearby city or enter coordinates.</p>';
+  }).catch(function (e) { if (seq === WEATHER_SEARCH && output.isConnected) output.textContent = e.message; });
+}
+function chooseWeather(place) {
+  collectConnections();
+  var units = $('#s-connections [data-w=units]').value;
+  CN.weather = { lat: place.lat, lon: place.lon, name: place.name, units: units };
+  if (place.timezone) CN.timezone = place.timezone;
+  ++WEATHER_SEARCH;
+  renderConnections(); barRefresh();
+  msg('Location selected. Save changes to apply it to the frame.');
+}
+function locateWeather() {
+  var output = $('#weather-results'), seq = ++WEATHER_SEARCH;
+  output.textContent = 'Waiting for location permission…';
+  navigator.geolocation.getCurrentPosition(function (p) {
+    if (seq !== WEATHER_SEARCH || !output.isConnected) return;
+    chooseWeather({ lat: p.coords.latitude, lon: p.coords.longitude, name: 'Device location', timezone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  }, function () {
+    if (seq === WEATHER_SEARCH && output.isConnected) output.textContent = 'Location was unavailable. Search for your city instead.';
+  }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+}
+document.addEventListener('keydown', function (e) {
+  if (e.target.id === 'weather-search' && e.key === 'Enter') { e.preventDefault(); searchWeather(); }
+});
+document.addEventListener('input', function (e) {
+  if (e.target.matches('[data-w=lat], [data-w=lon]') && CN && CN.weather) CN.weather.name = '';
+});
 function securityHtml() {
   return '<div class="card"><b>Security</b><p class="mute">Admin password for this page: ' + (CN.adminPasswordSet ? 'set.' : '<span class="bad">not set. Anyone on your network can open this page.</span>') + ' Changing it signs you out.</p>' +
     '<div class="fg"><label>New password</label><input type="password" autocomplete="new-password" data-s="pw" placeholder="8+ characters"></div><div class="fg"><label>Repeat it</label><input type="password" autocomplete="new-password" data-s="pw2" placeholder="Type it again"></div>' +
@@ -480,7 +524,7 @@ function collectConnections() {
   if ((el = root.querySelector('[data-w=tz]'))) {
     CN.timezone = el.value;
     var lat = root.querySelector('[data-w=lat]').value, lon = root.querySelector('[data-w=lon]').value;
-    CN.weather = (lat === '' && lon === '') ? null : { lat: lat, lon: lon, units: root.querySelector('[data-w=units]').value };
+    CN.weather = (lat === '' && lon === '') ? null : { lat: lat, lon: lon, units: root.querySelector('[data-w=units]').value, name: (CN.weather || {}).name || '' };
   }
   if ((el = root.querySelector('[data-s=pw]'))) { CN.newPw = el.value; CN.confirmPw = root.querySelector('[data-s=pw2]').value; }
 }
@@ -489,7 +533,7 @@ function connPieces() {
   if (!CN) return null;
   var p = {
     core: {
-      timezone: CN.timezone, weather: CN.weather ? { lat: +CN.weather.lat, lon: +CN.weather.lon, units: CN.weather.units } : null,   // numbers either way, so a field read back from the page is not a "change"
+      timezone: CN.timezone, weather: CN.weather ? { lat: CN.weather.lat === '' ? null : +CN.weather.lat, lon: CN.weather.lon === '' ? null : +CN.weather.lon, units: CN.weather.units, name: CN.weather.name || '' } : null,   // numbers either way, so a field read back from the page is not a "change"
       proxmenux: { url: CN.proxmenux.url, insecureTLS: !!CN.proxmenux.insecureTLS, token: CN.pxToken || undefined },
       calendars: CN.calendars.map(function (c) { return { key: c.key || undefined, name: c.name, people: c.people, url: c.newUrl || undefined }; }),
       adminPassword: CN.newPw || undefined, accounts: undefined
@@ -819,6 +863,10 @@ document.addEventListener('click', function (ev) {   // a click anywhere else cl
 document.addEventListener('click', function (ev) {
   var t = ev.target.closest('button'); if (!t) return;
   if (t.dataset.t) { enterTab(t.dataset.t); return; }
+  if (t.id === 'weather-find') { searchWeather(); return; }
+  if (t.dataset.weatherPlace !== undefined) { chooseWeather(WEATHER_RESULTS[+t.dataset.weatherPlace]); return; }
+  if (t.id === 'weather-locate') { locateWeather(); return; }
+  if (t.id === 'weather-clear') { collectConnections(); CN.weather = null; ++WEATHER_SEARCH; renderConnections(); barRefresh(); return; }
   if (t.id === 'rescan-photos') { loadPhotos(true); return; }
   if (t.id === 'up-choose') { upInput.click(); return; }
   if (t.id === 'up-newfolder') {

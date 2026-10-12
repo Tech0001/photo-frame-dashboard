@@ -16,6 +16,7 @@ const { getEvents } = require('./lib/calendar');
 const { Photos } = require('./lib/photos');
 const { getNas, fetchRaw, ENDPOINTS } = require('./lib/nas');
 const { getWeather } = require('./lib/weather');
+const { searchLocations } = require('./lib/locations');
 const { AgentsStore } = require('./lib/agents');
 const makeConnections = require('./lib/connections');
 const accounts = require('./lib/accounts');
@@ -91,6 +92,7 @@ async function buildState() {
     feeds: cal.feeds,
     photos: list.map((p) => ({ id: p.id, url: '/photo/' + p.id, o: p.o, date: p.date, dated: p.dated !== false, place: p.place, from: p.from, tag: p.tag })),
     weather,
+    weatherConfigured: !!cfg.weather,
     display: store.state.settings.display,
     tune: tune.resolve(tune.fromState(store.state.settings)),
     agents: agents.get()
@@ -188,6 +190,7 @@ const routes = {
   }),
   // --- admin: backend settings (calendars, ProxMenux, weather, timezone, passwords). Secret values are write-only.
   'GET /api/admin/connections': async (req, res) => send(res, 200, connections.view()),
+  'GET /api/admin/locations': async (req, res, q) => send(res, 200, { results: await searchLocations(q.get('q')) }),
   'PUT /api/admin/connections': async (req, res) => {
     const b = await readBody(req);
     // With no admin password yet, the only thing anyone may do is set one.

@@ -18,6 +18,14 @@ ProxMenux address and token, set the weather location, units and timezone, chang
 passwords are **write-only**: the page shows that one is saved, but never the value. Changes apply immediately, with no restart. There are "Test" buttons for
 each calendar link and for ProxMenux.
 
+Under **Weather & time**, search for a city or postal code, choose a result, select
+Fahrenheit or Celsius, and click **Save changes**. The selected city fills in its
+coordinates and time zone. Nothing is hardcoded into the dashboard. **Use this
+device’s location** is also available when the browser supports location access
+on a secure connection; ordinary HTTP on a NAS should use city search instead.
+Manual coordinates remain available, and **Clear location** removes the setting.
+The live dashboard shows a setup prompt until weather is configured.
+
 **The hub's own copy of `config.json` and `secrets.json` is the master once it is running.** In the LXC they live in `/etc/frame-hub/`, and the
 Connections tab edits those. The files in `hub/config/` on the share only seed the first install. The update script therefore **keeps** the container's
 settings; to replace them with the share's copies on purpose, run it with `SYNC_CONFIG=1`.
@@ -88,6 +96,11 @@ docker compose logs -f      # you should see: frame-hub listening on :8099 ... p
 ```
 
 `PHOTOS_HOST_DIR` is the path the NAS itself uses for `photos/frame photos` (for example `/volume1/photos/frame photos` on Synology, `/mnt/user/photos/frame photos` on Unraid, `/mnt/tank/photos/frame photos` on TrueNAS). Update after changes with `docker compose up -d --build`.
+
+The config directory is writable so the admin page can save settings. Set
+`HUB_BIND_ADDRESS` in `.env` to the server's LAN address to bind that interface
+only (the default is all interfaces). `.env`, settings, secrets, and config
+backups are excluded from Git.
 
 ### Without Docker
 

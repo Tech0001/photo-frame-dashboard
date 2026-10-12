@@ -127,13 +127,15 @@
       return { url: p.url, o: p.o, date: p.date, dated: p.dated !== false, place: p.place || '', from: p.from || 'family', tag: p.tag || 'frame' };
     }));
     replace(D.agents, buildAgents(s.agents));
-    if (s.weather) { Object.keys(s.weather).forEach(function (k) { D.weather[k] = s.weather[k]; }); D.weatherLive = true; }
+    D.weatherLive = !!s.weather;
+    D.weatherConfigured = !!s.weatherConfigured;
+    if (s.weather) Object.keys(s.weather).forEach(function (k) { D.weather[k] = s.weather[k]; });
     snapshot();
   }
 
   // Only the fields that matter for display, so a changing "now" does not look like new data.
   function keyOf(s) {
-    return JSON.stringify([s.rev, s.people, s.chores, s.stars, s.week, s.groceries, s.stores, s.events, s.weather, s.photos.length, s.display, s.tune, s.agents && s.agents.services && s.agents.services.map(function (x) { return x.updated; }), s.agents && s.agents.requestedAt]);
+    return JSON.stringify([s.rev, s.people, s.chores, s.stars, s.week, s.groceries, s.stores, s.events, s.weather, s.weatherConfigured, s.photos.length, s.display, s.tune, s.agents && s.agents.services && s.agents.services.map(function (x) { return x.updated; }), s.agents && s.agents.requestedAt]);
   }
 
   // Is the hub answering? Shown on the Today screen. A failed read marks it reconnecting, a second one in a row offline.
