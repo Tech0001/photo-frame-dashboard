@@ -21,6 +21,7 @@ const { AgentsStore } = require('./lib/agents');
 const makeConnections = require('./lib/connections');
 const accounts = require('./lib/accounts');
 const homeassistant = require('./lib/homeassistant');
+const groceries = require('./lib/groceries');
 const tune = require('./lib/tune');
 const backup = require('./lib/backup');
 
@@ -88,7 +89,7 @@ async function buildState() {
     stars: Object.assign({}, store.state.stars),
     week: kids.reduce((o, p) => { o[p.id] = store.weekFor(p.id); return o; }, {}),
     groceries: store.state.groceries,
-    stores: store.state.stores,
+    stores: store.state.stores, categories: store.state.categories,
     events: cal.events,
     feeds: cal.feeds,
     photos: list.map((p) => ({ id: p.id, url: '/photo/' + p.id, o: p.o, date: p.date, dated: p.dated !== false, place: p.place, from: p.from, tag: p.tag })),
@@ -179,18 +180,14 @@ const routes = {
   },
   'PUT /api/groceries': async (req, res) => {
     const b = await readBody(req);
-    if (!Array.isArray(b.items)) return send(res, 400, { error: 'items must be a list' });
-    const items = b.items.slice(0, 500).map((g) => ({
-      id: str(g.id, 40) || ('g' + Math.random().toString(36).slice(2, 8)), name: str(g.name, 80), cat: str(g.cat, 40) || 'Pantry',
-      qty: Math.max(1, Math.min(99, +g.qty || 1)), store: str(g.store, 40) || 'grocer', done: !!g.done, note: str(g.note, 120)
-    })).filter((g) => g.name);
+    const items = groceries.frameItems(store.state, b);
     store.update((s) => { s.groceries = items; });
     send(res, 200, { ok: true, rev: store.state.rev });
   },
 
   // --- admin: everything you can edit from a phone or computer
   'GET /api/admin/data': async (req, res) => send(res, 200, {
-    people: store.state.people, chores: store.state.chores, groceries: store.state.groceries, stores: store.state.stores,
+    people: store.state.people, chores: store.state.chores, groceries: store.state.groceries, stores: store.state.stores, categories: store.state.categories,
     events: store.state.events, rev: store.state.rev, settings: store.state.settings,
     tune: tune.resolve(tune.fromState(store.state.settings)), tuneSchema: tune.SCHEMA,
     config: { timezone: cfg.timezone, calendars: cfg.calendars.map((c) => ({ name: c.name, people: c.people, configured: !!(secrets.ical && secrets.ical[c.secret]) })),
@@ -362,11 +359,15 @@ const routes = {
     } else throw userError('which must be state or config');
     send(res, 200, { ok: true });
   },
+  'PUT /api/admin/groceries': async (req, res) => {
+    const next = groceries.adminUpdate(store.state, await readBody(req));
+    store.update(s => Object.assign(s, next));
+    send(res, 200, { ok: true, rev: store.state.rev });
+  },
   'PUT /api/admin/stores': async (req, res) => {
-    const b = await readBody(req);
-    if (!Array.isArray(b.stores) || !b.stores.length) return send(res, 400, { error: 'stores must be a non-empty list' });
-    const stores = b.stores.slice(0, 8).map((s) => ({ id: str(s.id, 20).toLowerCase().replace(/[^a-z0-9]/g, '') || str(s.name, 20).toLowerCase().replace(/[^a-z0-9]/g, ''), name: str(s.name, 30) })).filter((s) => s.id && s.name);
-    store.update((s) => { s.stores = stores; });
+    const b = await readBody(req), stores = groceries.cleanStores(b.stores);
+    if (store.state.groceries.some(g => !stores.some(s => s.id === g.store))) throw userError('Move items to another store before removing their store.');
+    store.update(s => { s.stores = stores; });
     send(res, 200, { ok: true, rev: store.state.rev });
   }
 };

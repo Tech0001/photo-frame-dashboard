@@ -123,7 +123,13 @@ Open `http://<nas-ip>:8099/` in a browser: you should see the dashboard. `http:/
 Works on a phone. A sidebar groups the pages: **Connections** (calendars, accounts, ProxMenux, weather and time zone, security), **Frame content** and **Frame**:
 
 - **Chores**: add, rename, choose the routine (morning, after school, evening), who does it, stars, and which days. Ticks reset at midnight.
-- **Groceries**: the same list the frame shows, plus store names.
+- **Groceries**: the same list the frame shows, plus editable stores and categories.
+  Expand **Stores** or **Categories** to add or rename them, then **Save changes**.
+  You can keep up to 8 stores and 32 categories. Renaming a category updates its
+  items; removing a category or store requires moving its items first. Changes
+  save together, so an invalid store or category cannot partially save the list.
+  The tablet uses these categories and store names, with a category selector for
+  new items. Existing categories and items are retained when updating older hubs.
 - **Schedule**: one-off or repeating events (daily, weekly, monthly). Your Google events appear on top automatically.
 - **People**: name, colour, whether they earn stars.
 - **Status**: whether the calendar, ProxMenux and photos are working.

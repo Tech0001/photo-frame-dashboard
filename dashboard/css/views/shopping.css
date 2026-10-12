@@ -67,3 +67,11 @@
 .s-ac-row { display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 0 18px 0 22px; border-radius: 14px; background: var(--card); }
 .s-ac-row b { flex: 1; font-size: 22px; }
 .s-ac-row--new { background: transparent; box-shadow: inset 0 0 0 2px var(--line); }
+
+/* Store names and custom categories are edited on the hub. */
+.s-head { flex-wrap:wrap; }
+.s-stores { max-width:100%; overflow-x:auto; flex-shrink:1; }
+.s-stores button { white-space:nowrap; flex:none; }
+.s-store { max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.s-category { display:flex; align-items:center; gap:12px; font-size:18px; }
+.s-category-select { flex:1; min-width:0; padding:10px; border-radius:10px; background:var(--paper); color:var(--ink); font-size:18px; }

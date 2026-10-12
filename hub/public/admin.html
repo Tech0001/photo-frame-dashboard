@@ -188,7 +188,7 @@ function piece(k) { return function () { var p = connPieces(); return p ? p[k] :
 // saveKey: sections that are saved by the same request are sent once.
 var SECTIONS = {
   chores: { tab: 'chores', label: 'Chores', get: function () { return D.chores; }, save: function () { return api('PUT', '/api/admin/chores', { chores: D.chores }); } },
-  groceries: { tab: 'groceries', label: 'Groceries', get: function () { return [D.groceries, D.stores]; }, save: function () { return api('PUT', '/api/groceries', { items: D.groceries, base: D.groceryBase || [] }).then(function () { return api('PUT', '/api/admin/stores', { stores: D.stores }); }); } },
+  groceries: { tab: 'groceries', label: 'Groceries', get: function () { return [D.groceries, D.stores, D.categories]; }, save: function () { return api('PUT', '/api/admin/groceries', { items: D.groceries, base: D.groceryBase || [], stores: D.stores, categories: D.categories }); } },
   events: { tab: 'events', label: 'Schedule', get: function () { return D.events; }, save: function () { return api('PUT', '/api/admin/events', { events: D.events }); } },
   people: { tab: 'people', label: 'People', get: function () { return D.people; }, save: function () { return api('PUT', '/api/admin/people', { people: D.people }); } },
   connections: { tab: 'connections', label: 'Calendars & services', get: piece('core'), save: saveConnectionsCall, saveKey: 'conn' },
@@ -237,8 +237,16 @@ function renderChores() {
 }
 function renderGroceries() {
   var stores = D.stores.map(function (s) { return [s.id, s.name]; });
-  var cats = ['Produce', 'Bakery', 'Meat & Fish', 'Dairy & Eggs', 'Pantry', 'Frozen', 'Snacks', 'Household'].map(function (c) { return [c, c]; });
-  var h = '<p class="mute">The same list the frame shows. Items checked off on the frame move to "done" there.</p>';
+  var cats = D.categories.map(function (c) { return [c, c]; });
+  var h = '<p class="mute">The same list the frame shows. Add or rename stores and categories below, then Save changes. Move any items before removing their store or category.</p>' +
+    '<details class="card"><summary><b>Stores (' + D.stores.length + ')</b></summary>' + D.stores.map(function (s, i) {
+      var used = D.groceries.some(function (g) { return g.store === s.id; });
+      return '<div class="row"><input aria-label="Store name" maxlength="30" data-store="' + i + '" value="' + esc(s.name) + '"><button class="btn ghost" data-remove-store="' + i + '"' + (used || D.stores.length === 1 ? ' disabled title="Move this store’s items first; keep at least one store"' : '') + '>Remove store</button></div>';
+    }).join('') + '<div class="row"><input id="new-store" maxlength="30" aria-label="New store name" placeholder="New store name"><button class="btn ghost" id="add-store"' + (D.stores.length >= 8 ? ' disabled' : '') + '>+ Add store</button></div></details>' +
+    '<details class="card"><summary><b>Categories (' + D.categories.length + ')</b></summary>' + D.categories.map(function (c, i) {
+      var used = D.groceries.some(function (g) { return g.cat === c; });
+      return '<div class="row"><input aria-label="Category name" maxlength="40" data-category="' + i + '" value="' + esc(c) + '"><button class="btn ghost" data-remove-category="' + i + '"' + (used || D.categories.length === 1 ? ' disabled title="Move this category’s items first; keep at least one category"' : '') + '>Remove category</button></div>';
+    }).join('') + '<div class="row"><input id="new-category" maxlength="40" aria-label="New category name" placeholder="New category name"><button class="btn ghost" id="add-category"' + (D.categories.length >= 32 ? ' disabled' : '') + '>+ Add category</button></div></details><h2>Shopping list</h2>';
   D.groceries.forEach(function (g, i) {
     h += '<div class="card" data-i="' + i + '"><div class="row">' +
       '<input type="checkbox" data-f="done"' + (g.done ? ' checked' : '') + ' title="Got it">' +
@@ -250,7 +258,6 @@ function renderGroceries() {
       '<input data-f="note" value="' + esc(g.note) + '" placeholder="Note (optional)" style="width:100%"></div>';
   });
   h += '<div class="row"><button class="btn ghost" id="add-g">+ Add item</button><button class="btn ghost" id="clear-done">Remove checked items</button></div>';
-  h += '<h2>Stores</h2><div class="row">' + D.stores.map(function (s, i) { return '<input data-store="' + i + '" value="' + esc(s.name) + '">'; }).join('') + '</div>';
   $('#s-groceries').innerHTML = h;
 }
 function renderEvents() {
@@ -898,7 +905,14 @@ function collect() {
     o.days = days.length === 7 || !days.length ? null : days;
   });
   readCards($('#s-groceries'), D.groceries);
-  $('#s-groceries').querySelectorAll('[data-store]').forEach(function (el) { D.stores[+el.dataset.store].name = el.value; });
+  var gr = $('#s-groceries'), beforeStores = JSON.stringify(D.stores), beforeCats = D.categories.slice();
+  gr.querySelectorAll('[data-store]').forEach(function (el) { D.stores[+el.dataset.store].name = el.value; });
+  gr.querySelectorAll('[data-category]').forEach(function (el) { D.categories[+el.dataset.category] = el.value; });
+  if (JSON.stringify(beforeCats) !== JSON.stringify(D.categories)) {
+    D.groceries.forEach(function (g) { var i = beforeCats.indexOf(g.cat); if (i >= 0) g.cat = D.categories[i]; });
+    gr.querySelectorAll('.card[data-i] [data-f="cat"]').forEach(function (el) { el.innerHTML = opts(D.categories.map(function (c) { return [c, c]; }), D.groceries[+el.closest('[data-i]').dataset.i].cat); });
+  }
+  if (beforeStores !== JSON.stringify(D.stores)) gr.querySelectorAll('[data-f="store"]').forEach(function (el) { var val = el.value; el.innerHTML = opts(D.stores.map(function (s) { return [s.id, s.name]; }), val); });
   readCards($('#s-events'), D.events, function (card, o) {
     o.people = []; card.querySelectorAll('[data-ep]').forEach(function (c) { if (c.checked) o.people.push(c.dataset.ep); });
   });
@@ -959,7 +973,17 @@ document.addEventListener('click', function (ev) {
   var d = t.dataset;
   if (d.addChore) { D.chores.push({ id: '', r: 'after', who: d.addChore, title: '', emoji: '✅', stars: 0, days: null }); renderChores(); }
   else if (d.delChore !== undefined) { D.chores.splice(+d.delChore, 1); renderChores(); }
-  else if (t.id === 'add-g') { D.groceries.push({ id: '', name: '', cat: 'Pantry', qty: 1, store: D.stores[0].id, done: false, note: '' }); renderGroceries(); }
+  else if (t.id === 'add-g') { D.groceries.push({ id: '', name: '', cat: D.categories.indexOf('Pantry') >= 0 ? 'Pantry' : D.categories[0], qty: 1, store: D.stores[0].id, done: false, note: '' }); renderGroceries(); }
+  else if (t.id === 'add-store' || t.id === 'add-category') {
+    var isStore = t.id === 'add-store', input = $(isStore ? '#new-store' : '#new-category'), name = input.value.trim();
+    var names = isStore ? D.stores.map(function (s) { return s.name; }) : D.categories;
+    if (!name || names.some(function (n) { return n.toLowerCase() === name.toLowerCase(); })) { msg('Enter a new, unique name.', true); return; }
+    if (names.length >= (isStore ? 8 : 32)) { msg('The limit is ' + (isStore ? 8 : 32) + '.', true); return; }
+    if (isStore) D.stores.push({ id: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name }); else D.categories.push(name);
+    renderGroceries(); $('#s-groceries ' + (isStore ? '[data-store]' : '[data-category]')).closest('details').open = true;
+  }
+  else if (d.removeStore !== undefined) { var removed = D.stores[+d.removeStore]; if (D.stores.length > 1 && !D.groceries.some(function (g) { return g.store === removed.id; })) D.stores.splice(+d.removeStore, 1); renderGroceries(); }
+  else if (d.removeCategory !== undefined) { var removedCat = D.categories[+d.removeCategory]; if (D.categories.length > 1 && !D.groceries.some(function (g) { return g.cat === removedCat; })) D.categories.splice(+d.removeCategory, 1); renderGroceries(); }
   else if (d.delG !== undefined) { D.groceries.splice(+d.delG, 1); renderGroceries(); }
   else if (t.id === 'clear-done') { D.groceries = D.groceries.filter(function (g) { return !g.done; }); renderGroceries(); }
   else if (t.id === 'add-e') { var n = new Date(); D.events.push({ id: '', title: '', date: n.toISOString().slice(0, 10), start: '09:00', end: '10:00', allDay: false, people: [], repeat: 'none', loc: '' }); renderEvents(); }
@@ -1034,7 +1058,7 @@ function load() {
     var nd = r[0]; nd.groceryBase = (nd.groceries || []).map(function (g) { return g.id; });
     if (oldD) {
       if (keep.chores) nd.chores = oldD.chores;
-      if (keep.groceries) { nd.groceries = oldD.groceries; nd.stores = oldD.stores; nd.groceryBase = oldD.groceryBase; }
+      if (keep.groceries) { nd.groceries = oldD.groceries; nd.stores = oldD.stores; nd.categories = oldD.categories; nd.groceryBase = oldD.groceryBase; }
       if (keep.events) nd.events = oldD.events;
       if (keep.people) nd.people = oldD.people;
     }

@@ -129,7 +129,9 @@
     Object.keys(s.week || {}).forEach(function (k) { D.week[k] = s.week[k]; });
 
     replace(D.stores, s.stores);
-    var order = D.catOrder.all;
+    var order = s.categories || D.catOrder.all;
+    Object.keys(D.catOrder).forEach(function (k) { delete D.catOrder[k]; });
+    D.catOrder.all = order.slice();
     s.stores.forEach(function (st) { D.catOrder[st.id] = order.slice(); });
     replace(D.groceries, s.groceries);
 
@@ -145,7 +147,7 @@
 
   // Only the fields that matter for display, so a changing "now" does not look like new data.
   function keyOf(s) {
-    return JSON.stringify([s.rev, s.people, s.chores, s.stars, s.week, s.groceries, s.stores, s.events, s.weather, s.weatherConfigured, s.photos.length, s.display, s.tune, s.agents && s.agents.services && s.agents.services.map(function (x) { return [x.id, x.updated, x.error, x.errorAt, x.meters, x.credits]; }), s.agents && s.agents.requestedAt]);
+    return JSON.stringify([s.rev, s.people, s.chores, s.stars, s.week, s.groceries, s.stores, s.categories, s.events, s.weather, s.weatherConfigured, s.photos.length, s.display, s.tune, s.agents && s.agents.services && s.agents.services.map(function (x) { return [x.id, x.updated, x.error, x.errorAt, x.meters, x.credits]; }), s.agents && s.agents.requestedAt]);
   }
 
   // Is the hub answering? Shown on the Today screen. A failed read marks it reconnecting, a second one in a row offline.

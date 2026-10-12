@@ -21,8 +21,8 @@
       '<p class="ha-note">Readings from Home Assistant</p></section>';
   }
   function sensor(e) {
-    var value = e.available ? e.state : 'Unavailable', sub = '', button = '';
-    if (e.available && e.domain === 'event') { value = e.eventAt ? when(e.eventAt) : 'No event yet'; sub = e.eventAt ? pretty(e.eventType || 'Last event') : 'Waiting for an event'; }
+    var value = e.available ? e.state : e.state === 'unknown' ? 'No reading yet' : 'Unavailable', sub = '', button = '';
+    if ((e.available || e.state === 'unknown') && e.domain === 'event') { value = e.eventAt ? when(e.eventAt) : 'No event reported'; sub = e.eventAt ? pretty(e.eventType || 'Last event') : 'No event timestamp from Home Assistant'; }
     else if (e.available && e.deviceClass === 'timestamp') value = when(e.state);
     else if (e.available && e.domain === 'binary_sensor') {
       var pairs = { motion: ['Clear', 'Motion detected'], occupancy: ['Clear', 'Occupied'], door: ['Closed', 'Open'], window: ['Closed', 'Open'], connectivity: ['Disconnected', 'Connected'], battery: ['Normal', 'Low battery'], problem: ['Clear', 'Problem detected'] };
