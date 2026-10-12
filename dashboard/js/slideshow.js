@@ -4,6 +4,8 @@
   var D = window.DATA;
 
   function src(p, big) {
+    // Real photos come from the hub, already resized to the width we ask for.
+    if (p.url) return p.url + '?w=' + (p.o === 'p' ? (big ? 1100 : 560) : (big ? 1920 : 640));
     var w = p.o === 'p' ? 800 : 1600, h = p.o === 'p' ? 1200 : 1000;
     if (!big) { w = Math.round(w / 2); h = Math.round(h / 2); }
     return App.img(p.seed, w, h);
@@ -12,6 +14,7 @@
 
   function parseDate(p) { var a = p.date.split('-'); return new Date(+a[0], +a[1] - 1, +a[2]); }
   App.photoMeta = function (p) {
+    if (p.dated === false) return { date: '', monthYear: '', kicker: '', onThisDay: false, place: p.place, from: App.person(p.from) };   // no date taken known
     var d = parseDate(p), now = App.now();
     var years = now.getFullYear() - d.getFullYear();
     var onThisDay = d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
@@ -31,8 +34,8 @@
   function caption(ps, size) {
     var m = App.photoMeta(ps[0]);
     return '<div class="cap cap--' + (size || 'l') + '">' +
-      '<div class="cap-kicker">' + (m.onThisDay ? '<b>On this day</b> · ' : '') + m.kicker + ' · ' + App.esc(m.place) + '</div>' +
-      '<div class="cap-date serif">' + (ps.length > 1 ? m.monthYear : m.date) + '</div>' +
+      '<div class="cap-kicker">' + (m.onThisDay ? '<b>On this day</b> · ' : '') + m.kicker + (m.place ? ' · ' + App.esc(m.place) : '') + '</div>' +
+      (m.date ? '<div class="cap-date serif">' + (ps.length > 1 ? m.monthYear : m.date) + '</div>' : '') +
       '</div>';
   }
   function kb(p, still) {
