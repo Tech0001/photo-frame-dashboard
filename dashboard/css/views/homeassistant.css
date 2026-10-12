@@ -11,6 +11,22 @@
 .ha-overview { display:grid; grid-template-columns:minmax(0,1fr); background:var(--card); border-radius:var(--r); padding:22px 26px; gap:28px; flex:none; }
 .ha-overview.has-sun { grid-template-columns:minmax(0,1fr) 245px; }
 .ha-climate { min-width:0; }
+.ha-climate-controls { display:flex; align-items:center; gap:16px; margin-top:16px; }
+.ha-climate-controls > span { font-size:16px; color:var(--mute); }
+.ha-climate-controls > button { flex:none; padding:12px 18px; }
+.ha-adjust-sheet { width:680px; max-width:calc(100% - 40px); max-height:calc(100% - 36px); padding:30px; }
+.ha-adjust-sheet > h2 { font-size:36px; line-height:1.1; padding-right:40px; }
+.ha-adjust-sheet > p { font-size:18px; color:var(--mute); margin:12px 0 20px; }
+.ha-adjust { display:flex; flex-direction:column; gap:16px; }
+.ha-adjust label { display:flex; align-items:center; justify-content:space-between; gap:16px; font-size:21px; }
+.ha-adjust select { max-width:65%; min-height:52px; padding:10px 14px; background:var(--paper-2); color:var(--ink); border:1px solid var(--line); border-radius:10px; font:inherit; }
+.ha-target + .ha-target { margin-top:12px; }
+.ha-stepper { display:flex; align-items:center; gap:8px; }
+.ha-stepper button { width:52px; height:52px; background:var(--paper-2); border:1px solid var(--line); border-radius:10px; color:var(--ink); font-size:28px; }
+.ha-stepper input { width:100px; min-height:52px; font:inherit; font-variant-numeric:tabular-nums; text-align:center; color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:10px; }
+.ha-comfort { border-top:1px solid var(--line); padding-top:16px; display:flex; flex-direction:column; gap:12px; }
+.ha-adjust [role=status] { margin:0; font-size:18px; color:var(--ink-2); }
+.ha-adjust button:disabled { opacity:.5; }
 .ha-climate-title { display:flex; align-items:center; justify-content:space-between; gap:14px; }
 .ha-climate-title h2 { font-size:32px; line-height:1; }
 .ha-action { display:flex; align-items:center; gap:5px; font-weight:700; font-size:18px; }

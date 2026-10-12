@@ -392,10 +392,10 @@ function cnInit(v) {
   CN.calendars.forEach(function (c) { c.newUrl = ''; c.result = ''; });
   CN.domReady = false;
   CN.pxToken = ''; CN.pxResult = ''; CN.newPw = ''; CN.confirmPw = ''; CN.shownToken = CN.shownToken || '';
-  CN.homeassistant = CN.homeassistant || { url: '', climate: '', entities: [], tokenSet: false };
+  CN.homeassistant = CN.homeassistant || { url: '', climate: '', entities: [], controls: false, ecobeeResume: false, tokenSet: false };
   CN.homelab = CN.homelab || { pihole: '', gitea: '', plane: '', rustdesk: { host: '', idPort: 21116, relayPort: 21117 }, backup: { path: '', destination: '', label: 'VM backup', maxAgeHours: 36 } };
   CN.labResult = '';
-  CN.homelab.piholeToken = ''; CN.homelab.giteaToken = '';
+  CN.homelab.piholeToken = ''; CN.homelab.piholePassword = ''; CN.homelab.giteaToken = '';
   CN.homelab.piholeUnlink = false; CN.homelab.giteaUnlink = false;
   CN.homelab.piholeSsh = CN.homelab.piholeSsh || { host: '', user: 'pi', port: 22, identityFile: '' };
   CN.piSaved = JSON.stringify(CN.homelab.piholeSsh); CN.piStatus = null; CN.piMessage = ''; CN.piBusy = false;
@@ -407,13 +407,16 @@ function homeassistantHtml() {
   if (h.climate && !climates.some(function (e) { return e.id === h.climate; })) climates.push({ id: h.climate, name: h.climate });
   var others = choices.filter(function (e) { return e.domain !== 'climate'; });
   chosen.forEach(function (id) { if (!others.some(function (e) { return e.id === id; })) others.push({ id: id, name: id }); });
-  return '<div class="card"><b>Home Assistant</b><p class="mute">Connect the Home page to your thermostat and Ring readings. The frame displays only the entities you select below. This connection reads status and camera images; it does not change your devices.</p>' +
+  return '<div class="card"><b>Home Assistant</b><p class="mute">Connect the Home page to your thermostat and Ring readings. The frame displays only the entities you select below. Status and camera images are read-only. You can enable controls for the selected thermostat below.</p>' +
     '<div class="fg"><label for="ha-address">Address</label><input id="ha-address" data-ha="url" value="' + esc(h.url) + '" placeholder="http://homeassistant.local"></div>' +
     '<div class="fg"><label for="ha-token">Access token</label><input id="ha-token" data-ha="token" type="password" autocomplete="new-password" value="' + esc(CN.haToken || '') + '" placeholder="' + (h.tokenSet ? 'Token saved; leave blank to keep it' : 'Paste a long-lived access token') + '"></div>' +
     '<p class="mute">In Home Assistant, open your profile → Security → Long-lived access tokens and create one named Photo frame hub. Paste it here and save. It stays on this server and is never sent to the frame. The token has the access of the account that created it.</p>' +
     '<div class="row"><button class="btn ghost" id="test-ha">Find devices</button>' + (h.tokenSet ? '<button class="btn ghost" id="unlink-ha">Disconnect</button>' : '') + '<span class="mute">Save the address and token first.</span></div>' +
     '<p class="mute" role="status">' + esc(CN.haResult || '') + '</p></div>' +
     '<div class="card"><b>Show on the frame</b><div class="fg"><label for="ha-climate">Thermostat</label><select id="ha-climate" data-ha="climate">' + opts([['', 'None']].concat(climates.map(function (e) { return [e.id, e.name]; })), h.climate) + '</select></div>' +
+    '<label class="row"><input type="checkbox" data-ha-flag="controls"' + (h.controls ? ' checked' : '') + '> Allow thermostat controls from this dashboard</label>' +
+    '<label class="row"><input type="checkbox" data-ha-flag="ecobeeResume"' + (h.ecobeeResume ? ' checked' : '') + '> Ecobee: show Resume schedule</label>' +
+    '<p class="mute">Controls apply only to the selected thermostat and are available to people using this dashboard on your home network. Enable Resume schedule only for an ecobee thermostat.</p>' +
     '<p class="mute">Choose Ring camera status, motion/doorbell events, battery readings, or other home sensors. Up to 16 readings. Find devices again after adding an integration in Home Assistant.</p>' +
     (others.length ? '<div style="max-height:420px;overflow:auto">' + others.map(function (e) { return '<label style="display:flex;gap:10px;padding:9px 0;align-items:start;overflow-wrap:anywhere"><input type="checkbox" data-ha-entity="' + esc(e.id) + '"' + (chosen.indexOf(e.id) >= 0 ? ' checked' : '') + '><span>' + esc(e.name) + '<small class="mute" style="display:block">' + esc(e.id) + '</small></span></label>'; }).join('') + '</div>' : '<p class="mute">Use Find devices to choose what appears here.</p>') + '</div>';
 }
@@ -428,8 +431,8 @@ function unlinkHA() {
   collectConnections();
   if (!confirm('Disconnect Home Assistant and remove its saved token from this hub?')) return;
   api('PUT', '/api/admin/connections', { homeassistant: { unlink: true } }).then(function () {
-    CN.homeassistant = { url: '', climate: '', entities: [], tokenSet: false }; CN.haToken = ''; CN.haEntities = []; CN.haResult = '';
-    var base = JSON.parse(BASE.connections); base.homeassistant = { url: '', climate: '', entities: [] }; BASE.connections = JSON.stringify(base);
+    CN.homeassistant = { url: '', climate: '', entities: [], controls: false, ecobeeResume: false, tokenSet: false }; CN.haToken = ''; CN.haEntities = []; CN.haResult = '';
+    var base = JSON.parse(BASE.connections); base.homeassistant = { url: '', climate: '', entities: [], controls: false, ecobeeResume: false }; BASE.connections = JSON.stringify(base);
     renderConnections(); return load();
   }).catch(function (e) { msg(e.message, true); });
 }
@@ -506,8 +509,9 @@ function homelabHtml() {
   function token(id, label) { return field(id + 'Token', label, h[id + 'Token'] || '', h[id + 'TokenSet'] ? 'Saved — leave blank to keep' : 'Paste API token', 'password') + (h[id + 'TokenSet'] ? '<label class="mute"><input type="checkbox" data-lab-clear="' + id + '"' + (h[id + 'Unlink'] ? ' checked' : '') + '> Remove saved token when saving</label>' : ''); }
   return '<div class="card"><b>Homelab services</b><p class="mute">The hub checks these over your network when Homelab opens, then every five minutes while it stays open. Recent results are reused. The frame’s refresh button checks immediately. Leave an address empty to disconnect it.</p>' +
     field('pihole', 'Pi-hole web address', h.pihole, 'http://pi.hole/admin/') +
-    token('pihole', 'Pi-hole v5 API token') +
-    '<p class="mute">Pi-hole v5: Settings → API / Web interface → Show API token. The frame shows DNS totals, blocking, software versions and the last blocklist refresh. The API does not report the last reboot or software installation date. Software update and reboot controls need a separate management connection; they are not run by these checks.</p>' +
+    '<div class="fg"><label for="lab-pihole-version">Pi-hole version</label><select id="lab-pihole-version" data-lab="piholeVersion">' + opts([['5', 'Version 5'], ['6', 'Version 6']], h.piholeVersion || '5') + '</select></div>' +
+    (h.piholeVersion === '6' ? field('piholePassword', 'Pi-hole v6 application password', h.piholePassword || '', h.piholePasswordSet ? 'Saved — leave blank to keep' : 'Paste application password', 'password') + (h.piholePasswordSet ? '<label class="mute"><input type="checkbox" data-lab-clear="pihole"' + (h.piholeUnlink ? ' checked' : '') + '> Remove saved Pi-hole credentials when saving</label>' : '') : token('pihole', 'Pi-hole v5 API token')) +
+    '<p class="mute">For v5, use Settings → API / Web interface → Show API token. For v6, generate an application password under Settings → Web interface / API (Expert mode). After upgrading the Pi, select Version 6 and save that password here. The hub signs in for each poll and closes its session afterward. Only aggregate DNS totals, blocking, software versions and the blocklist refresh time are read; query history is never requested. The API does not report the last reboot or software installation date. Software update and reboot controls need a separate management connection; they are not run by these checks.</p>' +
     field('gitea', 'Gitea base address', h.gitea, 'http://gitea.local:3000') +
     token('gitea', 'Gitea API token') +
     field('giteaOrganization', 'Organization activity (optional)', h.giteaOrganization || '', 'Organization name; blank uses your activity feed') +
@@ -651,6 +655,7 @@ function collectConnections() {
   if ((el = root.querySelector('[data-ha=url]'))) {
     CN.homeassistant.url = el.value; CN.haToken = root.querySelector('[data-ha=token]').value;
     CN.homeassistant.climate = root.querySelector('[data-ha=climate]').value;
+    root.querySelectorAll('[data-ha-flag]').forEach(function (input) { CN.homeassistant[input.dataset.haFlag] = input.checked; });
     CN.homeassistant.entities = Array.from(root.querySelectorAll('[data-ha-entity]:checked')).map(function (e) { return e.dataset.haEntity; });
   }
   root.querySelectorAll('[data-lab]').forEach(function (input) {
@@ -681,7 +686,7 @@ function connPieces() {
       timezone: CN.timezone, weather: CN.weather ? { lat: CN.weather.lat === '' ? null : +CN.weather.lat, lon: CN.weather.lon === '' ? null : +CN.weather.lon, units: CN.weather.units, name: CN.weather.name || '' } : null,   // numbers either way, so a field read back from the page is not a "change"
       proxmenux: { url: CN.proxmenux.url, insecureTLS: !!CN.proxmenux.insecureTLS, token: CN.pxToken || undefined },
       homelab: CN.homelab,
-      homeassistant: { url: CN.homeassistant.url, climate: CN.homeassistant.climate, entities: CN.homeassistant.entities, token: CN.haToken || undefined },
+      homeassistant: { url: CN.homeassistant.url, climate: CN.homeassistant.climate, entities: CN.homeassistant.entities, controls: !!CN.homeassistant.controls, ecobeeResume: !!CN.homeassistant.ecobeeResume, token: CN.haToken || undefined },
       calendars: CN.calendars.map(function (c) { return { key: c.key || undefined, name: c.name, people: c.people, url: c.newUrl || undefined }; }),
       adminPassword: CN.newPw || undefined, accounts: undefined
     }
@@ -1000,6 +1005,7 @@ function collect() {
 $('#picker').addEventListener('click', function (e) { if (e.target.id === 'picker') closePicker(); });
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#picker').hidden) closePicker(); });
 document.addEventListener('change', function (ev) {
+  if (ev.target.dataset.lab === 'piholeVersion') { collectConnections(); renderConnections(); barRefresh(); return; }
   var ph = ev.target.dataset && ev.target.dataset.ph;
   if (ph !== undefined && PHF) {   // a photo folder was ticked or unticked
     var i = PHF.sel.indexOf(ph);

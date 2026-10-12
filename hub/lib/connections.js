@@ -42,7 +42,7 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
   function view() {
     const tokenKey = cfg.proxmenux.tokenSecret || 'proxmenux_token';
     return {
-      homelab: Object.assign(homelab.cleanSettings(cfg.homelab), { piholeTokenSet: !!secrets.homelab_pihole_token, giteaTokenSet: !!secrets.homelab_gitea_token }),
+      homelab: Object.assign(homelab.cleanSettings(cfg.homelab), { piholeTokenSet: !!secrets.homelab_pihole_token, piholePasswordSet: !!secrets.homelab_pihole_password, giteaTokenSet: !!secrets.homelab_gitea_token }),
       timezone: cfg.timezone,
       weather: cfg.weather || null,
       proxmenux: { url: cfg.proxmenux.url || '', insecureTLS: !!cfg.proxmenux.insecureTLS, tokenSet: !!secrets[tokenKey] },
@@ -66,6 +66,17 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
     ncfg.homelab = homelab.cleanSettings(b.homelab === undefined ? cfg.homelab : b.homelab);
     for (const id of ['pihole', 'gitea']) {
       const key = 'homelab_' + id + '_token', incoming = b.homelab || {};
+      if (id === 'pihole') {
+        const passwordKey = 'homelab_pihole_password', changed = ncfg.homelab.pihole !== (cfg.homelab?.pihole || '');
+        if (incoming.piholeUnlink || !ncfg.homelab.pihole) { delete nsec[key]; delete nsec[passwordKey]; continue; }
+        if (changed && (nsec[key] || nsec[passwordKey])) {
+          if (!incoming.piholeToken && !incoming.piholePassword) throw bad('Paste the Pi-hole token or application password again when changing its address.');
+          delete nsec[key]; delete nsec[passwordKey];
+        }
+        if (incoming.piholeToken) nsec[key] = homelab.cleanToken(incoming.piholeToken);
+        if (incoming.piholePassword) nsec[passwordKey] = homelab.cleanPassword(incoming.piholePassword);
+        continue;
+      }
       if (incoming[id + 'Unlink'] || !ncfg.homelab[id]) delete nsec[key];
       else if (incoming[id + 'Token']) nsec[key] = homelab.cleanToken(incoming[id + 'Token']);
       else if (ncfg.homelab[id] !== (cfg.homelab?.[id] || '') && nsec[key]) throw bad('Paste the ' + id + ' API token again when changing its address.');
@@ -216,6 +227,9 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
     for (const id of ['pihole', 'gitea']) {
       const key = 'homelab_' + id + '_token';
       if (raw.homelab && raw.homelab[id] !== (cfg.homelab?.[id] || '') && secrets[key]) { delete secrets[key]; writeJsonAtomic(secFile, secrets, 0o600); }
+    }
+    if (raw.homelab && raw.homelab.pihole !== (cfg.homelab?.pihole || '') && secrets.homelab_pihole_password) {
+      delete secrets.homelab_pihole_password; writeJsonAtomic(secFile, secrets, 0o600);
     }
     writeJsonAtomic(cfgFile, cur, 0o644);
     ['timezone', 'weather', 'calendars', 'proxmenux', 'photoFolders', 'homeassistant', 'homelab'].forEach((k) => { if (raw[k] !== undefined) cfg[k] = raw[k]; });

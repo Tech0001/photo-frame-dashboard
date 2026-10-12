@@ -47,14 +47,21 @@ Addresses stay in server settings; the frame receives only names and results.
 
 The **Overview**, **Pi-hole** and **Gitea** buttons stay inside Homelab. Add API
 tokens in the same server Connections form to enable details. Tokens are
-write-only, stored in `secrets.json` as `homelab_pihole_token` and
-`homelab_gitea_token`, and never sent to the frame. Changing an address requires
-re-entering its token; restoring settings with a different address clears it.
-Blank token fields preserve saved tokens; tick **Remove saved token** to unlink.
+write-only, stored in `secrets.json` as `homelab_pihole_token`,
+`homelab_pihole_password` (v6) and `homelab_gitea_token`, and never sent to the
+frame. Changing an address requires re-entering its credential; restoring
+settings with a different address clears it. Blank fields preserve saved
+credentials; tick **Remove saved token/credentials** to unlink.
 
-- **Pi-hole details** support the v5 PHP API (`admin/api.php`). Copy the token
-  from Pi-hole's **Settings → API / Web interface → Show API token**. The page
-  shows today's DNS queries, blocked queries/percentage, active clients, blocklist
+- **Pi-hole details** support the v5 PHP API (`admin/api.php`) and the v6 REST
+  API. For v5, copy the token from **Settings → API / Web interface → Show API
+  token**. After upgrading to v6, select **Version 6** in the hub and save an
+  application password generated in Pi-hole's **Settings → Web interface / API**
+  (Expert mode). The two credentials are stored separately; selecting v6 does
+  not upgrade the Pi. Each v6 poll signs in, reads aggregate endpoints, and
+  closes its session. Neither API connection requests DNS query history.
+  The page shows DNS queries (today for v5, last 24 hours for v6), blocked
+  queries/percentage, active clients, blocklist
   size, blocking status, component versions and available updates. The last
   blocklist refresh comes from `gravity_last_updated`, not a software update.
   Unknown component versions are never presented as up to date. This API does
@@ -64,7 +71,8 @@ Blank token fields preserve saved tokens; tick **Remove saved token** to unlink.
   update controls. It records successful software updates made through the hub.
   Old OS releases, unknown versions and major migrations disable the software
   update action. Normal dashboard checks never execute maintenance commands.
-  Pi-hole v6's REST authentication is not supported here.
+  See [Pi-hole's API authentication guide](https://docs.pi-hole.net/api/auth/)
+  for application passwords and two-factor authentication.
 - **Gitea details** use a token with read access to user, repository, issue and
   organization APIs. They show accessible repository totals, open issues/pull
   requests, the signed-in user's contribution history (in the hub's timezone),
@@ -267,8 +275,29 @@ it is not a live video player, and no capture time is inferred. Ring image
 availability depends on the entities and services available to Home Assistant.
 Live mode shows a setup prompt until connected rather than sample devices.
 
-The hub makes only GET requests to Home Assistant. The token still has the
-permissions of its Home Assistant account: keep it private. It is stored with
+Thermostat controls are off by default. Enable **Allow thermostat controls from
+this dashboard** in the server's Home Assistant settings to add **Adjust
+thermostat** to the Home card. The sheet offers modes, temperature targets and
+comfort presets reported by the selected device. Enable **Ecobee: show Resume
+schedule** only for an ecobee thermostat with that service available in Home
+Assistant. Temperature and comfort changes may create a hold; Resume schedule
+requests that ecobee resume its scheduled program.
+
+Before each action, the hub checks the current selected device, availability,
+reported capabilities, temperature limits and registered service. It accepts
+only those actions, never arbitrary Home Assistant service calls. Requests use
+a same-origin action token bound to the saved connection; changing that
+connection invalidates an open sheet. Controls are available to people using
+the dashboard on the home network. The page distinguishes a request accepted
+by Home Assistant from a target/mode subsequently reported by the thermostat.
+An unconfirmed change is marked after about a minute; writes are never
+automatically retried. Resume requests cannot confirm the active schedule, so
+the page asks you to check ecobee. The thermostat's normal scheduling and hold
+settings still apply.
+
+With controls disabled, the hub makes only GET requests to Home Assistant.
+With controls enabled, explicit actions POST to its service API. The token
+still has the permissions of its Home Assistant account: keep it private. It is stored with
 owner-only permissions in `config/secrets.json`, never returned to the editor
 or frame. Only selected readings reach the frame; camera images are proxied
 through the hub without exposing Home Assistant tokens or media URLs. Like

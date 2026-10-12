@@ -42,6 +42,15 @@ def version(value):
     return m.group(1) if m else None
 
 def versions():
+    # v6's cache is data, not shell code: never source it or evaluate its values.
+    cached = dict(line.split('=', 1) for line in read('/etc/pihole/versions').splitlines() if '=' in line)
+    if cached:
+        result = []
+        for key, name in (('CORE', 'Pi-hole'), ('WEB', 'Web interface'), ('FTL', 'FTL')):
+            current = version(cached.get(key + '_VERSION', '').strip('"\''))
+            latest = version(cached.get('GITHUB_' + key + '_VERSION', '').strip('"\''))
+            result.append({'name': name, 'current': current, 'latest': latest, 'update': newer(current, latest)})
+        return result
     # v5 local cache is written without a trailing newline; preserve missing latest slots.
     local = read('/etc/pihole/localversions').split()
     latest = read('/etc/pihole/GitHubVersions').split(' ')
@@ -55,20 +64,27 @@ def versions():
     for i, name in enumerate(('Pi-hole', 'Web interface', 'FTL')):
         current = version(local[i]) if i < len(local) else None
         target = version(latest[i]) if i < len(latest) else None
-        update = current.lstrip('v') != target.lstrip('v') if current and target else None
+        update = newer(current, target)
         result.append({'name': name, 'current': current, 'latest': target, 'update': update})
     return result
+
+def newer(current, latest):
+    if not current or not latest:
+        return None
+    def parts(value):
+        numbers = [int(x) for x in value.lstrip('v').split('.')]
+        return tuple(numbers + [0] * (3 - len(numbers)))
+    return parts(latest) > parts(current)
 
 def update_reason(items, os_info):
     if os_info.get('VERSION_CODENAME') in ('buster', 'stretch', 'jessie'):
         return 'Upgrade Raspberry Pi OS before updating Pi-hole; this host uses an old OS release.'
     if any(v['current'] and v['latest'] and v['current'].lstrip('v').split('.')[0] != v['latest'].lstrip('v').split('.')[0] for v in items):
         return 'A major Pi-hole migration is available. Upgrade it separately before using routine updates here.'
-    # This helper currently supports the v5 command/API combination only.
     if any(not v['current'] or not v['latest'] for v in items):
         return 'Version information is incomplete; review software updates directly on the Pi-hole host.'
-    if any(v['current'].lstrip('v').split('.')[0] != '5' for v in items):
-        return 'This management helper supports Pi-hole v5. Update the integration before software maintenance.'
+    if any(v['current'].lstrip('v').split('.')[0] not in ('5', '6') for v in items) or len(set(v['current'].lstrip('v').split('.')[0] for v in items)) != 1:
+        return 'This management helper supports matching Pi-hole v5 or v6 components. Review this installation before software maintenance.'
     return ''
 
 def status():

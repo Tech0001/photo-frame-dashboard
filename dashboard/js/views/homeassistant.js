@@ -1,7 +1,7 @@
 // The live Home page. The bundled/offline prototype keeps its separate demo view.
 (function () {
   'use strict';
-  var root = null, busy = false;
+  var root = null, busy = false, writing = false, pending = null, actionMessage = '';
   var esc = App.esc;
   function text(v) { return esc(v == null ? '—' : v); }
   function stale(d) { return !!(d && (d.stale || (d.updated && Date.now() - Date.parse(d.updated) > 90000))); }
@@ -46,7 +46,8 @@
     var good = c.available, target = c.low != null && c.high != null ? c.low + '–' + c.high : c.target;
     return '<section class="ha-climate" aria-label="' + text(c.name) + ' thermostat"><div class="ha-climate-title"><h2 class="serif">' + text(c.name) + '</h2><span class="ha-action' + (!good ? ' ha-warning' : '') + '">' + App.icon('thermo', 20) + text(good ? pretty(c.action || 'Status not reported') : 'Unavailable') + '</span></div>' +
       '<div class="ha-climate-body"><div class="ha-temperature num">' + text(good ? c.current : null) + '<small>' + text(c.unit || '') + '</small><span class="label">Inside</span></div>' +
-      '<dl class="ha-facts">' + fact('Target', good ? target : null, good && target != null ? c.unit : '') + fact('Humidity', good ? c.humidity : null, good && c.humidity != null ? '%' : '') + fact('Mode', good ? pretty(c.state) : 'Unknown') + fact('Comfort', good ? pretty(c.preset === 'temp' ? 'Temperature hold' : c.preset || 'Not reported') : 'Unknown') + '</dl></div></section>';
+      '<dl class="ha-facts">' + fact('Target', good ? target : null, good && target != null ? c.unit : '') + fact('Humidity', good ? c.humidity : null, good && c.humidity != null ? '%' : '') + fact('Mode', good ? pretty(c.state) : 'Unknown') + fact('Comfort', good ? pretty(c.preset === 'temp' ? 'Temperature hold' : c.preset || 'Not reported') : 'Unknown') + '</dl></div>' +
+      (App.homeData.controls ? '<div class="ha-climate-controls"><button class="ha-image-btn" data-ha-adjust' + (!good || stale(App.homeData) || writing || pending ? ' disabled' : '') + '>Adjust thermostat</button><span role="status">' + text(actionMessage || '') + '</span></div>' : '') + '</section>';
   }
   function daylight(entities) {
     if (!entities.length) return '';
@@ -96,9 +97,78 @@
     busy = true;
     var ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, 12000);
     fetch('/api/home', { cache: 'no-store', signal: ctl.signal }).then(function (r) { if (!r.ok) throw Error(); return r.json(); })
-      .then(function (d) { App.homeData = d; })
+      .then(function (d) { App.homeData = d; checkPending(d); })
       .catch(function () { App.homeData = Object.assign({}, App.homeData || { configured: true, entities: [] }, { ok: false, stale: true, error: 'Home status could not be refreshed. Reconnecting…' }); })
       .then(function () { clearTimeout(timer); busy = false; render(); App.emit('home-data'); });
+  }
+  function checkPending(d) {
+    if (!pending) return;
+    var c = d.climate, p = pending, match = false;
+    if (!stale(d) && c && c.id === p.entity) {
+      var equal = function (a, b) { return a != null && Math.abs(a - b) < 0.06; };
+      match = p.action === 'mode' ? c.state === p.mode : p.action === 'preset' ? c.preset === p.preset :
+        p.action === 'temperature' && c.state === p.mode && (p.mode === 'heat_cool' ? equal(c.low, p.low) && equal(c.high, p.high) : equal(c.target, p.temperature));
+    }
+    if (match) { pending = null; actionMessage = 'Thermostat confirmed the change.'; }
+    else if (Date.now() - p.started > 65000) { pending = null; actionMessage = 'Not confirmed yet. Check Home Assistant before trying again.'; }
+  }
+  function adjust() {
+    var d = App.homeData, c = d && d.climate;
+    if (!c || !c.available || stale(d) || !d.controls || writing || pending) return;
+    var cap = c.capabilities || {}, step = cap.step || 0.5;
+    function options(values, selected) { return (values || []).map(function (v) { return '<option value="' + text(v) + '"' + (v === selected ? ' selected' : '') + '>' + text(pretty(v)) + '</option>'; }).join(''); }
+    function input(key, label, value) {
+      return '<label class="ha-target"><span>' + label + ' ' + text(c.unit) + '</span><span class="ha-stepper"><button type="button" data-step="-1" data-target="' + key + '" aria-label="Lower ' + label + '">−</button><input aria-label="' + label + '" data-temp="' + key + '" type="number" min="' + cap.min + '" max="' + cap.max + '" step="any" value="' + (value == null ? '' : value) + '"><button type="button" data-step="1" data-target="' + key + '" aria-label="Raise ' + label + '">+</button></span></label>';
+    }
+    App.sheet('<h2 class="serif">' + text(c.name) + '</h2><p>Choose settings, then apply. Temperature and comfort changes may create a hold.</p>' +
+      '<div class="ha-adjust"><label>Mode<select data-climate-mode>' + options(cap.modes, c.state) + '</select></label><div data-targets></div>' +
+      '<button class="btn" data-apply-temperature>Apply settings</button>' +
+      ((cap.presets || []).length ? '<div class="ha-comfort"><label>Comfort<select data-climate-preset>' + '<option value=""' + (cap.presets.indexOf(c.preset) < 0 ? ' selected' : '') + '>Choose comfort mode</option>' + options(cap.presets, c.preset) + '</select></label><button class="btn btn--ghost" data-apply-preset>Apply comfort mode</button></div>' : '') +
+      (d.ecobeeResume ? '<button class="btn btn--ghost" data-resume-program>Resume schedule</button>' : '') + '<p data-control-status role="status"></p></div>', {
+      cls: 'ha-adjust-sheet',
+      onMount: function (el, close) {
+        var mode = el.querySelector('[data-climate-mode]'), targets = el.querySelector('[data-targets]'), status = el.querySelector('[data-control-status]');
+        function paintTargets() {
+          targets.innerHTML = mode.value === 'heat_cool' && cap.range ? input('low', 'Heat to', c.low) + input('high', 'Cool to', c.high) :
+            ['heat', 'cool', 'auto'].indexOf(mode.value) >= 0 && cap.temperature ? input('temperature', 'Target', c.target != null ? c.target : mode.value === 'heat' ? c.low : c.high) : '';
+        }
+        mode.addEventListener('change', paintTargets); paintTargets();
+        function send(body) {
+          if (writing) return;
+          writing = true; body.entity = c.id; status.textContent = 'Sending request…';
+          el.querySelectorAll('button, input, select').forEach(function (x) { x.disabled = true; });
+          var ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, 35000);
+          fetch('/api/home/climate', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Frame-Action': d.controlToken }, body: JSON.stringify(body), signal: ctl.signal }).then(function (r) {
+            return r.json().then(function (out) { if (!r.ok || !out.accepted) throw Error(out.error || 'Request was not accepted.'); });
+          }).then(function () {
+            if (body.action === 'resume') actionMessage = 'Resume requested. Check ecobee for the active schedule.';
+            else { pending = Object.assign({ started: Date.now() }, body); actionMessage = 'Request sent. Waiting for the thermostat…'; }
+            close(); load(); [3000, 23000, 46000, 68000].forEach(function (ms) { setTimeout(load, ms); });
+          }).catch(function (e) {
+            status.textContent = (e.name === 'AbortError' || e.name === 'TypeError') ? 'Could not confirm delivery. Refresh before trying again.' : e.message;
+            el.querySelectorAll('button, input, select').forEach(function (x) { x.disabled = false; });
+          }).then(function () { clearTimeout(timer); writing = false; render(); });
+        }
+        el.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-step]');
+          if (b) {
+            var i = el.querySelector('[data-temp="' + b.dataset.target + '"]'), v = Number(i.value);
+            if (i.value !== '' && Number.isFinite(v)) i.value = Math.max(cap.min, Math.min(cap.max, Math.round((v + Number(b.dataset.step) * step) * 100) / 100));
+          }
+          if (e.target.closest('[data-apply-temperature]')) {
+            var fields = Array.from(targets.querySelectorAll('input')), body = { action: fields.length ? 'temperature' : 'mode', mode: mode.value };
+            if (fields.some(function (f) { return f.value === '' || !f.checkValidity(); })) { status.textContent = 'Enter temperatures within the shown limits.'; return; }
+            fields.forEach(function (f) { body[f.dataset.temp] = Number(f.value); }); send(body);
+          }
+          if (e.target.closest('[data-apply-preset]')) {
+            var preset = el.querySelector('[data-climate-preset]').value;
+            if (!preset) { status.textContent = 'Choose a comfort mode first.'; return; }
+            send({ action: 'preset', preset: preset });
+          }
+          if (e.target.closest('[data-resume-program]')) send({ action: 'resume' });
+        });
+      }
+    });
   }
   function image(id) {
     var e = (App.homeData && App.homeData.entities || []).filter(function (x) { return x.id === id; })[0];
@@ -118,6 +188,7 @@
       if (!el.dataset.haBound) {
         el.dataset.haBound = 'true'; el.addEventListener('click', function (e) {
           if (e.target.closest('[data-ha-refresh]')) load();
+          if (e.target.closest('[data-ha-adjust]')) adjust();
           var b = e.target.closest('[data-ha-camera]'); if (b) image(b.dataset.haCamera);
         });
       }

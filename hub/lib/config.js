@@ -26,7 +26,7 @@ const DEFAULT_CONFIG = {
   calendars: [],            // [{ name, secret, people: ['alex'] }]  secret = key in secrets.json -> ical
   proxmenux: { url: '', tokenSecret: 'proxmenux_token', insecureTLS: false },
   homelab: require('./homelab').defaults(),
-  homeassistant: { url: '', climate: '', entities: [] },
+  homeassistant: require('./homeassistant').defaults(),
   weather: null,            // { lat, lon } for Open-Meteo, or null to keep the demo weather
 };
 

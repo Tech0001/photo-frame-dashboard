@@ -137,7 +137,16 @@ const routes = {
     send(res, 200, !result.configured && cfg.proxmenux.url ? { kind: 'proxmenux', legacy: await getNas(cfg, secrets) } : result);
   },
   'GET /api/nas': async (req, res) => send(res, 200, await getNas(cfg, secrets)),
-  'GET /api/home': async (req, res) => send(res, 200, await homeassistant.get(cfg, secrets)),
+  'GET /api/home': async (req, res) => {
+    const data = await homeassistant.get(cfg, secrets);
+    send(res, 200, { ...data, controlToken: data.controls ? homeassistant.controlToken(cfg, secrets) : null }, { 'Cache-Control': 'no-store' });
+  },
+  'POST /api/home/climate': async (req, res) => {
+    try {
+      homeassistant.authorizeControl(req, cfg, secrets);
+      send(res, 202, await homeassistant.act(cfg, secrets, await readBody(req)));
+    } catch (e) { send(res, e.userError ? 400 : 502, { error: e.message }); }
+  },
   'GET /api/home/camera': async (req, res, q) => {
     try {
       const r = await homeassistant.camera(cfg, secrets, String(q.get('entity') || ''));
@@ -393,12 +402,20 @@ const routes = {
 };
 
 const server = http.createServer(async (req, res) => {
+  let url, p;
+  try { url = new URL(req.url, 'http://x'); p = decodeURIComponent(url.pathname); }
+  catch { return send(res, 400, { error: 'Invalid request path' }); }
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // The thermostat's per-connection action token is same-origin only. Other
+  // sites must not read it through the general LAN dashboard CORS policy.
+  if (p === '/api/home' || p.startsWith('/api/home/')) {
+    res.removeHeader('Access-Control-Allow-Origin');
+    res.removeHeader('Access-Control-Allow-Methods');
+    res.removeHeader('Access-Control-Allow-Headers');
+  }
   if (req.method === 'OPTIONS') return send(res, 204, '');
-  const url = new URL(req.url, 'http://x');
-  const p = decodeURIComponent(url.pathname);
   try {
     const admin = p === '/admin' || p.startsWith('/api/admin/');
     if (admin && !adminOk(req)) return needAuth(res);

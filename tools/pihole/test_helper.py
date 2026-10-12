@@ -27,11 +27,21 @@ class HelperTests(unittest.TestCase):
         self.assertIn('incomplete', h.update_reason([{'current': 'v5.1', 'latest': None}], {}))
 
     def test_version_cache_preserves_empty_web_version(self):
-        with patch.object(h, 'read', side_effect=['v5.18.4-0-gabc v5.21-0-gdef v5.16.3', 'v6.4.3  v6.7.1']):
+        with patch.object(h, 'read', side_effect=['', 'v5.18.4-0-gabc v5.21-0-gdef v5.16.3', 'v6.4.3  v6.7.1']):
             v = h.versions()
         self.assertEqual(v[0]['current'], 'v5.18.4')
         self.assertIsNone(v[1]['latest'])
         self.assertEqual(v[2]['latest'], 'v6.7.1')
+
+    def test_v6_cache_supports_patch_updates_but_not_major_migrations(self):
+        data = 'CORE_VERSION=v6.1\nWEB_VERSION=v6.2\nFTL_VERSION=v6.3\nGITHUB_CORE_VERSION=v6.2\nGITHUB_WEB_VERSION=v6.2\nGITHUB_FTL_VERSION=v6.2'
+        with patch.object(h, 'read', return_value=data), patch.object(h.subprocess, 'run') as run:
+            versions = h.versions()
+            run.assert_not_called()
+        self.assertEqual([v['update'] for v in versions], [True, False, False])
+        self.assertEqual(h.update_reason(versions, {'VERSION_CODENAME': 'bookworm'}), '')
+        self.assertIn('major', h.update_reason([{'current': 'v6.1', 'latest': 'v7.0'}], {}))
+        self.assertIn('matching', h.update_reason([{'current': 'v5.1', 'latest': 'v5.2'}, {'current': 'v6.1', 'latest': 'v6.2'}], {}))
 
     def test_busy_or_unsupported_actions_do_not_start_jobs(self):
         with tempfile.TemporaryDirectory() as tmp, patch.object(h, 'ROOT', Path(tmp)), patch.object(h, 'status', return_value={'actions': [], 'updateReason': 'migration required'}), patch.object(h.subprocess, 'run') as run:

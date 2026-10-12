@@ -1,8 +1,8 @@
 # Pi-hole management connection
 
-For a Pi-hole v5 installation directly on a systemd Linux host, `frame-pihole`
+For a Pi-hole v5 or v6 installation directly on a systemd Linux host, `frame-pihole`
 adds read-only uptime/version reporting and a small set of maintenance commands.
-Docker installations and Pi-hole v6 need a different management integration.
+Docker installations need a different management integration.
 
 The helper is optional. HTTP availability and token-based statistics work without
 it. The frame remains read-only; actions are available in the password-protected
@@ -43,15 +43,20 @@ hub admin under **Connections → Homelab → Pi-hole management**.
 ## Behavior
 
 - `status` reads uptime, boot time, locally cached component versions and the
-  last helper job. This runs with the existing five-minute Homelab checks.
+  last helper job. This runs with the existing five-minute Homelab checks. It
+  reads v5's `localversions`/`GitHubVersions` or v6's `versions` file under
+  `/etc/pihole` as data; it never sources these files or fetches versions online.
 - `gravity` runs `pihole -g`; `restart` restarts `pihole-FTL`; `reboot` reboots the
   host. Every action requires its own confirmation in server settings.
-- `update` runs `pihole -up` only when locally known v5 component versions are
-  complete and remain within their major version. Old Raspberry Pi OS releases,
+- `update` runs `pihole -up` only when locally known v5 or v6 component versions
+  are complete, use the same supported major version, and remain within that
+  major version. Old Raspberry Pi OS releases,
   unknown versions and major migrations disable it. This is not an OS upgrade
   tool. Read the [Pi-hole update guidance](https://docs.pi-hole.net/main/update/)
-  before software maintenance. Do major upgrades separately with a backup and
-  update this integration for the new Pi-hole API.
+  before software maintenance. Do major upgrades separately with a backup.
+  After moving to v6, select Version 6 and save a v6 application password in
+  the hub's Homelab settings. After a fresh OS install, also reinstall this
+  helper and its restricted SSH connection; the dashboard cannot do that itself.
 - Jobs run as transient systemd services, independent of the requesting SSH
   session. Only one job is allowed at a time. Completion is based on the command
   exit code; a queued request is not reported as finished. Reboot completion is
