@@ -207,7 +207,12 @@ Open `http://<nas-ip>:8099/` in a browser: you should see the dashboard. `http:/
 Works on a phone. A sidebar groups the pages: **Connections** (calendars, accounts, Home Assistant, Homelab, weather and time zone, security), **Frame content** and **Frame**:
 
 - **Chores**: add, rename, choose the routine (morning, midday, evening), who does it, stars, and which days. Ticks reset at midnight.
-- **Groceries**: the same list the frame shows, plus editable stores and categories.
+- **Groceries**: the shopping list, editable stores/categories, and **Common items**.
+  Expand **Common items** to add, rename or remove reusable search suggestions.
+  Tick **Quick-add** for the items shown as usuals on the frame. Save changes to
+  sync them automatically; editing common items does not alter the shopping
+  entries. You can keep up to 500 common items, with unique names. Renaming a
+  category updates both shopping and common items.
   Expand **Stores** or **Categories** to add or rename them, then **Save changes**.
   You can keep up to 8 stores and 32 categories. Renaming a category updates its
   items; removing a category or store requires moving its items first. Changes
@@ -253,6 +258,19 @@ Claude follows the read-only usage request used by [AI Usagebar](https://github.
 Credentials are write-only in the editor, saved in `config/secrets.json` with owner-only permissions, and never sent to the frame. Blank inputs preserve existing connections; **Unlink** deletes the saved credential and hub-fetched readings. Independent collector records from `tools/agent-usage/` are retained.
 
 The hub refreshes linked accounts at startup, after saving, and every five minutes. The frame's refresh button also requests a check. A failed refresh keeps the last successful figures with a connection warning; readings older than 15 minutes are marked stale.
+
+### Evergreen project progress
+
+**Agents → Evergreen** shows the current objective, reported delivery stages,
+recent completions, blockers and decisions requiring you. It uses a separate
+authenticated progress feed; account usage remains under **Usage**. Built,
+reviewed, integrated and live are independently reported, with unknown stages
+clearly marked. Stale source reports and disconnected publishers show warnings.
+See [the Ledger handoff and automatic sync setup](../tools/project-progress/README.md).
+Generate its dedicated publisher token in **Connections → Security**; it is
+stored write-only in `config/secrets.json` as `progress_token`. Selected reports
+are saved in `data/evergreen-progress.json`. The page waits for its first real
+report until a source adapter is connected.
 
 ### Emoji on older Android frames
 

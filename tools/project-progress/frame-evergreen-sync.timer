@@ -1,0 +1,11 @@
+[Unit]
+Description=Sync Evergreen progress every five minutes
+
+[Timer]
+OnStartupSec=30
+OnUnitInactiveSec=5min
+RandomizedDelaySec=15
+Unit=frame-evergreen-sync.service
+
+[Install]
+WantedBy=timers.target

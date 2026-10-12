@@ -92,3 +92,30 @@
 .ag-grid--accounts .ag-meter { margin-top: 12px; }
 .ag-incident { overflow-wrap: anywhere; }
 .ag-stat-v { overflow-wrap: anywhere; }
+
+.ag-tabs { display: flex; gap: 8px; flex: none; padding-bottom: 12px; }
+.ag-tabs button { border: 0; background: transparent; color: var(--mute); font: inherit; font-size: 22px; font-weight: 800; padding: 10px 22px; border-radius: 9px; cursor: pointer; }
+.ag-tabs button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.ag-progress { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 10px; display: flex; flex-direction: column; gap: 14px; }
+.eg-objective { background: #E4EBDD; border-radius: var(--r); padding: 22px 26px; flex: none; }
+.eg-objective > div:first-child { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
+.eg-objective h2, .eg-setup h2 { font-size: 42px; line-height: 1; }
+.eg-objective > p { font-size: 27px; line-height: 1.25; font-weight: 700; margin: 12px 0; }
+.eg-source, .eg-recent-meta, .eg-key { color: var(--mute); font-size: 16px; line-height: 1.4; }
+.eg-attention, .eg-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; flex: none; }
+.eg-card { background: var(--card); border-radius: var(--r); padding: 20px 24px; min-width: 0; }
+.eg-card h3 { font-size: 26px; line-height: 1.1; margin: 0 0 12px; }
+.eg-card h4 { font-size: 21px; line-height: 1.25; margin: 0; }
+.eg-row + .eg-row { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px; }
+.eg-row p, .eg-next { font-size: 18px; line-height: 1.4; margin: 6px 0 0; }
+.eg-next b { margin-right: 8px; }
+.eg-owner { font-size: 16px; color: var(--mute); display: inline-block; margin-top: 4px; }
+.eg-empty { color: var(--mute); font-size: 18px; line-height: 1.4; margin: 4px 0; }
+.eg-key { margin: -3px 0 14px; }
+.eg-stages { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.eg-stage { background: var(--paper-2); border-radius: 6px; padding: 6px 8px; color: var(--mute); font-size: 14px; font-weight: 700; }
+.eg-stage.is-reported { color: #34532F; background: #E4EBDD; }
+.eg-warning, .eg-decisions.has-items { background: #F3E2C4; }
+.eg-warning { border-radius: 10px; padding: 12px 18px; font-size: 18px; font-weight: 700; flex: none; }
+.eg-blockers.has-items { border-left: 5px solid #B45F00; }
+.ag-progress p, .ag-progress h4, .eg-source { overflow-wrap: anywhere; }

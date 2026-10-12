@@ -188,7 +188,7 @@ function piece(k) { return function () { var p = connPieces(); return p ? p[k] :
 // saveKey: sections that are saved by the same request are sent once.
 var SECTIONS = {
   chores: { tab: 'chores', label: 'Chores', get: function () { return D.chores; }, save: function () { return api('PUT', '/api/admin/chores', { chores: D.chores }); } },
-  groceries: { tab: 'groceries', label: 'Groceries', get: function () { return [D.groceries, D.stores, D.categories]; }, save: function () { return api('PUT', '/api/admin/groceries', { items: D.groceries, base: D.groceryBase || [], stores: D.stores, categories: D.categories }); } },
+  groceries: { tab: 'groceries', label: 'Groceries', get: function () { return [D.groceries, D.stores, D.categories, D.commonItems]; }, save: function () { return api('PUT', '/api/admin/groceries', { items: D.groceries, base: D.groceryBase || [], stores: D.stores, categories: D.categories, commonItems: D.commonItems }); } },
   events: { tab: 'events', label: 'Schedule', get: function () { return D.events; }, save: function () { return api('PUT', '/api/admin/events', { events: D.events }); } },
   people: { tab: 'people', label: 'People', get: function () { return D.people; }, save: function () { return api('PUT', '/api/admin/people', { people: D.people }); } },
   connections: { tab: 'connections', label: 'Calendars & services', get: piece('core'), save: saveConnectionsCall, saveKey: 'conn' },
@@ -236,17 +236,21 @@ function renderChores() {
   $('#s-chores').innerHTML = h;
 }
 function renderGroceries() {
+  var commonOpen = $('#common-items') && $('#common-items').open;
   var stores = D.stores.map(function (s) { return [s.id, s.name]; });
   var cats = D.categories.map(function (c) { return [c, c]; });
-  var h = '<p class="mute">The same list the frame shows. Add or rename stores and categories below, then Save changes. Move any items before removing their store or category.</p>' +
+  var h = '<p class="mute">Manage the shopping list, common items, stores and categories here, then Save changes. Common items supply search suggestions; Quick-add items appear as usuals on the frame. Move shopping and common items before removing their category.</p>' +
     '<details class="card"><summary><b>Stores (' + D.stores.length + ')</b></summary>' + D.stores.map(function (s, i) {
       var used = D.groceries.some(function (g) { return g.store === s.id; });
       return '<div class="row"><input aria-label="Store name" maxlength="30" data-store="' + i + '" value="' + esc(s.name) + '"><button class="btn ghost" data-remove-store="' + i + '"' + (used || D.stores.length === 1 ? ' disabled title="Move this store’s items first; keep at least one store"' : '') + '>Remove store</button></div>';
     }).join('') + '<div class="row"><input id="new-store" maxlength="30" aria-label="New store name" placeholder="New store name"><button class="btn ghost" id="add-store"' + (D.stores.length >= 8 ? ' disabled' : '') + '>+ Add store</button></div></details>' +
     '<details class="card"><summary><b>Categories (' + D.categories.length + ')</b></summary>' + D.categories.map(function (c, i) {
-      var used = D.groceries.some(function (g) { return g.cat === c; });
+      var used = D.groceries.some(function (g) { return g.cat === c; }) || D.commonItems.some(function (g) { return g.cat === c; });
       return '<div class="row"><input aria-label="Category name" maxlength="40" data-category="' + i + '" value="' + esc(c) + '"><button class="btn ghost" data-remove-category="' + i + '"' + (used || D.categories.length === 1 ? ' disabled title="Move this category’s items first; keep at least one category"' : '') + '>Remove category</button></div>';
-    }).join('') + '<div class="row"><input id="new-category" maxlength="40" aria-label="New category name" placeholder="New category name"><button class="btn ghost" id="add-category"' + (D.categories.length >= 32 ? ' disabled' : '') + '>+ Add category</button></div></details><h2>Shopping list</h2>';
+    }).join('') + '<div class="row"><input id="new-category" maxlength="40" aria-label="New category name" placeholder="New category name"><button class="btn ghost" id="add-category"' + (D.categories.length >= 32 ? ' disabled' : '') + '>+ Add category</button></div></details>' +
+    '<details class="card" id="common-items"' + (commonOpen ? ' open' : '') + '><summary><b>Common items (' + D.commonItems.length + ')</b></summary><p class="mute">Add, rename or remove reusable items. Tick Quick-add to show an item in the frame’s usuals. Changing these does not add or remove anything from your current shopping list.</p>' + D.commonItems.map(function (g, i) {
+      return '<div class="row" data-common="' + i + '"><input aria-label="Common item name" maxlength="80" data-common-name value="' + esc(g.name) + '" placeholder="Item name"><select aria-label="Common item category" data-common-cat>' + opts(cats, g.cat) + '</select><label><input type="checkbox" data-common-usual' + (g.usual ? ' checked' : '') + '> Quick-add</label><button class="btn ghost" data-remove-common="' + i + '">Remove item</button></div>';
+    }).join('') + '<button class="btn ghost" id="add-common"' + (D.commonItems.length >= 500 ? ' disabled' : '') + '>+ Add common item</button></details><h2>Shopping list</h2>';
   D.groceries.forEach(function (g, i) {
     h += '<div class="card" data-i="' + i + '"><div class="row">' +
       '<input type="checkbox" data-f="done"' + (g.done ? ' checked' : '') + ' title="Got it">' +
@@ -629,7 +633,10 @@ function securityHtml() {
     '<div class="fg"><label>New password</label><input type="password" autocomplete="new-password" data-s="pw" placeholder="8+ characters"></div><div class="fg"><label>Repeat it</label><input type="password" autocomplete="new-password" data-s="pw2" placeholder="Type it again"></div>' +
     '<p class="mute" style="margin-top:14px">Collector token (lets a computer send AI-usage numbers to the hub): ' + (CN.agentsTokenSet ? 'set.' : 'not set.') + '</p>' +
     '<div class="row"><button class="btn ghost" id="regen-agents">Generate a new token</button></div>' +
-    (CN.shownToken ? '<div class="card"><p class="mute">New token. It is shown only now. Put it in <code>tools/agent-usage/config.local.json</code> on the computer that runs the collector:</p><code style="word-break:break-all">' + esc(CN.shownToken) + '</code></div>' : '') + '</div>';
+    (CN.shownToken ? '<div class="card"><p class="mute">New token. It is shown only now. Put it in <code>tools/agent-usage/config.local.json</code> on the computer that runs the collector:</p><code style="word-break:break-all">' + esc(CN.shownToken) + '</code></div>' : '') +
+    '<p class="mute" style="margin-top:20px">Evergreen progress token: ' + (CN.progressTokenSet ? 'set.' : 'not set.') + ' Allows the sync tool to publish Evergreen reports. It is separate from account usage and admin access.</p>' +
+    '<div class="row"><button class="btn ghost" id="regen-progress">Generate Evergreen token</button></div>' +
+    (CN.shownProgressToken ? '<div class="card"><p class="mute">Shown only now. Save this in the publisher’s protected token file. See <code>tools/project-progress/README.md</code> for the automatic sync setup.</p><code style="word-break:break-all">' + esc(CN.shownProgressToken) + '</code></div>' : '') + '</div>';
 }
 function renderConnections() {
   if (!CN) { $('#s-connections').innerHTML = '<p class="mute">Loading…</p>'; return; }
@@ -720,6 +727,11 @@ function testProxmenux() {
 function regenAgents() {
   if (!confirm('Generate a new collector token? The old one stops working, so the computer that sends AI-usage numbers must be given the new one.')) return;
   api('PUT', '/api/admin/connections', { agentsToken: 'regenerate' }).then(function (r) { CN.shownToken = r.generatedAgentsToken; return load(); })
+    .catch(function (e) { msg('Not done: ' + e.message, true); });
+}
+function regenProgress() {
+  if (CN.progressTokenSet && !confirm('Replace the Evergreen progress token? The sync tool must be given the new token afterward.')) return;
+  api('PUT', '/api/admin/connections', { progressToken: 'regenerate' }).then(function (r) { CN.shownProgressToken = r.generatedProgressToken; return load(); })
     .catch(function (e) { msg('Not done: ' + e.message, true); });
 }
 
@@ -987,10 +999,16 @@ function collect() {
   });
   readCards($('#s-groceries'), D.groceries);
   var gr = $('#s-groceries'), beforeStores = JSON.stringify(D.stores), beforeCats = D.categories.slice();
+  gr.querySelectorAll('[data-common]').forEach(function (row) {
+    var item = D.commonItems[+row.dataset.common];
+    item.name = row.querySelector('[data-common-name]').value; item.cat = row.querySelector('[data-common-cat]').value; item.usual = row.querySelector('[data-common-usual]').checked;
+  });
   gr.querySelectorAll('[data-store]').forEach(function (el) { D.stores[+el.dataset.store].name = el.value; });
   gr.querySelectorAll('[data-category]').forEach(function (el) { D.categories[+el.dataset.category] = el.value; });
   if (JSON.stringify(beforeCats) !== JSON.stringify(D.categories)) {
     D.groceries.forEach(function (g) { var i = beforeCats.indexOf(g.cat); if (i >= 0) g.cat = D.categories[i]; });
+    D.commonItems.forEach(function (g) { var i = beforeCats.indexOf(g.cat); if (i >= 0) g.cat = D.categories[i]; });
+    gr.querySelectorAll('[data-common-cat]').forEach(function (el) { el.innerHTML = opts(D.categories.map(function (c) { return [c, c]; }), D.commonItems[+el.closest('[data-common]').dataset.common].cat); });
     gr.querySelectorAll('.card[data-i] [data-f="cat"]').forEach(function (el) { el.innerHTML = opts(D.categories.map(function (c) { return [c, c]; }), D.groceries[+el.closest('[data-i]').dataset.i].cat); });
   }
   if (beforeStores !== JSON.stringify(D.stores)) gr.querySelectorAll('[data-f="store"]').forEach(function (el) { var val = el.value; el.innerHTML = opts(D.stores.map(function (s) { return [s.id, s.name]; }), val); });
@@ -1056,6 +1074,8 @@ document.addEventListener('click', function (ev) {
   if (d.addChore) { D.chores.push({ id: '', r: 'after', who: d.addChore, title: '', emoji: '✅', stars: 0, days: null }); renderChores(); }
   else if (d.delChore !== undefined) { D.chores.splice(+d.delChore, 1); renderChores(); }
   else if (t.id === 'add-g') { D.groceries.push({ id: '', name: '', cat: D.categories.indexOf('Pantry') >= 0 ? 'Pantry' : D.categories[0], qty: 1, store: D.stores[0].id, done: false, note: '' }); renderGroceries(); }
+  else if (t.id === 'add-common') { D.commonItems.push({ id: '', name: '', cat: D.categories.indexOf('Pantry') >= 0 ? 'Pantry' : D.categories[0], usual: true }); renderGroceries(); $('#common-items').open = true; }
+  else if (d.removeCommon !== undefined) { D.commonItems.splice(+d.removeCommon, 1); renderGroceries(); }
   else if (t.id === 'add-store' || t.id === 'add-category') {
     var isStore = t.id === 'add-store', input = $(isStore ? '#new-store' : '#new-category'), name = input.value.trim();
     var names = isStore ? D.stores.map(function (s) { return s.name; }) : D.categories;
@@ -1093,6 +1113,7 @@ document.addEventListener('click', function (ev) {
   else if (t.id === 'test-ha') testHA();
   else if (t.id === 'unlink-ha') unlinkHA();
   else if (t.id === 'regen-agents') regenAgents();
+  else if (t.id === 'regen-progress') regenProgress();
   else if (d.st !== undefined) { collect(); SET_TAB = d.st; renderSettings(); }
   else if (d.tuneResetPage !== undefined) {
     if (!confirm('Reset every setting on this page to its default?')) return;
@@ -1143,16 +1164,16 @@ function load() {
     var nd = r[0]; nd.groceryBase = (nd.groceries || []).map(function (g) { return g.id; });
     if (oldD) {
       if (keep.chores) nd.chores = oldD.chores;
-      if (keep.groceries) { nd.groceries = oldD.groceries; nd.stores = oldD.stores; nd.categories = oldD.categories; nd.groceryBase = oldD.groceryBase; }
+      if (keep.groceries) { nd.groceries = oldD.groceries; nd.stores = oldD.stores; nd.categories = oldD.categories; nd.commonItems = oldD.commonItems; nd.groceryBase = oldD.groceryBase; }
       if (keep.events) nd.events = oldD.events;
       if (keep.people) nd.people = oldD.people;
     }
     D = nd; FEEDS = r[1].feeds || []; PH = (r[1].photos || []).length;
-    var shown = CN && CN.shownToken, haChoices = CN && CN.homeassistant.url === r[2].homeassistant.url ? CN.haEntities : [];
-    cnInit(r[2]); if (shown) CN.shownToken = shown; CN.haEntities = haChoices || [];
+    var shown = CN && CN.shownToken, progressShown = CN && CN.shownProgressToken, haChoices = CN && CN.homeassistant.url === r[2].homeassistant.url ? CN.haEntities : [];
+    cnInit(r[2]); if (shown) CN.shownToken = shown; if (progressShown) CN.shownProgressToken = progressShown; CN.haEntities = haChoices || [];
     if (oldCN) {   // typed values stay; things only the hub knows (accounts, password state) are refreshed
       var fresh = CN; CN = oldCN; CN.homeassistant.tokenSet = fresh.homeassistant.tokenSet;
-      ['accounts', 'adminPasswordSet', 'agentsTokenSet', 'files', 'photosDir', 'unusedLinks'].forEach(function (k) { CN[k] = fresh[k]; });
+      ['accounts', 'adminPasswordSet', 'agentsTokenSet', 'progressTokenSet', 'shownProgressToken', 'files', 'photosDir', 'unusedLinks'].forEach(function (k) { CN[k] = fresh[k]; });
     }
     render();
     rebase(Object.keys(SECTIONS).filter(function (n) { return !keep[n] && n !== 'photos'; }));

@@ -1,5 +1,6 @@
 'use strict';
 const { uid } = require('./util');
+const DEFAULT_COMMON = require('./grocery-catalog.json');
 const DEFAULT_CATEGORIES = ['Produce', 'Bakery', 'Meat & Fish', 'Dairy & Eggs', 'Pantry', 'Frozen', 'Snacks', 'Household', 'Other'];
 const bad = (message) => Object.assign(new Error(message), { userError: true });
 const text = (value, limit) => String(value == null ? '' : value).trim().slice(0, limit);
@@ -28,6 +29,20 @@ function cleanItems(items) {
     done: !!g.done, note: text(g.note, 120)
   }));
 }
+function commonFor(state) {
+  if (Array.isArray(state.commonItems)) return state.commonItems;
+  const categories = categoriesFor(state), fallback = categories.includes('Other') ? 'Other' : categories[0];
+  return DEFAULT_COMMON.map(item => ({ ...item, cat: categories.includes(item.cat) ? item.cat : fallback }));
+}
+function cleanCommon(items, categories) {
+  if (!Array.isArray(items) || items.length > 500) throw bad('Use up to 500 common items.');
+  const result = items.filter(item => item && text(item.name, 80)).map(item => ({
+    id: /^[a-zA-Z0-9_-]{1,40}$/.test(item.id || '') ? item.id : uid('c'), name: text(item.name, 80), cat: text(item.cat, 40), usual: !!item.usual
+  }));
+  if (new Set(result.map(item => item.name.toLowerCase())).size !== result.length || new Set(result.map(item => item.id)).size !== result.length) throw bad('Common item names and identifiers must be unique.');
+  if (result.some(item => !categories.includes(item.cat))) throw bad('A category still has common items. Move those items first.');
+  return result;
+}
 function mergeItems(state, items, base) {
   if (!Array.isArray(base)) return items; // Older clients replace the list.
   const known = new Set(base), included = new Set(items.map(g => g.id));
@@ -48,6 +63,7 @@ function adminUpdate(state, body) {
   const groceries = mergeItems(state, cleanItems(body.items), body.base);
   if (groceries.some(g => !stores.some(s => s.id === g.store))) throw bad('A store still has items. Move those items to another store first.');
   if (groceries.some(g => !categories.includes(g.cat))) throw bad('A category still has items. Move them first, or reload if another device added items while you were editing.');
-  return { stores, categories, groceries };
+  const commonItems = body.commonItems === undefined ? commonFor(state).map(item => ({ ...item, cat: categories.includes(item.cat) ? item.cat : categories[0] })) : cleanCommon(body.commonItems, categories);
+  return { stores, categories, groceries, commonItems };
 }
-module.exports = { DEFAULT_CATEGORIES, categoriesFor, cleanStores, frameItems, adminUpdate };
+module.exports = { DEFAULT_CATEGORIES, categoriesFor, commonFor, cleanStores, frameItems, adminUpdate };

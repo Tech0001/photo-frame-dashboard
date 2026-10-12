@@ -41,3 +41,24 @@ test('old tablet categories and removed stores resolve to the current assignment
 test('legacy grocery categories remain visible when defaults are introduced', () => {
   assert(groceries.categoriesFor({ groceries: [item('old', 'Garden')] }).includes('Garden'));
 });
+test('common items persist independently from shopping entries and an empty list stays empty', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'frame-common-'));
+  try {
+    const store = new Store(dir), original = JSON.stringify(store.state.groceries);
+    const body = { stores: store.state.stores, categories: store.state.categories, items: store.state.groceries, commonItems: [{ id: 'feed', name: 'Chicken feed', cat: 'Other', usual: true }] };
+    store.update(s => Object.assign(s, groceries.adminUpdate(s, body)));
+    assert.equal(JSON.stringify(store.state.groceries), original);
+    assert.deepEqual(new Store(dir).state.commonItems, body.commonItems);
+    store.update(s => Object.assign(s, groceries.adminUpdate(s, { ...body, commonItems: [] })));
+    assert.deepEqual(new Store(dir).state.commonItems, []);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+test('common item validation blocks duplicate names and removed category assignments', () => {
+  const s = state(), body = { stores: s.stores, categories: s.categories, items: s.groceries, commonItems: [{ id: 'one', name: 'Coffee', cat: 'Pantry', usual: true }] };
+  assert.throws(() => groceries.adminUpdate(s, { ...body, commonItems: [...body.commonItems, { id: 'two', name: 'coffee', cat: 'Pantry' }] }), /unique/);
+  assert.throws(() => groceries.adminUpdate(s, { ...body, commonItems: [{ id: 'one', name: 'Coffee', cat: 'Removed' }] }), /common items/);
+  const saved = groceries.adminUpdate(s, body);
+  s.commonItems = saved.commonItems;
+  groceries.frameItems(s, { items: [], base: ['g1'] });
+  assert.deepEqual(s.commonItems, body.commonItems);
+});
