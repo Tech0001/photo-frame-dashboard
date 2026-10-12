@@ -5,6 +5,7 @@
 //   tab   = which /admin tab shows it (settings rows also have sub = the pill under Settings: display, refresh)
 //   group = the card it sits in             adv = true tucks it into the Advanced fold at the bottom of its page
 //   where = who reads it: 'frame' (dashboard, live), 'hub' (this server, live), 'kiosk' (the Android app; the frame hands it over)
+const THEMES = require('../../dashboard/js/theme-palettes.json');
 const SCHEMA = [
 
 
@@ -16,6 +17,7 @@ const SCHEMA = [
   // ---- Settings > Display
   //   store: where a value is kept. Omitted = state.settings.tune. 'display' is an older home that the frame reads from /api/state,
   //   kept so nothing on the frame changes; /admin treats every row the same.
+  { key: 'theme', tab: 'settings', sub: 'display', group: 'Dashboard theme', label: 'Color theme', hint: 'Paper is the original. Choose a preview to apply it to the frame. Photos and the dim red night clock keep their own colors.', type: 'select', options: THEMES.map(t => [t.id, t.label]), previews: THEMES.map(t => ({ id: t.id, label: t.label, description: t.description, paper: t.colors.paper, card: t.colors.card, ink: t.colors.ink, accent: t.colors.accent, accentInk: t.colors['accent-ink'] })), def: 'paper', where: 'frame' },
   { key: 'homeSec', store: 'display', tab: 'settings', sub: 'display', group: 'Away-from-screen timers', label: 'Back to Today after', hint: 'Counted from the last touch. Set both short (for example 15 and 30) to see each stage quickly while testing.', type: 'num', min: 5, max: 86400, step: 1, unit: 'seconds', def: 60, slider: false, where: 'frame' },
   { key: 'ambientSec', store: 'display', tab: 'settings', sub: 'display', group: 'Away-from-screen timers', label: 'Start the photo slideshow after', type: 'num', min: 10, max: 86400, step: 1, unit: 'seconds', def: 120, slider: false, where: 'frame' },
 
