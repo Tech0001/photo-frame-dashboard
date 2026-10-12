@@ -1,0 +1,144 @@
+#!/usr/bin/python3 -I
+"""Root-owned, fixed-command helper for a restricted SSH key on a systemd Pi-hole host."""
+import datetime
+import fcntl
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+import time
+import uuid
+
+ROOT = Path('/var/lib/frame-pihole')
+SELF = '/usr/local/sbin/frame-pihole'
+PIHOLE = '/usr/local/bin/pihole'
+ACTIONS = ('gravity', 'restart', 'reboot', 'update')
+ENV = {'PATH': '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'HOME': '/root', 'LC_ALL': 'C'}
+
+def iso(seconds=None):
+    return datetime.datetime.fromtimestamp(time.time() if seconds is None else seconds, datetime.timezone.utc).isoformat()
+
+def read(file):
+    try:
+        return Path(file).read_text().strip()
+    except OSError:
+        return ''
+
+def load():
+    try:
+        return json.loads(read(ROOT / 'status.json'))
+    except (ValueError, TypeError):
+        return {}
+
+def save(value):
+    temp = ROOT / 'status.tmp'
+    temp.write_text(json.dumps(value))
+    temp.replace(ROOT / 'status.json')
+
+def version(value):
+    m = re.match(r'^(v?\d+\.\d+(?:\.\d+)?)', value or '')
+    return m.group(1) if m else None
+
+def versions():
+    # v5 local cache is written without a trailing newline; preserve missing latest slots.
+    local = read('/etc/pihole/localversions').split()
+    latest = read('/etc/pihole/GitHubVersions').split(' ')
+    if len(local) < 3:
+        try:
+            output = subprocess.run([PIHOLE, '-v', '-c'], capture_output=True, text=True, timeout=3, env=ENV).stdout
+            local = re.findall(r'version is (\S+)', output)
+        except (OSError, subprocess.TimeoutExpired):
+            local = []
+    result = []
+    for i, name in enumerate(('Pi-hole', 'Web interface', 'FTL')):
+        current = version(local[i]) if i < len(local) else None
+        target = version(latest[i]) if i < len(latest) else None
+        update = current.lstrip('v') != target.lstrip('v') if current and target else None
+        result.append({'name': name, 'current': current, 'latest': target, 'update': update})
+    return result
+
+def update_reason(items, os_info):
+    if os_info.get('VERSION_CODENAME') in ('buster', 'stretch', 'jessie'):
+        return 'Upgrade Raspberry Pi OS before updating Pi-hole; this host uses an old OS release.'
+    if any(v['current'] and v['latest'] and v['current'].lstrip('v').split('.')[0] != v['latest'].lstrip('v').split('.')[0] for v in items):
+        return 'A major Pi-hole migration is available. Upgrade it separately before using routine updates here.'
+    # This helper currently supports the v5 command/API combination only.
+    if any(not v['current'] or not v['latest'] for v in items):
+        return 'Version information is incomplete; review software updates directly on the Pi-hole host.'
+    if any(v['current'].lstrip('v').split('.')[0] != '5' for v in items):
+        return 'This management helper supports Pi-hole v5. Update the integration before software maintenance.'
+    return ''
+
+def status():
+    os_info = dict(line.split('=', 1) for line in read('/etc/os-release').splitlines() if '=' in line)
+    os_info = {k: v.strip('"') for k, v in os_info.items()}
+    uptime = float(read('/proc/uptime').split()[0])
+    booted = next((int(line.split()[1]) for line in read('/proc/stat').splitlines() if line.startswith('btime ')), time.time() - uptime)
+    data = load()
+    job = data.get('job')
+    if job and job.get('state') in ('queued', 'running', 'reboot_requested'):
+        if job.get('bootId') != read('/proc/sys/kernel/random/boot_id'):
+            job = dict(job, state='succeeded' if job['action'] == 'reboot' else 'interrupted', finished=iso(booted))
+        elif time.time() - job.get('epoch', 0) > 1900:
+            job = dict(job, state='interrupted', finished=None)
+    items = versions()
+    reason = update_reason(items, os_info)
+    busy = job and job['state'] in ('queued', 'running', 'reboot_requested')
+    return {'protocol': 1, 'kind': 'frame-pihole', 'os': os_info.get('PRETTY_NAME', 'Linux'), 'uptimeSeconds': int(uptime), 'bootedAt': iso(booted), 'softwareUpdatedAt': data.get('softwareUpdatedAt'), 'versions': items, 'updateReason': reason, 'actions': [] if busy else ['gravity', 'restart', 'reboot'] + ([] if reason else ['update']), 'job': job}
+
+def queue(action):
+    ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
+    with open(ROOT / 'lock', 'a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        current = status()
+        if action not in current['actions']:
+            return {'accepted': False, 'error': current['updateReason'] if action == 'update' else 'Another Pi-hole action is running'}
+        data = load()
+        data['job'] = {'action': action, 'state': 'queued', 'started': iso(), 'epoch': time.time(), 'bootId': read('/proc/sys/kernel/random/boot_id')}
+        save(data)
+        try:
+            subprocess.run(['/usr/bin/systemd-run', '--quiet', '--collect', '--property=RuntimeMaxSec=1900', '--unit=frame-pihole-' + uuid.uuid4().hex[:12], '/usr/bin/python3', '-I', SELF, '--run', action], check=True, capture_output=True, timeout=5, env=ENV)
+        except (OSError, subprocess.SubprocessError):
+            data['job'].update(state='failed', finished=iso()); save(data)
+            return {'accepted': False, 'error': 'Could not start the Pi-hole maintenance job'}
+        return {'accepted': True}
+
+def worker(action):
+    data = load()
+    if not data.get('job') or data['job']['action'] != action or data['job']['state'] != 'queued':
+        return
+    data['job']['state'] = 'running'; save(data)
+    commands = {'gravity': [PIHOLE, '-g'], 'restart': ['/bin/systemctl', 'restart', 'pihole-FTL'], 'reboot': ['/bin/systemctl', 'reboot'], 'update': [PIHOLE, '-up']}
+    try:
+        if action == 'update' and status()['updateReason']:
+            raise RuntimeError('Update needs manual review')
+        if action == 'reboot':
+            data['job']['state'] = 'reboot_requested'; save(data)
+            time.sleep(3)  # let the request acknowledgement leave before disconnecting SSH
+        with open(ROOT / 'last-action.log', 'w') as log:
+            subprocess.run(commands[action], stdin=subprocess.DEVNULL, stdout=log, stderr=log, timeout=1800, check=True, env=ENV)
+        if action != 'reboot':
+            data['job'].update(state='succeeded', finished=iso())
+        if action == 'update':
+            data['softwareUpdatedAt'] = iso()
+    except (OSError, subprocess.SubprocessError, RuntimeError):
+        data['job'].update(state='failed', finished=iso())
+    save(data)
+
+def main(args):
+    if os.geteuid() != 0:
+        raise SystemExit('This helper must be installed and run as root')
+    os.umask(0o077)
+    if args == ['status']:
+        print(json.dumps(status()))
+    elif len(args) == 1 and args[0] in ACTIONS:
+        print(json.dumps(queue(args[0])))
+    elif len(args) == 2 and args[0] == '--run' and args[1] in ACTIONS:
+        worker(args[1])
+    else:
+        raise SystemExit('Unknown action')
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

@@ -5,8 +5,9 @@ const path = require('node:path');
 const net = require('node:net');
 const crypto = require('node:crypto');
 const details = require('./homelab-details');
+const management = require('./pihole-management');
 const bad = message => Object.assign(new Error(message), { userError: true });
-const defaults = () => ({ pihole: '', gitea: '', giteaOrganization: '', plane: '', rustdesk: { host: '', idPort: 21116, relayPort: 21117 }, backup: { path: '', destination: '', label: 'VM backup', maxAgeHours: 36 } });
+const defaults = () => ({ pihole: '', piholeSsh: management.defaults(), gitea: '', giteaOrganization: '', plane: '', rustdesk: { host: '', idPort: 21116, relayPort: 21117 }, backup: { path: '', destination: '', label: 'VM backup', maxAgeHours: 36 } });
 function cleanSettings(value) {
   const h = Object.assign(defaults(), value || {});
   for (const key of ['pihole', 'gitea', 'plane']) {
@@ -29,7 +30,7 @@ function cleanSettings(value) {
   b.label = String(b.label || 'VM backup').trim().slice(0, 60) || 'VM backup';
   b.maxAgeHours = Number(b.maxAgeHours);
   if (!Number.isFinite(b.maxAgeHours) || b.maxAgeHours < 1 || b.maxAgeHours > 8760) throw bad('Backup overdue threshold must be 1–8760 hours');
-  return { pihole: h.pihole, gitea: h.gitea, giteaOrganization: h.giteaOrganization, plane: h.plane, rustdesk: { host: r.host, idPort: r.idPort, relayPort: r.relayPort }, backup: { path: b.path, destination: b.destination, label: b.label, maxAgeHours: b.maxAgeHours } };
+  return { pihole: h.pihole, piholeSsh: management.clean(h.piholeSsh), gitea: h.gitea, giteaOrganization: h.giteaOrganization, plane: h.plane, rustdesk: { host: r.host, idPort: r.idPort, relayPort: r.relayPort }, backup: { path: b.path, destination: b.destination, label: b.label, maxAgeHours: b.maxAgeHours } };
 }
 function cleanToken(value) {
   if (typeof value !== 'string' || !/^[a-zA-Z0-9_-]{20,512}$/.test(value.trim())) throw bad('Enter a valid API token, without a URL or token label');
@@ -78,7 +79,7 @@ async function smallJson(response) {
   finally { await reader.cancel().catch(() => {}); }
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
-function createReader({ request = fetch, port = checkPort, backup = readBackup, clock = Date.now } = {}) {
+function createReader({ request = fetch, port = checkPort, backup = readBackup, clock = Date.now, manage = management.status } = {}) {
   let cached = null, pending = null, generation = 0;
   async function http(id, name, url) {
     const result = { id, name, configured: !!url, state: 'off', detail: 'Not connected' };
@@ -95,16 +96,21 @@ function createReader({ request = fetch, port = checkPort, backup = readBackup, 
     } catch (_) { return Object.assign(result, { state: 'error', detail: id === 'gitea' ? 'Health check unavailable' : 'Web interface unreachable' }); }
   }
   async function read(h, secrets, timezone) {
-    const [pihole, gitea, plane, rustdesk, b, piDetails, gitDetails] = await Promise.all([
+    const [pihole, gitea, plane, rustdesk, b, piDetails, gitDetails, piManagement] = await Promise.all([
       http('pihole', 'Pi-hole', h.pihole), http('gitea', 'Gitea', h.gitea), http('plane', 'Plane', h.plane),
       (async () => {
         if (!h.rustdesk.host) return { id: 'rustdesk', name: 'RustDesk', configured: false, state: 'off', detail: 'Not connected' };
         const [id, relay] = await Promise.all([port(h.rustdesk.host, h.rustdesk.idPort), port(h.rustdesk.host, h.rustdesk.relayPort)]);
         return { id: 'rustdesk', name: 'RustDesk', configured: true, state: id && relay ? 'ok' : 'error', detail: id && relay ? 'ID and relay ports responding' : (!id && !relay ? 'ID and relay ports unreachable' : !id ? 'ID port unreachable' : 'Relay port unreachable') };
-      })(), backup(h.backup, clock()), details.pihole(h, secrets.homelab_pihole_token, request), details.gitea(h, secrets.homelab_gitea_token, timezone, request, clock())
+      })(), backup(h.backup, clock()), details.pihole(h, secrets.homelab_pihole_token, request), details.gitea(h, secrets.homelab_gitea_token, timezone, request, clock()), manage(h.piholeSsh)
     ]);
     const services = [pihole, gitea, plane, rustdesk];
-    return { kind: 'services', configured: services.some(s => s.configured) || b.configured, updated: new Date(clock()).toISOString(), services, backup: b, pihole: piDetails, gitea: gitDetails };
+    piDetails.management = piManagement;
+    if (piManagement.state === 'ok') {
+      piDetails.versions = piManagement.versions;
+      if (piDetails.state === 'off') { piDetails.state = 'warning'; piDetails.detail = 'Management connected; add an API token for DNS statistics'; }
+    }
+    return { kind: 'services', configured: services.some(s => s.configured) || b.configured || piManagement.configured, updated: new Date(clock()).toISOString(), services, backup: b, pihole: piDetails, gitea: gitDetails };
   }
   async function get(cfg, { refresh = false, secrets = {} } = {}) {
     const settings = cleanSettings(cfg.homelab), key = crypto.createHash('sha256').update(JSON.stringify([settings, cfg.timezone, secrets.homelab_pihole_token, secrets.homelab_gitea_token])).digest('hex'), now = clock();

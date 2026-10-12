@@ -12,6 +12,7 @@
   },
   "homelab": {
     "pihole": "",
+    "piholeSsh": { "host": "", "user": "pi", "port": 22, "identityFile": "" },
     "gitea": "",
     "giteaOrganization": "",
     "plane": "",

@@ -58,9 +58,13 @@ Blank token fields preserve saved tokens; tick **Remove saved token** to unlink.
   size, blocking status, component versions and available updates. The last
   blocklist refresh comes from `gravity_last_updated`, not a software update.
   Unknown component versions are never presented as up to date. This API does
-  not report the last host reboot or software installation time. Reboot/software
-  updates need a separate management connection; no such commands are executed
-  by these read-only checks. Pi-hole v6's REST authentication is not supported here.
+  not report the last host reboot or software installation time. The optional
+  [restricted SSH helper](../tools/pihole/README.md) adds uptime, last boot,
+  installed versions and admin-only reboot/DNS restart/blocklist refresh/software
+  update controls. It records successful software updates made through the hub.
+  Old OS releases, unknown versions and major migrations disable the software
+  update action. Normal dashboard checks never execute maintenance commands.
+  Pi-hole v6's REST authentication is not supported here.
 - **Gitea details** use a token with read access to user, repository, issue and
   organization APIs. They show accessible repository totals, open issues/pull
   requests, the signed-in user's contribution history (in the hub's timezone),

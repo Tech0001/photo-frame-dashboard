@@ -397,6 +397,8 @@ function cnInit(v) {
   CN.labResult = '';
   CN.homelab.piholeToken = ''; CN.homelab.giteaToken = '';
   CN.homelab.piholeUnlink = false; CN.homelab.giteaUnlink = false;
+  CN.homelab.piholeSsh = CN.homelab.piholeSsh || { host: '', user: 'pi', port: 22, identityFile: '' };
+  CN.piSaved = JSON.stringify(CN.homelab.piholeSsh); CN.piStatus = null; CN.piMessage = ''; CN.piBusy = false;
   CN.haToken = ''; CN.haResult = ''; CN.haEntities = [];
 }
 function homeassistantHtml() {
@@ -511,7 +513,7 @@ function homelabHtml() {
     field('giteaOrganization', 'Organization activity (optional)', h.giteaOrganization || '', 'Organization name; blank uses your activity feed') +
     '<p class="mute">Use a token with read access to your user, repositories, issues and organizations. The frame shows repository counts, open work, contributions and recent push titles. Tokens stay on the server; private repository names and commit titles visible to this account will appear on the household frame.</p>' +
     field('plane', 'Plane web address', h.plane, 'http://plane.local') +
-    '<p class="mute">Availability checks work without tokens. Adding a token enables the detail pages. All checks are read-only.</p></div>' +
+    '<p class="mute">Availability checks work without tokens. Adding a token enables the detail pages. All checks are read-only.</p></div>' + piManagementHtml() +
     '<div class="card"><b>RustDesk</b>' + field('host', 'Server hostname or IP', h.rustdesk.host, 'server.local') +
     field('idPort', 'ID server TCP port', h.rustdesk.idPort, '21116', 'number') + field('relayPort', 'Relay TCP port', h.rustdesk.relayPort, '21117', 'number') +
     '<p class="mute">Checks both listening TCP ports. This does not test a complete remote desktop session.</p></div>' +
@@ -526,8 +528,38 @@ function homelabHtml() {
 function testHomelab() {
   collectConnections(); CN.labResult = 'Checking saved connections…'; renderConnections();
   api('POST', '/api/admin/test', { what: 'homelab' }).then(function (r) {
+    CN.piStatus = r.pihole.management;
     CN.labResult = r.services.map(function (s) { return s.name + ': ' + s.detail; }).concat([r.backup.label + ': ' + r.backup.detail, 'Pi-hole details: ' + r.pihole.detail, 'Gitea activity: ' + r.gitea.detail]).join('\n');
   }).catch(function (e) { CN.labResult = e.message; }).then(renderConnections);
+}
+function piManagementHtml() {
+  var s = CN.homelab.piholeSsh, r = CN.piStatus, actions = r && r.actions || [];
+  function field(k, label, type) { return '<div class="fg"><label for="pi-ssh-' + k + '">' + label + '</label><input id="pi-ssh-' + k + '" data-pi-ssh="' + k + '" type="' + (type || 'text') + '" value="' + esc(s[k]) + '"></div>'; }
+  return '<div class="card"><b>Pi-hole management</b><p class="mute">Uses a restricted SSH key and the frame-pihole helper installed on the Pi-hole host. Save the connection, then check it to enable available controls. Routine checks never reboot, restart or update anything.</p>' +
+    field('host', 'Pi-hole SSH hostname or IP') + field('user', 'SSH username') + field('port', 'SSH port', 'number') + field('identityFile', 'Restricted private key file on the hub server') +
+    '<button class="btn ghost" id="check-pi-management"' + (CN.piBusy ? ' disabled' : '') + '>Check management</button><p role="status">' + esc(CN.piMessage || (r ? r.detail : 'Check the saved connection to load status.')) + '</p>' +
+    (r && r.os ? '<p class="mute">' + esc(r.os) + ' · Last boot: ' + esc(r.bootedAt ? new Date(r.bootedAt).toLocaleString() : 'unknown') + '</p>' : '') +
+    (r && r.job ? '<p>Last action: <b>' + esc(r.job.action) + '</b> — ' + esc(r.job.state.replace(/_/g, ' ')) + (r.job.finished ? ' · ' + esc(new Date(r.job.finished).toLocaleString()) : '') + '</p>' : '') +
+    '<div class="row">' + [['gravity', 'Refresh blocklists'], ['restart', 'Restart DNS'], ['reboot', 'Reboot Pi-hole host'], ['update', 'Update Pi-hole software']].map(function (a) { return '<button class="btn ghost" data-pi-action="' + a[0] + '"' + (CN.piBusy || actions.indexOf(a[0]) < 0 ? ' disabled' : '') + '>' + a[1] + '</button>'; }).join('') + '</div>' +
+    (r && r.updateReason ? '<p class="mute">Software update unavailable: ' + esc(r.updateReason) + '</p>' : '') +
+    '<p class="mute">Restarting DNS or rebooting briefly interrupts name resolution for devices using this Pi-hole. Software updates are separate from refreshing blocklists. Last successful software update through this hub: ' + esc(r && r.softwareUpdatedAt ? new Date(r.softwareUpdatedAt).toLocaleString() : 'not recorded') + '.</p></div>';
+}
+function checkPiManagement(repeat) {
+  if (CN.piBusy) return;
+  collectConnections(); CN.piBusy = true; CN.piMessage = 'Checking management…'; renderConnections();
+  api('GET', '/api/admin/pihole').then(function (r) { CN.piStatus = r; CN.piMessage = r.detail; }).catch(function (e) { CN.piStatus = null; CN.piMessage = e.message; }).then(function () {
+    collectConnections(); CN.piBusy = false; renderConnections();
+    if (repeat > 0 && TAB === 'connections' && CN_TAB === 'homelab' && (!CN.piStatus || CN.piStatus.state !== 'ok' || CN.piStatus.job && ['queued', 'running', 'reboot_requested'].indexOf(CN.piStatus.job.state) >= 0)) setTimeout(function () { if (TAB === 'connections' && CN_TAB === 'homelab') checkPiManagement(repeat - 1); }, 5000);
+  });
+}
+function runPiAction(action) {
+  collectConnections();
+  if (CN.piBusy) return;
+  if (JSON.stringify(CN.homelab.piholeSsh) !== CN.piSaved) return msg('Save the SSH connection changes before running an action.', true);
+  var question = { gravity: 'Refresh Pi-hole’s blocklists now?', restart: 'Restart Pi-hole DNS now? DNS lookups will be interrupted briefly.', reboot: 'Reboot the Pi-hole host now? Devices using it will lose DNS until it finishes booting.', update: 'Update Pi-hole software now? DNS may be interrupted. Review the Pi-hole release notes first.' }[action];
+  if (!question || !confirm(question + '\nSaved host: ' + CN.homelab.piholeSsh.host)) return;
+  CN.piBusy = true; CN.piMessage = 'Sending action…'; renderConnections();
+  api('POST', '/api/admin/pihole', { action: action, confirm: action }).then(function (r) { CN.piMessage = r.detail; CN.piBusy = false; checkPiManagement(24); }).catch(function (e) { CN.piMessage = e.message; CN.piBusy = false; renderConnections(); });
 }
 function proxmenuxHtml() {
   return '<div class="card"><b>ProxMenux</b><p class="mute">The Homelab screen reads this. The token is write-only here: ' + (CN.proxmenux.tokenSet ? 'one is saved.' : 'none saved yet.') + ' Save first, then test.</p>' +
@@ -628,6 +660,7 @@ function collectConnections() {
     else CN.homelab[k] = input.value;
   });
   root.querySelectorAll('[data-lab-clear]').forEach(function (input) { CN.homelab[input.dataset.labClear + 'Unlink'] = input.checked; });
+  root.querySelectorAll('[data-pi-ssh]').forEach(function (input) { CN.homelab.piholeSsh[input.dataset.piSsh] = input.dataset.piSsh === 'port' ? Number(input.value) : input.value; });
   if ((el = root.querySelector('[data-px=url]'))) {
     CN.proxmenux.url = el.value;
     CN.pxToken = root.querySelector('[data-px=token]').value;
@@ -1048,6 +1081,8 @@ document.addEventListener('click', function (ev) {
   else if (d.openColor !== undefined) { PCP = (PCP === +d.openColor ? null : +d.openColor); renderPeople(); }
   else if (d.closeColor !== undefined) { PCP = null; renderPeople(); }
   else if (t.id === 'test-lab') testHomelab();
+  else if (t.id === 'check-pi-management') checkPiManagement(0);
+  else if (d.piAction) runPiAction(d.piAction);
   else if (t.id === 'test-px') testProxmenux();
   else if (t.id === 'test-ha') testHA();
   else if (t.id === 'unlink-ha') unlinkHA();

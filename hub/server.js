@@ -15,6 +15,7 @@ const { Store, colorFields, PALETTE } = require('./lib/store');
 const { getEvents } = require('./lib/calendar');
 const { Photos } = require('./lib/photos');
 const homelab = require('./lib/homelab');
+const piManagement = require('./lib/pihole-management');
 const { getNas, fetchRaw, ENDPOINTS } = require('./lib/nas');
 const { getWeather } = require('./lib/weather');
 const { searchLocations } = require('./lib/locations');
@@ -209,6 +210,15 @@ const routes = {
     if (b.accounts) accounts.refreshAll(secrets, agents, true).catch((e) => console.error('account refresh failed:', e.message));
   },
   'POST /api/admin/test': async (req, res) => send(res, 200, await connections.test(await readBody(req))),
+  'GET /api/admin/pihole': async (req, res) => send(res, 200, await piManagement.status(cfg.homelab?.piholeSsh)),
+  'POST /api/admin/pihole': async (req, res) => {
+    if (!secrets.admin_password) throw userError('Set an admin password before using Pi-hole controls');
+    if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '') || req.headers['sec-fetch-site'] === 'cross-site') throw userError('Use Pi-hole controls from this server’s settings page');
+    if (req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) throw userError('Cross-origin Pi-hole actions are not allowed');
+    const b = await readBody(req);
+    send(res, 202, await piManagement.action(cfg.homelab?.piholeSsh, b.action, b.confirm));
+    homelab.clear();
+  },
 
   // --- admin: which photo folders feed the frame
   'GET /api/admin/photo-folders': async (req, res, q) => {
