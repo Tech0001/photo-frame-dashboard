@@ -320,20 +320,9 @@ window.DATA = (function () {
       tokens: 1.8, cost: 6.3, week: [1.2, 1.9, 0.7, 2.3, 1.5, 0.4, 1.8]
     },
     {
-      id: 'gemini', name: 'Gemini', plan: 'AI Ultra', color: '#3F6FE4', rgb: '63 111 228', status: 'ok',
-      meters: [
-        { label: 'Requests · daily', win: DAY, used: 16, left: 522, detail: '320 of 2,000' },
-        { label: 'Pro model · daily', win: DAY, used: 52, left: 522, detail: '104 of 200' }
-      ],
-      tokens: 0.9, cost: 0, week: [0.4, 1.1, 0.6, 0.2, 0.9, 1.3, 0.9]
-    },
-    {
-      id: 'copilot', name: 'Copilot', plan: 'Pro+', color: '#8957E5', rgb: '137 87 229', status: 'degraded', incident: 'Elevated errors on coding agent',
-      meters: [
-        { label: 'Premium requests', win: MONTH, used: 75, left: 17280, detail: '1,124 of 1,500' },
-        { label: 'Coding agent', win: MONTH, used: 38, left: 17280, detail: '19 of 50 sessions' }
-      ],
-      tokens: 1.2, cost: 0, week: [0.9, 1.4, 1.1, 0.8, 1.6, 0.3, 1.2]
+      id: 'openrouter', name: 'OpenRouter', plan: 'API key', color: '#6467F2', rgb: '100 103 242', status: 'off',
+      meters: [], tokens: 0, cost: 0, week: [0, 0, 0, 0, 0, 0, 0],
+      note: 'Connect an OpenRouter API key in Frame admin → Connections → Accounts.'
     }
   ];
 

@@ -148,9 +148,25 @@ adb shell am start -a android.intent.action.VIEW -d http://<nas-ip>:8099/ -n com
 
 After changing hub code, update the container (see section 3). Dashboard-only changes need just `npm run build` in `dashboard/` and a reload.
 
-### Unofficial: linked AI accounts (`lib/accounts.js`)
+### Linked AI accounts (`lib/accounts.js`)
 
-/admin > Connections > Accounts can read your ChatGPT/Codex plan limits for the Agents screen. **This is unofficial.** It calls an undocumented ChatGPT endpoint with your own Codex login token, so it can change or stop working without notice, and it may not be permitted by the provider's terms. The token is stored only on the hub (write-only, never sent to the frame) and the refresh token is not kept. It is optional: leave Accounts unlinked and nothing is sent. Claude usage does not use this; it comes from the collector in `tools/agent-usage/`.
+Open **/admin → Connections → Accounts** to configure the Agents screen. Each connection is optional. Save changes, then use **Test** to check it.
+
+| Account | What to provide | What appears on the frame |
+| --- | --- | --- |
+| ChatGPT / Codex | The `auth.json` from your Codex login | Available subscription usage windows |
+| Claude | `~/.claude/.credentials.json` from a computer signed into Claude Code; paste the JSON or choose the file | Session, weekly and available model-specific limits |
+| OpenRouter | The API key whose spending you want to track | That key's daily, weekly and monthly spending, plus its remaining budget if capped |
+
+Claude follows the read-only usage request used by [AI Usagebar](https://github.com/akitaonrails/ai-usagebar). **Claude and Codex use undocumented endpoints** that may change or stop working. Their login tokens can access the account. The hub saves only the access credential and required metadata, discards refresh tokens, and never rotates the original CLI login. When a copied login expires, update the JSON here. OpenRouter uses its [documented current-key endpoint](https://openrouter.ai/docs/api/api-reference/api-keys/get-current-api-key); its figures describe the selected key, **not the whole account's credit balance**. No model requests are made.
+
+Credentials are write-only in the editor, saved in `config/secrets.json` with owner-only permissions, and never sent to the frame. Blank inputs preserve existing connections; **Unlink** deletes the saved credential and hub-fetched readings. Independent collector records from `tools/agent-usage/` are retained.
+
+The hub refreshes linked accounts at startup, after saving, and every five minutes. The frame's refresh button also requests a check. A failed refresh keeps the last successful figures with a connection warning; readings older than 15 minutes are marked stale.
+
+### Emoji on older Android frames
+
+The dashboard bundles Twemoji SVG graphics and serves them from the hub, so supported emoji render even when the tablet's system font lacks them. This also applies to newly added chores and groceries; no emoji CDN or Android font installation is needed. Run `npm ci` and `npm run build` in `dashboard/` when deploying from source. Attribution and the graphics/code licenses are included in `dashboard/public/licenses/` and the built dashboard's `/licenses/` directory.
 
 ## 8. Where settings live, and how /admin saves them
 

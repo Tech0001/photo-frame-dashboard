@@ -23,6 +23,7 @@ ul { margin: 0; padding: 0; list-style: none; }
 /* ---------------------------------------------------------------- type utilities */
 .num { font-stretch: 62%; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .serif { font-family: var(--serif); font-weight: 400; letter-spacing: -.01em; }
+img.emoji { display: inline-block; width: 1em; height: 1em; max-width: none; margin: 0 .04em; vertical-align: -.12em; object-fit: contain; }
 .serif i, i.serif { font-style: italic; }
 .label {
   font-size: var(--fs-label);

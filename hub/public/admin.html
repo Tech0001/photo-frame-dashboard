@@ -57,6 +57,8 @@
   .subtabs button.on { background:var(--acc); color:var(--bg); border-color:var(--acc); }
   .card.warn { border-color:#c98a00; background:transparent; }
   .secret-box { -webkit-text-security:disc; font-family:monospace; }
+  .account-file { display:flex; flex-direction:column; gap:6px; width:100%; min-width:0; }
+  .account-file input { width:100%; max-width:100%; }
   .ph-row { display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:7px 0; border-bottom:1px solid var(--line); }
   .ph-row:last-child { border-bottom:0; }
   #dropzone { border:2px dashed var(--line); border-radius:12px; padding:22px 14px; text-align:center; margin:10px 0; }
@@ -402,24 +404,46 @@ function calendarsHtml() {
   return h + '<button class="btn ghost" id="add-cal">+ Add calendar</button></div>';
 }
 function accountsHtml() {
-  var h = '';
+  var help = {
+    codex: { label: 'Codex auth.json', instructions: 'Paste the auth.json from your Codex login. Only the access token and account ID are saved; update it when it expires.' },
+    claude: { label: 'Claude credentials JSON', instructions: 'On the computer where Claude Code is signed in, use ~/.claude/.credentials.json. Paste or select that JSON file below. Only its access token, plan and expiry are saved. The original Claude login keeps managing its refresh token; update this copy when it expires.' },
+    openrouter: { label: 'OpenRouter API key', instructions: 'Paste the OpenRouter key whose usage you want to show. Daily, weekly and monthly spending apply to that key, not the whole account. The hub only reads usage; it does not make model requests.' }
+  };
+  var h = '<div class="card"><p class="mute">Linked accounts refresh on the server every five minutes. Credentials stay on the server and are never sent to the frame. Blank fields keep the saved connection.</p></div>';
   (CN.accounts || []).forEach(function (a) {
-    h += '<div class="card" data-acct="' + esc(a.id) + '"><b>' + esc(a.name) + '</b> <span class="mute">· unofficial</span>' +
-      '<div class="card warn"><p class="mute"><b>Unofficial.</b> This reads your plan usage from ChatGPT with your Codex login token, through an undocumented endpoint that can change or stop working without notice. The token gives broad access to your ChatGPT account. It is saved only on the hub (never shown again, never sent to the frame). Link it only if you are comfortable with that. Unlink deletes it.</p></div>' +
-      '<p class="mute">Status: ' + (a.linked ? (a.expired ? '<span class="bad">linked, but the login token has expired</span>' : 'linked' + (a.expiresAt ? ', token valid until ' + esc(new Date(a.expiresAt).toLocaleString()) : '')) : 'not linked') + '</p>' +
-      '<p class="mute">To link: on any computer run <code>npm install -g @openai/codex</code>, then <code>codex login</code>, and paste the whole contents of <code>~/.codex/auth.json</code> below (on Windows: <code>%USERPROFILE%\\.codex\\auth.json</code>). The hub keeps only the access token and account ID, not the refresh token, so when the token expires you paste a fresh file.</p>' +
-      '<div class="row"><textarea class="secret-box" data-acct-json rows="3" style="width:100%" autocomplete="off" placeholder="' + (a.linked ? 'A login is saved. Paste a new auth.json to replace it' : 'Paste auth.json here') + '">' + esc((CN.acctInput || {})[a.id] || '') + '</textarea></div>' +
+    var info = help[a.id]; if (!info) return;
+    var value = esc((CN.acctInput || {})[a.id] || '');
+    h += '<div class="card" data-acct="' + esc(a.id) + '"><b>' + esc(a.name) + '</b> <span class="mute">· ' + (a.unofficial ? 'unofficial usage endpoint' : 'official API') + '</span>' +
+      '<p class="mute">Status: ' + (a.linked ? (a.expired ? '<span class="bad">login expired — update below</span>' : 'linked' + (a.expiresAt ? ', token valid until ' + esc(new Date(a.expiresAt).toLocaleString()) : '')) : 'not linked') + '</p>' +
+      '<p class="mute">' + esc(info.instructions) + '</p>' +
+      (a.unofficial ? '<p class="mute">This uses an undocumented usage endpoint that may change. The login token can access your account; Unlink removes the saved copy.</p>' : '') +
+      '<label>' + esc(info.label) + '</label>' +
+      (a.id === 'openrouter' ? '<input type="password" data-acct-json autocomplete="new-password" style="width:100%" placeholder="' + (a.linked ? 'Key saved; enter a new key to replace it' : 'sk-or-…') + '" value="' + value + '">' :
+        '<textarea class="secret-box" data-acct-json rows="3" style="width:100%" autocomplete="off" spellcheck="false" placeholder="' + (a.linked ? 'Login saved; paste fresh JSON to replace it' : 'Paste credentials JSON') + '">' + value + '</textarea>' +
+        '<div class="row"><label class="mute account-file">Or choose a credentials file <input type="file" data-acct-file="' + esc(a.id) + '" accept=".json,application/json"></label></div>') +
       '<div class="row"><button class="btn ghost" data-test-acct="' + esc(a.id) + '">Test</button>' + (a.linked ? '<button class="btn ghost" data-unlink-acct="' + esc(a.id) + '">Unlink</button>' : '') + '<span class="mute">Save first, then test.</span></div>' +
       '<div class="mute" style="white-space:pre-wrap">' + esc((CN.acctResult || {})[a.id] || '') + '</div></div>';
   });
-  h += '<div class="card"><b>Claude</b><p class="mute">Read from the Claude Code logs on the computer that runs the collector, so no account link is needed. See Security for its token. More accounts (a Claude Console organization, OpenAI API keys) can be added later.</p></div>';
   return h;
 }
+document.addEventListener('change', function (event) {
+  var input = event.target;
+  if (!input.matches('[data-acct-file]') || !input.files[0]) return;
+  var file = input.files[0];
+  if (file.size > 65536) { msg('That file is too large for account credentials.', true); return; }
+  var reader = new FileReader();
+  reader.onload = function () {
+    var card = input.closest('[data-acct]'); if (!card) return;
+    var field = card.querySelector('[data-acct-json]'); field.value = reader.result;
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  reader.readAsText(file);
+});
 function testAccount(id) {
   collectConnections(); CN.acctResult = CN.acctResult || {}; CN.acctResult[id] = 'Testing the saved login…'; renderConnections();
   api('POST', '/api/admin/test', { what: 'account', id: id })
     .then(function (r) {
-      CN.acctResult[id] = r.ok ? 'Works. Plan: ' + (r.plan || 'unknown') + '\n' + (r.meters.length ? r.meters.join('\n') : 'No limit windows were found in the answer.') + '\n\nFields seen (names and types only):\n' + (r.shape || []).join('\n')
+      CN.acctResult[id] = r.ok ? 'Works. Plan: ' + (r.plan || 'unknown') + '\n' + (r.credits ? 'Key today: $' + r.credits.daily.toFixed(2) + '\nKey this week: $' + r.credits.weekly.toFixed(2) + '\nKey this month: $' + r.credits.monthly.toFixed(2) : (r.meters.length ? r.meters.join('\n') : 'No usage windows returned.'))
         : 'Problem: ' + r.error;
     })
     .catch(function (e) { CN.acctResult[id] = 'Problem: ' + e.message; }).then(renderConnections);
@@ -427,7 +451,7 @@ function testAccount(id) {
 function unlinkAccount(id) {
   if (!confirm('Unlink this account? The saved login is deleted from the hub.')) return;
   api('PUT', '/api/admin/connections', { accounts: (function () { var o = {}; o[id] = { unlink: true }; return o; })() })
-    .then(function () { msg('Unlinked. The saved login is deleted.'); return load(); }).catch(function (e) { msg('Not done: ' + e.message, true); });
+    .then(function () { if (CN.acctInput) delete CN.acctInput[id]; if (CN.acctResult) delete CN.acctResult[id]; msg('Unlinked. The saved login is deleted.'); return load(); }).catch(function (e) { msg('Not done: ' + e.message, true); });
 }
 function proxmenuxHtml() {
   return '<div class="card"><b>ProxMenux</b><p class="mute">The Homelab screen reads this. The token is write-only here: ' + (CN.proxmenux.tokenSet ? 'one is saved.' : 'none saved yet.') + ' Save first, then test.</p>' +

@@ -1,7 +1,7 @@
 'use strict';
-// Reads plan usage from AI accounts whose subscriptions have NO official usage API.
+// Reads linked AI accounts: subscription limits and OpenRouter's current-key usage.
 //
-// UNOFFICIAL. Each provider here calls an undocumented endpoint with the login token of your own account. Such endpoints can
+// Claude and Codex call undocumented endpoints with the login token of your own account. Such endpoints can
 // change or disappear without notice, and the token gives broad access to the account, so it is stored only in secrets.json,
 // is write-only in /admin, and is never sent to the frame. Nothing here refreshes or rewrites your login: when a token
 // expires, the Agents card says so and you paste a fresh one.
@@ -79,9 +79,11 @@ async function fetchCodex(creds) {
 
 const providers = {
   codex: {
-    id: 'codex', name: 'Codex', defaultPlan: 'ChatGPT', color: '#10A37F', label: 'ChatGPT / Codex',
+    id: 'codex', name: 'Codex', defaultPlan: 'ChatGPT', color: '#10A37F', label: 'ChatGPT / Codex', unofficial: true,
     parse: parseCodexAuth, fetch: fetchCodex, expiry: (c) => jwtExpMs(c.access_token)
-  }
+  },
+  claude: require('./account-providers').claude,
+  openrouter: require('./account-providers').openrouter
 };
 
 /** What the admin page may show about linked accounts. Never the credentials. */
@@ -89,14 +91,18 @@ function status(secrets) {
   const acc = secrets.accounts || {};
   return Object.values(providers).map((p) => {
     const c = acc[p.id], exp = c ? p.expiry(c) : null;
-    return { id: p.id, name: p.label, unofficial: true, linked: !!c, expiresAt: exp, expired: !!(exp && exp < Date.now()) };
+    return { id: p.id, name: p.label, unofficial: p.unofficial, linked: !!c, expiresAt: exp, expired: !!(exp && exp < Date.now()) };
   });
 }
 
-let running = null, lastRun = 0;
+let running = null, lastRun = 0, rerun = false;
 /** Fetch every linked account and store the answer for the Agents screen. Rate-limited so taps cannot hammer the provider. */
 async function refreshAll(secrets, agents, force) {
-  if (running) return running;
+  // Unlink removes only data read by this hub; independent collectors keep their data.
+  for (const p of Object.values(providers)) {
+    if (!(secrets.accounts && secrets.accounts[p.id])) agents.removeLinkedService(p.id);
+  }
+  if (running) { if (force) rerun = true; return running; }
   if (!force && Date.now() - lastRun < 30000) return;
   running = (async () => {
     lastRun = Date.now();
@@ -105,21 +111,24 @@ async function refreshAll(secrets, agents, force) {
       if (!c) continue;
       try {
         const r = await p.fetch(c);
-        agents.setService({ id: p.id, name: p.name, plan: r.plan ? r.plan[0].toUpperCase() + r.plan.slice(1) : p.defaultPlan, color: p.color, kind: 'limits', unofficial: true, meters: r.meters, error: '' });
-      } catch (e) { agents.setService({ id: p.id, name: p.name, plan: p.defaultPlan, color: p.color, kind: 'limits', unofficial: true }, String(e.message || e)); }
+        if (!secrets.accounts || secrets.accounts[p.id] !== c) continue; // changed/unlinked while fetching
+        agents.setService({ id: p.id, name: p.name, plan: r.plan ? r.plan[0].toUpperCase() + r.plan.slice(1) : p.defaultPlan, color: p.color, kind: r.kind || 'limits', unofficial: p.unofficial, meters: r.meters, credits: r.credits, error: '' });
+      } catch (e) {
+        if (secrets.accounts && secrets.accounts[p.id] === c) agents.setService({ id: p.id, name: p.name, plan: p.defaultPlan, color: p.color, kind: p.id === 'openrouter' ? 'credits' : 'limits', unofficial: p.unofficial }, String(e.message || e));
+      }
     }
-  })().finally(() => { running = null; });
+  })().finally(() => { running = null; if (rerun) { rerun = false; return refreshAll(secrets, agents, true); } });
   return running;
 }
 
 /** Diagnostic for the Test button: what came back, as field names and numbers only. */
 async function test(secrets, id) {
   const p = providers[id], c = secrets.accounts && secrets.accounts[id];
-  if (!p) throw bad('unknown account');
+  if (!Object.hasOwn(providers, id)) throw bad('unknown account');
   if (!c) throw bad('Link the account first (and save), then test');
   try {
     const r = await p.fetch(c);
-    return { ok: true, plan: r.plan, meters: r.meters.map((m) => m.label + ' ' + m.used + '%'), shape: r.shape };
+    return { ok: true, plan: r.plan, meters: r.meters.map((m) => m.label + ' ' + m.used + '%'), credits: r.credits, shape: r.shape };
   } catch (e) { return { ok: false, error: String(e.message || e) }; }
 }
 

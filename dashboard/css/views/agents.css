@@ -85,3 +85,10 @@
 .ag-stack[style*="height:0%"] { display: none; }
 
 .ag-card--limits .ag-foot { display: none; }
+.ag-grid--accounts { grid-template-rows: 1fr; }
+.ag-grid--accounts .ag-card { overflow-y: auto; }
+.ag-grid--accounts .ag-head { flex-wrap: wrap; }
+.ag-grid--accounts .ag-id { flex-wrap: wrap; }
+.ag-grid--accounts .ag-meter { margin-top: 12px; }
+.ag-incident { overflow-wrap: anywhere; }
+.ag-stat-v { overflow-wrap: anywhere; }

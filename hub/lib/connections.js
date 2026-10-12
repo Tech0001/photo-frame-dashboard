@@ -97,7 +97,7 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
       nsec.accounts = nsec.accounts || {};
       Object.keys(b.accounts).forEach((id) => {
         const p = accounts.providers[id], a = b.accounts[id] || {};
-        if (!p) throw bad('unknown account "' + id + '"');
+        if (!Object.hasOwn(accounts.providers, id)) throw bad('unknown account "' + id + '"');
         if (a.unlink) delete nsec.accounts[id];
         else if (typeof a.authJson === 'string' && a.authJson.trim()) nsec.accounts[id] = p.parse(a.authJson);
       });
@@ -121,7 +121,7 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
     raw.timezone = ncfg.timezone; raw.weather = ncfg.weather; raw.calendars = ncfg.calendars;
     raw.proxmenux = Object.assign({}, raw.proxmenux || {}, { url: ncfg.proxmenux.url, tokenSecret: ncfg.proxmenux.tokenSecret, insecureTLS: ncfg.proxmenux.insecureTLS });
     writeJsonAtomic(cfgFile, raw, 0o644);
-    writeJsonAtomic(secFile, nsec, 0o640);
+    writeJsonAtomic(secFile, nsec, 0o600);
 
     cfg.timezone = ncfg.timezone; process.env.TZ = ncfg.timezone;
     cfg.weather = ncfg.weather; cfg.proxmenux = ncfg.proxmenux; cfg.calendars = ncfg.calendars;

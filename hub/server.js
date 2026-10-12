@@ -196,6 +196,7 @@ const routes = {
     // With no admin password yet, the only thing anyone may do is set one.
     if (!secrets.admin_password && Object.keys(b).some((k) => k !== 'adminPassword')) throw userError('Set an admin password first');
     send(res, 200, connections.apply(b));
+    if (b.accounts) accounts.refreshAll(secrets, agents, true).catch((e) => console.error('account refresh failed:', e.message));
   },
   'POST /api/admin/test': async (req, res) => send(res, 200, await connections.test(await readBody(req))),
 
@@ -408,4 +409,7 @@ server.listen(cfg.port, '0.0.0.0', () => {
   console.log('  data:      ' + cfg.dataDir);
   console.log('  calendars: ' + (cfg.calendars.length || 'none') + ' · proxmenux: ' + (cfg.proxmenux.url ? 'set' : 'not set') + ' · admin password: ' + (secrets.admin_password ? 'yes' : 'NO (open on your LAN)'));
   photos.scan(true).then((l) => console.log('  photos found: ' + l.length + (photos.skipped.length ? ' (+' + photos.skipped.length + ' HEIC skipped)' : ''))).catch(() => {});
+  const refreshAccounts = () => accounts.refreshAll(secrets, agents).catch((e) => console.error('account refresh failed:', e.message));
+  refreshAccounts();
+  setInterval(refreshAccounts, 5 * 60 * 1000).unref();
 });

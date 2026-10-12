@@ -18,9 +18,12 @@ function cleanService(s) {
     });
     return { date: d.date, input: num(d.input), output: num(d.output), cacheRead: num(d.cacheRead), cacheWrite: num(d.cacheWrite), cost: Math.round(num(d.cost) * 100) / 100, models };
   }).filter(Boolean);
-  const meters = (Array.isArray(s.meters) ? s.meters : []).slice(0, 4).map((m) => ({ label: str(m.label, 40), used: Math.min(100, num(m.used)), win: num(m.win), leftMin: num(m.leftMin) }));
+  const meters = (Array.isArray(s.meters) ? s.meters : []).slice(0, 4).map((m) => ({ label: str(m.label, 40), used: Math.min(100, num(m.used)), win: num(m.win), leftMin: m.leftMin == null ? null : num(m.leftMin), resetAt: num(m.resetAt) || null }));
+  const credits = s.kind === 'credits' && s.credits ? Object.fromEntries(
+    ['daily', 'weekly', 'monthly', 'total', 'limit', 'remaining'].map((key) => [key,
+      typeof s.credits[key] === 'number' && Number.isFinite(s.credits[key]) ? s.credits[key] : null])) : null;
   return {
-    id, kind: s.kind === 'limits' ? 'limits' : 'usage', unofficial: !!s.unofficial, meters, error: str(s.error, 300), name: str(s.name, 40) || id, plan: str(s.plan, 40), color: /^#[0-9a-fA-F]{6}$/.test(s.color || '') ? s.color : '#888888',
+    id, kind: ['limits', 'credits'].includes(s.kind) ? s.kind : 'usage', unofficial: !!s.unofficial, meters, credits, error: str(s.error, 300), name: str(s.name, 40) || id, plan: str(s.plan, 40), color: /^#[0-9a-fA-F]{6}$/.test(s.color || '') ? s.color : '#888888',
     costNote: str(s.costNote, 200), days
   };
 }
@@ -46,10 +49,16 @@ class AgentsStore {
   setService(svc, error) {
     const prev = this.data.services[svc.id] || {};
     const c = cleanService(Object.assign({ days: [] }, svc));
-    if (error) { c.meters = prev.meters || []; c.error = str(error, 300); c.updated = prev.updated || null; c.errorAt = new Date().toISOString(); }
+    if (error) { c.meters = prev.meters || []; c.credits = prev.credits || null; c.plan = prev.plan || c.plan; c.error = str(error, 300); c.updated = prev.updated || null; c.errorAt = new Date().toISOString(); }
     else c.updated = new Date().toISOString();
     this.data.services[c.id] = Object.assign(prev.days ? { days: prev.days } : {}, c, { source: 'hub' });
     writeJsonAtomic(this.file, this.data);
+  }
+  removeLinkedService(id) {
+    if (this.data.services[id] && this.data.services[id].source === 'hub') {
+      delete this.data.services[id];
+      writeJsonAtomic(this.file, this.data);
+    }
   }
   /** The frame asks for fresh numbers. A watcher on the computer that holds the logs notices and runs its collector. */
   request() {
