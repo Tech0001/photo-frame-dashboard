@@ -1,22 +1,26 @@
 package com.wesbos.homehq;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.pm.ResolveInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
+import java.io.IOException;
 
 /**
  * Full-screen kiosk WebView for the Home HQ wall tablet.
  * - Immersive mode hides the status + navigation bars (true 1280x800).
- * - Exit: hold two fingers still on the screen for 1.5s to go to the regular launcher.
+ * - Controls: hold two fingers still on the screen for 1.5s for launcher/settings/reload.
  * - Remote debugging is OFF unless launched with the debug extra (every app on this device
  *   gets root, so the devtools socket should only exist while actively debugging):
  *     adb shell am start -n com.wesbos.homehq/.MainActivity --ez debug true
@@ -39,18 +43,23 @@ public class MainActivity extends Activity {
     @Override
     public void run() {
       exitArmed = false;
-      Log.i(TAG, "Two-finger hold: exiting to launcher");
-      Intent home = new Intent(Intent.ACTION_MAIN);
-      home.addCategory(Intent.CATEGORY_HOME);
-      home.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-      startActivity(home);
-      finish();
+      Log.i(TAG, "Two-finger hold: opening controls");
+      new AlertDialog.Builder(MainActivity.this)
+          .setTitle("Home HQ")
+          .setItems(new String[] {"Open launcher", "Android settings", "Reload dashboard"},
+              (dialog, which) -> {
+                if (which == 0) openLauncher();
+                else if (which == 1) startActivity(new Intent(Settings.ACTION_SETTINGS));
+                else web.reload();
+              })
+          .setNegativeButton("Back to dashboard", null).show();
     }
   };
 
   @Override
   protected void onCreate(Bundle state) {
     super.onCreate(state);
+    saveOptions(getIntent());
     applyDebugFlag(getIntent());
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
         | WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -61,19 +70,68 @@ public class MainActivity extends Activity {
     s.setDomStorageEnabled(true);
     s.setUseWideViewPort(true);
     s.setMediaPlaybackRequiresUserGesture(false);
-    web.setWebViewClient(new WebViewClient()); // keep navigation inside the kiosk
+    s.setAllowFileAccess(false);
+    s.setAllowContentAccess(false);
+    web.setWebViewClient(new DashboardAssets(getAssets()));
     setContentView(web);
 
     String url = getIntent().getDataString();
-    web.loadUrl(url != null ? url : DEFAULT_URL);
+    web.loadUrl(url != null ? url : defaultUrl());
+  }
+
+  @Override
+  protected void onResume() {
+    super.onResume();
+    NavigationService.setDashboardVisible(true);
+  }
+
+  @Override
+  protected void onPause() {
+    NavigationService.setDashboardVisible(false);
+    super.onPause();
   }
 
   @Override
   protected void onNewIntent(Intent intent) {
     super.onNewIntent(intent);
+    setIntent(intent);
+    saveOptions(intent);
     applyDebugFlag(intent);
     String url = intent.getDataString();
     if (url != null) web.loadUrl(url);
+  }
+
+  private void saveOptions(Intent intent) {
+    if (intent != null && intent.hasExtra("keep_usb")) {
+      getSharedPreferences("kiosk", 0).edit()
+          .putBoolean("keep_usb", intent.getBooleanExtra("keep_usb", false)).apply();
+    }
+  }
+
+  private String defaultUrl() {
+    try (java.io.InputStream ignored = getAssets().open("dashboard/index.html")) {
+      return DashboardAssets.URL;
+    } catch (IOException e) {
+      return DEFAULT_URL;
+    }
+  }
+
+  private void openLauncher() {
+    Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+    for (ResolveInfo info : getPackageManager().queryIntentActivities(home, 0)) {
+      String pkg = info.activityInfo.packageName;
+      if (pkg.equals(getPackageName()) || pkg.equals("com.android.settings")) continue;
+      startActivity(new Intent(home).setComponent(new ComponentName(pkg, info.activityInfo.name)));
+      return;
+    }
+    startActivity(new Intent(Settings.ACTION_SETTINGS));
+  }
+
+  @Override
+  protected void onDestroy() {
+    handler.removeCallbacksAndMessages(null);
+    if (web != null) web.destroy();
+    super.onDestroy();
   }
 
   /** Remote debugging only when explicitly requested; any normal launch turns it back off. */
@@ -86,6 +144,9 @@ public class MainActivity extends Activity {
   /** Watches for the two-finger exit hold; all touches still go to the page. */
   @Override
   public boolean dispatchTouchEvent(MotionEvent e) {
+    if (getIntent().getBooleanExtra("debug", false)) {
+      Log.d(TAG, "Touch action=" + e.getActionMasked() + " pointers=" + e.getPointerCount());
+    }
     switch (e.getActionMasked()) {
       case MotionEvent.ACTION_POINTER_DOWN:
         if (e.getPointerCount() == 2) {

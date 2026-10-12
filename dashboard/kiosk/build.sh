@@ -13,12 +13,21 @@ KS="$HOME/.android/debug.keystore"
 
 rm -rf build && mkdir -p build/gen build/classes
 
+# Optional self-contained dashboard: npm run build, then KIOSK_BUNDLE=1 ./kiosk/build.sh.
+ASSET_ARGS=()
+if [ "${KIOSK_BUNDLE:-0}" = 1 ]; then
+  [ -f ../dist/index.html ] || { echo "Run npm run build before bundling the dashboard." >&2; exit 1; }
+  mkdir -p build/assets/dashboard
+  cp -R ../dist/. build/assets/dashboard/
+  ASSET_ARGS=(-A build/assets)
+fi
+
 "$BT/aapt2" compile --dir res -o build/res.zip
 "$BT/aapt2" link -o build/base.apk -I "$JAR" --manifest AndroidManifest.xml build/res.zip \
-  --java build/gen --min-sdk-version 23 --target-sdk-version 23 --version-code 1 --version-name 1.0
+  --java build/gen --min-sdk-version 23 --target-sdk-version 23 --version-code 3 --version-name 1.2 "${ASSET_ARGS[@]}"
 
 javac -nowarn -source 8 -target 8 -classpath "$JAR" -d build/classes \
-  src/com/wesbos/homehq/*.java build/gen/com/wesbos/homehq/R.java 2>&1 | grep -v "^warning\|^Note\|bootstrap" || true
+  src/com/wesbos/homehq/*.java build/gen/com/wesbos/homehq/R.java
 
 "$BT/d8" --min-api 23 --lib "$JAR" --output build $(find build/classes -name '*.class')
 (cd build && zip -qj base.apk classes.dex)

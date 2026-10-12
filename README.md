@@ -19,6 +19,9 @@ have different boards. Check Settings → About before you follow any guide:
   network. The SD card boot patch is the last resort.
 - Rockchip board, USB name `Synergy 10X1`, ADB prompt on screen: you have the frame from the video.
   Start with [biuframe-setup-guide.md](docs/biuframe-setup-guide.md).
+- Uhale **SI006**, Spreadtrum hardware `sp7731g_1h10`: see the
+  [SI006 setup notes](docs/si006-uhale.md). Root USB ADB, verified firmware backup,
+  WebView 106, and the bundled dashboard are working on one unit.
 - Anything else: see [For agents: start here](#for-agents-start-here), and please
   [send in what you find](#check-for-updates-and-send-back-what-you-find).
 
@@ -36,7 +39,11 @@ have different boards. Check Settings → About before you follow any guide:
 [`dashboard/`](dashboard) is the family dashboard we run on the BIUFRAME (it uses mock data).
 It is a Vite web app deployed to Cloudflare Workers, plus `dashboard/kiosk/`: a small full-screen
 WebView Android app, built without Gradle, that shows it. Hold two fingers still for 1.5 s to
-exit to the launcher.
+open launcher, settings, and reload controls. Build with `KIOSK_BUNDLE=1` after `npm run build`
+to include the dashboard in the APK instead of requiring a web server. External fonts and
+sample photos still require internet access.
+On frames without system navigation, enable **Home HQ navigation** in Android's
+Accessibility settings for floating Back/Dashboard buttons outside the kiosk.
 
 Each is a record of **one unit**. Frames sold under the same name can have different boards
 and firmware. These are not universal flashing guides.
