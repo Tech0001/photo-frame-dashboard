@@ -31,3 +31,8 @@ checklist progress, not engineering effort or time remaining.
 
 The older scope display remains supported until Ledger supplies the finer
 report. The contract is in [Evergreen progress sync](../tools/project-progress/README.md#finer-checklist-detail-in-the-same-feed).
+
+When the feed contains both the project overview (`work`) and detailed checklist
+sections, the project stage bars and full delivery map remain the main view.
+A compact **Milestone detail** disclosure opens the finer timeline inside the
+map panel. Reporting detail for one item never replaces the rest of the project.
