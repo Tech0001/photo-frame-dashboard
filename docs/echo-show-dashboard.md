@@ -30,3 +30,22 @@ SI006 installation remains on 1.4. To restore the Echo's original Android home:
 adb -s DEVICE shell cmd package set-home-activity com.android.launcher3/.uioverrides.QuickstepLauncher
 adb -s DEVICE shell input keyevent KEYCODE_HOME
 ```
+
+## Idle display
+
+On this always-powered Echo, Android's separate lock screen and daydream are
+turned off. Android stays awake while plugged in; Home HQ's own idle timers then
+show its photo screensaver and night theme. This also prevents Spotify's native
+app or Android Settings from triggering a device lock between dashboard sessions.
+
+```sh
+adb -s DEVICE shell locksettings set-disabled true
+adb -s DEVICE shell settings put global stay_on_while_plugged_in 7
+adb -s DEVICE shell settings put secure screensaver_enabled 0
+```
+
+The locksettings command requires the existing credential if a PIN/password was
+set. This device had no PIN/password. Verified a screen-off/wake cycle returns to
+Home HQ with keyguard not showing. Double-tap wake remains enabled. Native Spotify
+was installed separately and its login is retained; the Music integration is not
+yet added to the dashboard.
