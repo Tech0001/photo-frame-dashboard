@@ -56,11 +56,16 @@ credentials; tick **Remove saved token/credentials** to unlink.
 
 - **GitHub:** enter an account name in Connections → Homelab. Public repository
   counts, open pull requests/issues in that account's repositories and recent
-  public pushes work without a token. An optional token increases API limits;
+  public pushes and a six-week contribution grid work without a token. The grid
+  reads daily counts from GitHub's public profile calendar, including whatever
+  aggregate contributions the user chooses to show publicly. It uses GitHub's
+  calendar dates; the seven-day total is the sum of those daily counts. No remote
+  HTML is embedded. Missing or changed calendar markup shows history unavailable
+  rather than fabricating empty days. An optional token increases API limits;
   this display still requests only public activity. GitHub is cached separately
-  for 15 minutes, including during manual Homelab refreshes. “Pushes in feed”
-  counts pushes among the latest 100 public events, not total commits or daily
-  contributions. GitHub's event feed can be delayed; unavailable counts stay
+  for 15 minutes, including during manual Homelab refreshes. Recent pushes come
+  from the latest 100 public events; they are separate from daily contributions.
+  GitHub's event feed can be delayed; unavailable counts stay
   unknown. Recent pushes show the latest commit's subject when available.
 
 - **Pi-hole details** support the v5 PHP API (`admin/api.php`) and the v6 REST
