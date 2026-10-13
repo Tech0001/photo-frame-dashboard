@@ -136,6 +136,7 @@ subtasks. A subtask with its own actual checklist counts that checklist. A leaf
 is checked or unchecked (1/1 or 0/1). Build/review/integration flags do not change
 these counts. Milestone reports are not automatically checklist entries.
 
+Whole-percent rounding never displays 100% until every entry is checked.
 Counts are integers: total 1–100,000, completed 0–total. `basis` identifies the
 stable checklist revision (required, 60 characters). Section progress must match
 its supplied checked subtasks and known total; complete coverage allows exact
