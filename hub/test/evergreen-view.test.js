@@ -24,15 +24,11 @@ function report(now=new Date(2026,9,12,17)) {
     work:[{id:'C0',title:'Scope <zero>',owner:'Owner',detail:'Saved evidence',stages:{built:true,reviewed:false,integrated:null,live:false}}],
     recent:[], decisions:[], blockers:[] };
 }
-test('visual map separates reported/pending/unknown and escapes source text',async()=>{
-  const f=await view(report()), html=f.html();
-  assert.match(html,/Built: 1 reported, 0 pending, 0 unknown/);
-  assert.match(html,/Reviewed: 0 reported, 1 pending, 0 unknown/);
-  assert.match(html,/Integrated: 0 reported, 0 pending, 1 unknown/);
-  assert.match(html,/Live: 0 reported, 1 pending, 0 unknown/);
-  assert.match(html,/Scope &lt;zero&gt;/); assert(!html.includes('Scope <zero>'));
-  assert.match(html,/data-eg-open="work-C0"/); assert(!html.includes('data-eg-open="work-C0" open'));
-  assert.match(html,/not overall completion/);
+test('section cards escape titles and never infer checklist percentages from stage flags',async()=>{
+ const f=await view(report()),html=f.html();
+ assert.match(html,/Scope &lt;zero&gt;/);assert(!html.includes('Scope <zero>'));
+ assert.match(html,/Progress not reported/);assert.match(html,/data-eg-open="section-C0"/);
+ assert(!html.includes('100<small>%'));
 });
 test('Today and Yesterday use event timestamps rather than report or receipt time',async()=>{
   const now=new Date(2026,9,12,17), r=report(now);
@@ -63,23 +59,29 @@ test('disclosures and each panel scroll position survive report refresh',async()
   f.App.evergreen.restore({querySelectorAll:s=>s==='[data-eg-open]'?[work,other]:[scroll]},saved);
   assert.equal(work.open,true);assert.equal(other.open,false);assert.equal(scroll.scrollTop,160);
 });
-test('checklist view shows achieved milestones without completing their parent or inventing today dates',async()=>{
- const r=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/progress-sample-v2.json')));
- const f=await view(r,new Date('2026-10-13T00:42:00Z')),html=f.html();
- assert.match(html,/Checklist progress/);assert.match(html,/Reported subset/);assert.match(html,/4 achieved milestones/);
- assert.match(html,/Underway · checklist open/);assert.match(html,/1 underway · 1 pending · 1 unknown/);
+test('section cards group overview scopes and show partial subtask detail without a false percentage',async()=>{
+ const r=report();r.work.push({id:'C0.1',title:'Constituent scope',stages:{built:true,reviewed:true,integrated:true,live:true}});
+ r.sections=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/progress-sample-v2.json'))).sections;
+ const f=await view(r),html=f.html();
+ assert.equal((html.match(/data-eg-open="section-C0"/g)||[]).length,1);
+ assert.match(html,/data-eg-open="section-S1"/);assert.match(html,/reported subset/);
+ assert.match(html,/3\/7 milestones achieved/);assert.match(html,/Underway/);
+ assert(!html.includes('57<small>%'));
  assert.match(html,/<h4>Today<\/h4><span class="eg-day-count">0 reported/);
- assert(!html.includes('Built: 4 reported'));assert.match(html,/No completions reported/);
- const second=JSON.parse(JSON.stringify(r.sections[0]));second.id='C13';second.title='Network checks';second.items[0].id='C13.1';r.sections.push(second);
- f.App.evergreen.selectSection('C13');assert.match(f.html(),/Network checks/);
+});
+test('section percentages use completed checklist items, including unknowns in the denominator',async()=>{
+ const r=report();r.work=[];const base=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/progress-sample-v2.json'))).sections[0].items[0];
+ r.sections=[{id:'C0',title:'Foundations',coverage:'complete',items:Array.from({length:12},(_,i)=>({...base,id:'C0.'+i,status:i<7?'completed':i===7?'blocked':'unknown',checklistChecked:i<7,milestones:[]}))}];
+ const f=await view(r);assert.match(f.html(),/58<small>%/);assert.match(f.html(),/7\/12 done · 1 blocked/);
+ r.sections[0].coverage='partial';r.sections[0].totalItems=20;
+ assert.match(f.html(),/35<small>%/);assert.match(f.html(),/7\/20 done/);
 });
 
-test('partial checklist detail preserves the whole-project overview',async()=>{
- const r=report();r.schemaVersion=2;r.sections=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/progress-sample-v2.json'))).sections;
- const f=await view(r),html=f.html();
- assert.match(html,/Scope &lt;zero&gt;/);assert.match(html,/Built: 1 reported/);
- assert.match(html,/Milestone detail · S1/);assert.match(html,/4 achieved · 1 detailed item/);
- assert.match(html,/data-eg-open="checklist-detail"/);
- assert(!html.includes('data-eg-open="checklist-detail" open'));
- assert(!html.includes('aria-label="Reported checklist items"'));
+test('verified step percentages and day changes remain separate from acceptance completion',async()=>{
+ const now=new Date(2026,9,12,17),r=report(now),item=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/progress-sample-v2.json'))).sections[0].items[0];
+ const progress={completed:65,total:100,basis:'C3-v1',history:[{completed:55,total:100,basis:'C3-v1',at:new Date(2026,9,10,23).toISOString()},{completed:60,total:100,basis:'C3-v1',at:new Date(2026,9,11,23).toISOString()}]};
+ item.progress=progress;r.sections=[{id:'C3',title:'Sample section',coverage:'partial',items:[item],progress}];
+ const f=await view(r,now),html=f.html();assert.match(html,/65<small>%/);assert.match(html,/65%/);assert.match(html,/\+5 pp today/);assert.match(html,/\+5 pp yesterday/);assert.match(html,/Underway/);
+ r.sections[0].progress={...progress,total:120};assert.match(f.html(),/— today/);
+ r.sections[0].progress={...progress,basis:'new-scope'};assert.match(f.html(),/— today/);
 });

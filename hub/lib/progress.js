@@ -4,7 +4,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { readJson, writeJsonAtomic } = require('./util');
 const STAGES = ['built', 'reviewed', 'integrated', 'live'];
-const STATUSES = ['completed', 'underway', 'pending', 'unknown'];
+const STATUSES = ['completed', 'underway', 'blocked', 'pending', 'unknown'];
 const bad = message => Object.assign(new Error(message), { userError: true });
 function text(value, limit, required = false) {
   if (value == null && !required) return '';
@@ -53,6 +53,22 @@ function cleanReport(input, now = Date.now()) {
   }
   return out;
 }
+function cleanProgress(value, updatedAt, now) {
+  if (value == null) return undefined;
+  function numbers(row) {
+    if (!row || !Number.isInteger(row.completed) || !Number.isInteger(row.total) || row.total < 1 || row.total > 100000 || row.completed < 0 || row.completed > row.total) throw bad('Progress counts need completed and total integer steps.');
+    return { completed: row.completed, total: row.total, basis: text(row.basis, 60, true) };
+  }
+  const out = numbers(value);
+  if (!Array.isArray(value.history) || value.history.length > 32) throw bad('Progress history must contain at most 32 dated count snapshots.');
+  const seen = new Set();
+  out.history = value.history.map(row => {
+    const point = numbers(row); point.at = date(row.at, now);
+    if (Date.parse(point.at) > Date.parse(updatedAt) || seen.has(point.at)) throw bad('Progress history dates must be unique and no newer than reconciliation.');
+    seen.add(point.at); return point;
+  }).sort((a,b) => Date.parse(a.at) - Date.parse(b.at));
+  return out;
+}
 function cleanSections(sections, updatedAt, now) {
   if (!Array.isArray(sections) || !sections.length || sections.length > 16) throw bad('Send 1–16 reported checklist sections.');
   const sectionsSeen = new Set(), itemsSeen = new Set();
@@ -62,7 +78,7 @@ function cleanSections(sections, updatedAt, now) {
     seen.add(value); return value;
   }
   function scope(row) {
-    if (!row || !STATUSES.includes(row.status)) throw bad('Checklist status must be completed, underway, pending or unknown.');
+    if (!row || !STATUSES.includes(row.status)) throw bad('Checklist status must be completed, underway, blocked, pending or unknown.');
     const out = { title: text(row.title, 180, true), status: row.status, owner: text(row.owner, 120), detail: text(row.detail, 500), next: text(row.next, 400), stages: {}, stageEvidence: {} };
     for (const stage of STAGES) {
       const value = row.stages?.[stage];
@@ -70,12 +86,20 @@ function cleanSections(sections, updatedAt, now) {
       out.stages[stage] = value == null ? null : value;
       out.stageEvidence[stage] = text(row.stageEvidence?.[stage], 400);
     }
+    const progress = cleanProgress(row.progress, updatedAt, now);
+    if (progress) out.progress = progress;
     return out;
   }
   return sections.map(section => {
     if (!section || !['partial', 'complete'].includes(section.coverage)) throw bad('Declare section coverage as partial or complete.');
     if (!Array.isArray(section.items) || !section.items.length || section.items.length > 128) throw bad('Send 1–128 reported items per section.');
     const out = { id: id(section.id, sectionsSeen), title: text(section.title, 180, true), coverage: section.coverage, items: [] };
+    const progress = cleanProgress(section.progress, updatedAt, now);
+    if (progress) out.progress = progress;
+    if (section.totalItems != null) {
+      if (!Number.isInteger(section.totalItems) || section.totalItems < section.items.length || section.totalItems > 128 || (section.coverage === 'complete' && section.totalItems !== section.items.length)) throw bad('Section totalItems must match the checklist size and reported coverage.');
+      out.totalItems = section.totalItems;
+    }
     out.items = section.items.map(item => {
       if (++itemCount > 256) throw bad('Send at most 256 reported checklist items.');
       const row = scope(item); row.id = id(item.id, itemsSeen);

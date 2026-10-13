@@ -31,11 +31,15 @@ test('real progress endpoint and publisher enforce separate auth, strip private 
   assert.deepEqual((await (await fetch(base + '/api/progress/evergreen')).json()).report, reading.report);
   const finer = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/progress-sample-v2.json')));
   finer.updatedAt = new Date().toISOString();
+  finer.sections[0].progress = {completed:4,total:7,basis:'test-steps-v1',history:[]};
+  finer.sections[0].items[0].progress = {completed:4,total:7,basis:'test-item-v1',history:[]};
   finer.sections[0].items[0].localEvidence = ['/PRIVATE_PATH'];
   fs.writeFileSync(reportFile, JSON.stringify(finer));
   result = run(); assert.equal(result.status, 0, result.stderr);
   const fineReading = await (await fetch(base + '/api/progress/evergreen')).json();
   assert.equal(fineReading.report.schemaVersion, 2);
+  assert.equal(fineReading.report.sections[0].progress.completed,4);
+  assert.equal(fineReading.report.sections[0].items[0].progress.total,7);
   assert.equal(fineReading.report.sections[0].items[0].checklistChecked, false);
   assert.equal(fineReading.report.sections[0].items[0].milestones.filter(m => m.status === 'completed').length, 3);
   assert(!JSON.stringify(fineReading).includes('PRIVATE'));

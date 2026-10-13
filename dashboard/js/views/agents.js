@@ -141,7 +141,7 @@
     var progressView = progress ? App.evergreen.capture(V.el) : null;
     App.evergreen.active = progress && App.current === 'agents';
     var showSummary = !App.live || D.agents.some(function (a) { return a.status !== 'off' && !a.limits && !a.credits; });
-    V.el.innerHTML = '<div class="agents">' +
+    V.el.innerHTML = '<div class="agents' + (progress ? ' agents--progress' : '') + '">' +
       '<header class="ag-top"><div><div class="label">' + (progress ? 'Project progress' : App.live ? 'AI accounts · usage' : 'AI plans · usage limits') + '</div><h1 class="serif">Agents</h1></div>' +
       '<div class="ag-sync"><span class="label">' + App.esc(progress ? App.evergreen.stamp() : synced()) + '</span>' +
       '<button class="icon-btn" data-refresh aria-label="Refresh">' + App.icon('undo', 26) + '</button></div></header>' +
@@ -157,7 +157,6 @@
       if (V.tab === 'usage' && App.live && window.liveRefreshAgents && Date.now() - (D.agentsUpdated || 0) > 300000) window.liveRefreshAgents(true);   // opening the tab with stale numbers asks for fresh ones
       if (!V.el) {
         V.el = el;
-        el.addEventListener('change', function (e) { if (e.target.matches('[data-eg-section]')) { App.evergreen.selectSection(e.target.value); render(); } });
         el.addEventListener('click', function (e) {
           var tab = e.target.closest('[data-ag-tab]');
           if (tab) { V.tab = tab.dataset.agTab; render(); if (V.tab === 'evergreen') App.evergreen.refresh(false); return; }
