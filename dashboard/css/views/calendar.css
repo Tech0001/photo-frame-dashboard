@@ -74,7 +74,7 @@
 .ev.is-half .ev-title { padding-right: 0; }
 .ev.is-past { opacity: .38; }
 .ev.is-now { box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--c); z-index: 2; }
-.ev.is-family { background: var(--ink); color: #fff; }
+.ev.is-family { background: var(--ink); color: var(--inverse-ink); }
 .ev-with { position: absolute; right: 8px; top: 9px; }
 .ev-with .dots i { box-shadow: 0 0 0 2px rgba(255, 255, 255, .9); }
 .ev-travel {

@@ -1,0 +1,1240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frame admin</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&display=swap">
+<style>
+  :root { --bg:#f4f1ea; --card:#fff; --ink:#151515; --mute:#6b675e; --line:#ddd7ca; --acc:#151515; --ok:#0a7a4b; --bad:#c1272d; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141414; --card:#1f1f1f; --ink:#f1efe9; --mute:#9d998f; --line:#333; --acc:#f1efe9; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:16px/1.4 "Geist",system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  header { position:sticky; top:0; z-index:5; background:var(--bg); border-bottom:1px solid var(--line); padding:12px 16px; }
+  h1 { font-size:20px; margin:0; font-weight:650; letter-spacing:-.02em; }
+  .shell { max-width:1180px; margin:0 auto; display:grid; grid-template-columns:230px minmax(0,1fr); align-items:start; }
+  nav#tabs { position:sticky; top:49px; max-height:calc(100vh - 49px); overflow:auto; padding:12px 8px 12px 16px; display:flex; flex-direction:column; gap:2px; }
+  nav h6 { margin:14px 8px 4px; font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--mute); font-weight:600; } nav h6:first-child { margin-top:2px; }
+  nav button { border:1px solid transparent; background:none; color:var(--ink); font:500 15px "Geist",system-ui; padding:8px 10px; border-radius:9px; cursor:pointer; text-align:left; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  nav button:hover { background:var(--card); } nav button.on { background:var(--card); border-color:var(--line); font-weight:650; }
+  nav .tr { display:inline-flex; gap:4px; align-items:center; } nav .tn { color:var(--mute); font-size:12px; font-weight:500; } nav .tn.wait { color:#c98a00; font-weight:650; }
+  @media (max-width:760px) { .shell { grid-template-columns:minmax(0,1fr); } nav#tabs { position:static; max-height:none; flex-direction:row; overflow-x:auto; padding:8px 16px; gap:4px; } nav h6 { display:none; } nav button { white-space:nowrap; } }
+  main { min-width:0; padding:16px; }
+  /* Standard: fixed grids, one line per cell, anything too long is cut with an ellipsis and the full text shows on hover (title is set by the mouseover handler). */
+  .tt { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  select, input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]) { text-overflow:ellipsis; }
+  .fg { display:grid; grid-template-columns:minmax(90px,150px) minmax(0,1fr); gap:6px 12px; align-items:center; margin-bottom:8px; }
+  .fg > label { color:var(--mute); font-size:14px; } .fg > label, .fg-h { min-width:0; }
+  .fg > select, .fg > input:not([type=checkbox]) { width:100%; max-width:380px; flex:none; } .fg-h { grid-column:2; color:var(--mute); font-size:13px; margin-top:-2px; }
+  .fg > .fg-w { display:flex; gap:8px; align-items:center; flex-wrap:wrap; min-width:0; }
+  .row select { width:240px; max-width:100%; }
+  .grocery-pane[hidden], [data-common][hidden] { display:none !important; }
+  #common-count { margin:8px 0 12px; }
+  .tune-g { display:grid; grid-template-columns:minmax(150px,240px) minmax(0,1fr) 170px; gap:6px 12px; align-items:center; }
+  .tune-c { display:flex; gap:8px; align-items:center; min-width:0; } .tune-c select { width:100%; max-width:260px; } .tune-c input[type=range] { flex:1; min-width:80px; } .tune-ln { display:flex; gap:6px; align-items:center; min-width:0; } .tune-ln .tag { flex:none; margin-left:0; }
+  .tune-g .btn.ghost { width:100%; padding:8px 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; }
+  @media (max-width:700px) { .fg { grid-template-columns:minmax(0,1fr); } .fg-h { grid-column:1; } .tune-g { grid-template-columns:minmax(0,1fr); } }
+  .tune.mod .tune-l::after { content:' ●'; color:var(--acc); font-size:10px; vertical-align:2px; } .tune button:disabled { opacity:.35; cursor:default; }
+  details.adv > summary { cursor:pointer; list-style:none; } details.adv > summary::-webkit-details-marker { display:none; } details.adv > summary::before { content:'▸ '; } details.adv[open] > summary::before { content:'▾ '; }
+  .tune { margin:12px 0; } .tune-l { font-size:14px; }
+  .theme-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:16px; }
+  .theme-option { padding:0; border:2px solid var(--line); border-radius:12px; overflow:hidden; background:var(--card); text-align:left; color:var(--ink); cursor:pointer; }
+  .theme-option[aria-pressed=true] { border-color:var(--acc); box-shadow:0 0 0 1px var(--acc); }
+  .theme-sample { display:flex; gap:10px; align-items:center; min-height:88px; padding:12px; background:var(--sample-paper); color:var(--sample-ink); }
+  .theme-sample > i { display:block; width:9px; height:60px; border-radius:4px; background:var(--sample-accent); flex:none; }
+  .theme-sample > span { flex:1; border-radius:8px; padding:10px; background:var(--sample-card); }
+  .theme-sample b { display:block; font-size:26px; line-height:1; font-variant-numeric:tabular-nums; }
+  .theme-sample small { display:block; margin-top:6px; font-size:12px; }
+  .theme-caption { display:block; padding:10px 12px; font-size:14px; font-weight:600; }
+  .theme-caption small { display:block; margin-top:4px; font-size:12px; font-weight:400; color:var(--mute); }
+  @media (max-width:700px) { .theme-options { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  section { display:none; } section.on { display:block; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
+  .row > * { flex:0 0 auto; }
+  input, select, textarea { font:inherit; color:inherit; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px 10px; min-width:0; }
+  input[type=text], input:not([type]) { flex:1 1 140px; }
+  input[type=number] { width:64px; }
+  input[type=color] { padding:2px; width:44px; height:38px; }
+  button.btn { font:600 15px system-ui; border:0; border-radius:10px; padding:10px 16px; background:var(--acc); color:var(--bg); cursor:pointer; }
+  button.ghost { background:none; color:var(--ink); border:1px solid var(--line); }
+  button.x { background:none; border:0; color:var(--bad); font-size:20px; cursor:pointer; padding:4px 8px; }
+  .days label { display:inline-flex; align-items:center; gap:2px; font-size:13px; color:var(--mute); margin-right:6px; }
+  .mute { color:var(--mute); font-size:14px; } .ok { color:var(--ok); } .bad { color:var(--bad); }
+  h2 { font-size:15px; margin:18px 0 8px; text-transform:uppercase; letter-spacing:.06em; color:var(--mute); }
+  .dot { display:inline-block; width:12px; height:12px; border-radius:50%; vertical-align:-1px; margin-right:6px; }
+  .bar { position:sticky; bottom:0; z-index:4; background:var(--bg); padding:12px 0; display:flex; gap:10px; align-items:center; }
+  #msg { font-size:14px; }
+  .subtabs { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+  .subtabs button { border:1px solid var(--line); background:var(--card); color:var(--mute); font:600 14px system-ui; padding:8px 14px; border-radius:999px; cursor:pointer; }
+  .subtabs button.on { background:var(--acc); color:var(--bg); border-color:var(--acc); }
+  .card.warn { border-color:#c98a00; background:transparent; }
+  .secret-box { -webkit-text-security:disc; font-family:monospace; }
+  .account-file { display:flex; flex-direction:column; gap:6px; width:100%; min-width:0; }
+  .account-file input { width:100%; max-width:100%; }
+  .ph-row { display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:7px 0; border-bottom:1px solid var(--line); }
+  .ph-row:last-child { border-bottom:0; }
+  #dropzone { border:2px dashed var(--line); border-radius:12px; padding:22px 14px; text-align:center; margin:10px 0; }
+  #dropzone.over { border-color:var(--acc); background:rgba(127,127,127,.12); }
+  .up-q { margin:8px 0; font-size:14px; } .up-q > div { display:flex; justify-content:space-between; gap:12px; padding:4px 0; border-bottom:1px solid var(--line); }
+  .up-q span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .up-grp { border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-top:10px; }
+  .up-grp.over, #dropzone.over { border-color:var(--acc); background:rgba(127,127,127,.12); }
+  .up-gh { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .up-grid figure { cursor:grab; } .up-grid figure.sel img { outline:3px solid var(--acc); outline-offset:-3px; }
+  .up-bar { padding:8px 0; }
+  .up-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; margin-top:10px; }
+  .up-grid figure { margin:0; position:relative; }
+  .up-grid img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; display:block; background:var(--bg); }
+  .up-grid button.x { position:absolute; top:2px; right:2px; background:rgba(0,0,0,.6); color:#fff; border-radius:50%; width:28px; height:28px; padding:0; font-size:16px; line-height:1; }
+  .emoji-btn { font-size:24px; line-height:1; padding:6px 12px; min-width:56px; }
+  #picker { position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:16px; }
+  #picker[hidden] { display:none; }
+  .pk { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; width:100%; max-width:560px; max-height:88vh; overflow:auto; }
+  .pk-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .pk-groups { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .pk-groups button { border:1px solid var(--line); background:none; color:var(--mute); font:600 13px system-ui; padding:6px 11px; border-radius:999px; cursor:pointer; }
+  .pk-groups button.on { background:var(--acc); color:var(--bg); border-color:var(--acc); }
+  .pk-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(48px,1fr)); gap:6px; }
+  .pk-grid button { font-size:28px; line-height:1; padding:8px 0; border:1px solid var(--line); border-radius:10px; background:var(--bg); cursor:pointer; }
+  .pk-grid button.on { outline:3px solid var(--acc); }
+  .sw-main { width:32px; height:32px; }
+  .color-pop { display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:12px 2px 2px; margin-top:8px; border-top:1px solid var(--line); }
+  .sw { width:28px; height:28px; border-radius:50%; border:2px solid var(--line); padding:0; cursor:pointer; display:inline-block; }
+  .sw.on { outline:3px solid var(--ink); outline-offset:2px; }
+  .sw-custom { background:conic-gradient(#e5252a,#ffb000,#00a36c,#2d5bff,#8957e5,#e4007c,#e5252a); position:relative; overflow:hidden; }
+  .sw-custom input { opacity:0; position:absolute; inset:0; width:100%; height:100%; cursor:pointer; border:0; padding:0; }
+  input[type=password], input[type=url] { flex:1 1 220px; }
+  .sg { display:grid; grid-template-columns:52px repeat(24, minmax(0,1fr)); gap:2px; align-items:center; touch-action:none; user-select:none; margin:8px 0; }
+  .sg-label { font-size:12px; color:var(--mute); white-space:nowrap; }
+  .sg-hour { grid-column:span 3; font-size:11px; color:var(--mute); }
+  .sg-cell { height:26px; padding:0; border:0; border-radius:3px; cursor:pointer; }
+  .sg-n { background:#f2c14e; } .sg-d { background:#a07a1c; } .sg-o { background:#2a2a2a; box-shadow:inset 0 0 0 1px var(--line); }
+  .sg-mix { background:repeating-linear-gradient(45deg,#8a8a8a 0 3px,#cfcfcf 3px 6px); }
+  .sg-brush { border:1px solid var(--line); background:none; color:var(--ink); font:600 14px system-ui; padding:8px 12px; border-radius:999px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+  .sg-brush.on { outline:3px solid var(--acc); outline-offset:1px; }
+  .sg-sw { display:inline-block; width:14px; height:14px; border-radius:3px; box-shadow:inset 0 0 0 1px var(--line); }
+  code { background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:1px 6px; font-size:.9em; }
+  /* save state, search, health */
+  .bar { border-top:1px solid var(--line); }
+  #pending { font-size:14px; color:var(--mute); } #pending.dirty { color:var(--ink); font-weight:600; }
+  button.btn:disabled { opacity:.4; cursor:default; }
+  nav button .dirty { color:#c98a00; margin-left:5px; font-size:11px; }
+  .badge-n { display:inline-block; min-width:18px; padding:0 6px; border-radius:999px; background:var(--line); color:var(--ink); font-size:12px; margin-left:6px; }
+  .subtabs button.on .badge-n { background:var(--bg); color:var(--ink); }
+  .tag { display:inline-block; font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--mute); border:1px solid var(--line); border-radius:999px; padding:1px 7px; margin-left:8px; vertical-align:1px; }
+  input[type=search] { font:inherit; color:inherit; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:9px 12px; min-width:0; }
+  .res-h { font-size:13px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--mute); margin:16px 2px 6px; }
+  .hrow { display:flex; align-items:center; gap:12px; padding:11px 2px; border-bottom:1px solid var(--line); } .hrow:last-child { border-bottom:0; }
+  .hdot { width:12px; height:12px; border-radius:50%; flex:none; background:var(--mute); opacity:.55; } .hdot.ok { background:var(--ok); opacity:1; } .hdot.warn { background:#c98a00; opacity:1; } .hdot.bad { background:var(--bad); opacity:1; }
+  .hrow .ht { flex:1; min-width:0; } .hrow .ht b { display:block; } .hrow .ht span { color:var(--mute); font-size:14px; overflow-wrap:anywhere; }
+  .bk-row { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); font-size:14px; } .bk-row:last-child { border-bottom:0; } .bk-row span:first-child { flex:1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Frame admin</h1>
+</header>
+<div class="shell">
+<nav id="tabs"></nav>
+<main>
+  <section id="s-chores"></section>
+  <section id="s-groceries"></section>
+  <section id="s-events"></section>
+  <section id="s-people"></section>
+  <section id="s-photos"></section>
+  <section id="s-connections"></section>
+  <section id="s-settings"></section>
+  <section id="s-status"></section>
+  <div class="bar"><button class="btn" id="save">Save changes</button><span id="pending"></span><span id="msg" class="mute"></span></div>
+</main>
+</div>
+<div id="picker" hidden><div class="pk"><div class="pk-top"><b>Pick an icon</b><button class="x" id="picker-close" title="Close">×</button></div><div id="picker-body"></div><p class="mute">Only icons this frame can draw are listed.</p></div></div>
+<script>
+'use strict';
+var D = null, TAB = 'chores', FEEDS = [], PH = 0;
+var TAB_GROUPS = [['Connections', [['connections', 'Calendars & services']]],
+  ['Frame content', [['chores', 'Chores'], ['groceries', 'Groceries'], ['events', 'Schedule'], ['people', 'People'], ['photos', 'Photos']]],
+  ['Frame', [['settings', 'Settings'], ['status', 'Status']]]];
+var TABS = [].concat.apply([], TAB_GROUPS.map(function (g) { return g[1]; }));
+var HASH = location.hash.slice(1);
+if (TABS.some(function (t) { return t[0] === HASH; })) TAB = HASH;   // /admin#connections opens that page
+var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+var ROUT = [['morning', 'Morning'], ['after', 'Midday'], ['evening', 'Evening'], ['anytime', 'Anytime · all day']];
+var COLORS = ['black', 'purple', 'red', 'blue', 'green', 'yellow', 'pink', 'orange'];
+var HEX = { black: '#111111', purple: '#8957E5', red: '#E5252A', blue: '#2D5BFF', green: '#00A36C', yellow: '#FFB000', pink: '#E4007C', orange: '#FF6A13' };
+// Emoji this frame can actually draw (tested on the frame itself; newer ones show as empty boxes).
+var EMOJI_GROUPS = [["home","Home"],["laundry","Clothes"],["food","Food"],["school","School & play"],["sports","Sports"],["pets","Pets"],["outdoors","Outdoors"],["travel","Travel"],["health","Health"],["misc","Other"]];
+var EMOJI = {"home":["🏠","🏡","🛏️","🛁","🚿","🚽","🚪","🔑","🗝️","🔐","🔒","🔓","💡","🕯️","🔌","🔋","🗑️","♻️","🚮","🚰","💧","🌀","🔧","🔨","🛠️","⚙️","🔩","📦","📬","✉️","📮","🛋️"],"laundry":["👕","👖","👗","👚","👔","👟","👞","👒","🧦","🧥","🧢","🎽","👜","🎒","👓","🕶️","💍","👘","🧤","🧣"],"food":["🍽️","🍴","🥄","🔪","🍳","🥘","🍲","🍕","🍔","🌮","🌯","🍝","🍜","🍣","🍱","🥗","🥪","🍞","🥐","🥖","🥞","🧀","🍎","🍌","🍇","🍓","🍊","🍋","🍉","🍑","🍒","🥕","🌽","🥦","🥔","🍅","🥑","🥒","🍆","🥛","☕","🍵","🍷","🍺","🥤","🍪","🍰","🎂","🍫","🍿","🥣","🥫","🥧","🥡","🥢"],"school":["📚","📖","✏️","📝","🖍️","🖊️","📐","📏","📌","🎨","🎹","🎸","🎻","🥁","🎤","🎧","🎬","📷","🎮","🕹️","🎲","🎯","🎁","🎈","🎉","🔬","🔭","🌍"],"sports":["⚽","🏀","🏈","⚾","🎾","🏐","🏉","🏓","🏸","🥊","⛳","🏊","🚴","🚲","⛸️","🎿","🏃","🚶","🧘","🏋️","🤸","🏆","🥇"],"pets":["🐶","🐕","🐩","🐱","🐈","🐠","🐟","🐦","🦆","🐔","🐓","🐣","🐤","🐥","🐹","🐇","🐢","🦎","🐴","🐄","🐑","🐾"],"outdoors":["🌱","🌿","🍀","🌳","🌲","🌻","🌷","🌹","🌵","🍂","🍁","🌾","☀️","⛅","🌧️","☔","❄️","🔥","🌊","🌼","⛺","🏕️"],"travel":["🚗","🚙","🚌","🚕","🚓","🏍️","✈️","🚀","⛽","🛒","🛍️","🚏","🅿️","🏪","🏥","🏫","🏦","⛪","🏢"],"health":["💊","💉","😴","🛌","💪","🧠","❤️","😷","🤒","🌡️"],"misc":["✅","✔️","☑️","⭐","🌟","✨","📞","☎️","📱","💻","📧","📅","⏰","⏳","📆","🎁","💰","💳","🔔","📢","🚩","🏷️","📋","📎","🔍","🗓️","🔗","❗","❓","💯","🆗","🆕"]};
+function $(s, r) { return (r || document).querySelector(s); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function opts(list, sel) { return list.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === sel ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join(''); }
+function peopleOpts(sel, any) { var l = D.people.map(function (p) { return [p.id, p.name]; }); if (any) l.push(['any', 'Anyone']); return opts(l, sel); }
+function msg(t, bad) { var m = $('#msg'); m.textContent = t; m.className = bad ? 'bad' : 'ok'; if (!bad) setTimeout(function () { if (m.textContent === t) m.textContent = ''; }, 3000); }
+function api(method, url, body) {
+  return fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+    .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; }); });
+}
+function colorHex(c) { return HEX[c] || c || '#2D5BFF'; }
+
+// ---------------------------------------------------------------- render
+function tabs() {
+  var dirtyTabs = {}; (D && CN ? dirtyNames() : []).forEach(function (n) { dirtyTabs[SECTIONS[n].tab] = true; });
+  $('#tabs').innerHTML = TAB_GROUPS.map(function (g) {
+    return '<h6>' + g[0] + '</h6>' + g[1].map(function (t) { return '<button data-t="' + t[0] + '" class="' + (t[0] === TAB ? 'on' : '') + '"><span>' + t[1] + '</span><span class="tr">' + (dirtyTabs[t[0]] ? '<span class="dirty" title="Unsaved changes">\u25CF</span>' : '') + '</span></button>'; }).join('');
+  }).join('');
+  TABS.forEach(function (t) { $('#s-' + t[0]).classList.toggle('on', t[0] === TAB); });
+  barShow();
+}
+// Open a page: read what is typed on this one first, then draw.
+function enterTab(t) {
+  collect(); TAB = t; tabs(); window.scrollTo(0, 0);
+  if (t === 'photos' && !PHF) loadPhotos();
+  if (t === 'status') loadHealth();
+}
+// ---------------------------------------------------------------- what is saved and what is not
+// Two kinds of page. Settings, Photos folders and the Status page save by themselves as you go. Everything else (chores, groceries, schedule,
+// people, connections, home layout) is a form: an edit is kept on the page until you press Save, a dot on the tab shows where there are
+// unsaved changes, and Save writes every changed form at once so nothing typed on one tab is lost by saving on another.
+var BASE = {}, SAVING = false, brTimer = null;
+function piece(k) { return function () { var p = connPieces(); return p ? p[k] : null; }; }
+// saveKey: sections that are saved by the same request are sent once.
+var SECTIONS = {
+  chores: { tab: 'chores', label: 'Chores', get: function () { return D.chores; }, save: function () { return api('PUT', '/api/admin/chores', { chores: D.chores }); } },
+  groceries: { tab: 'groceries', label: 'Groceries', get: function () { return [D.groceries, D.stores, D.categories, D.commonItems]; }, save: function () { return api('PUT', '/api/admin/groceries', { items: D.groceries, base: D.groceryBase || [], stores: D.stores, categories: D.categories, commonItems: D.commonItems }); } },
+  events: { tab: 'events', label: 'Schedule', get: function () { return D.events; }, save: function () { return api('PUT', '/api/admin/events', { events: D.events }); } },
+  people: { tab: 'people', label: 'People', get: function () { return D.people; }, save: function () { return api('PUT', '/api/admin/people', { people: D.people }); } },
+  connections: { tab: 'connections', label: 'Calendars & services', get: piece('core'), save: saveConnectionsCall, saveKey: 'conn' },
+  photos: { tab: 'photos', label: 'Photos', get: function () { return PHF ? PHF.sel : null; }, save: function () { return savePhotosCall(); } }
+};
+function sectionJson(n) { try { return JSON.stringify(SECTIONS[n].get()); } catch (e) { return ''; } }
+function dirtyNames() {
+  if (!D || !CN) return [];
+  collect();   // read whatever is typed on the page into D first
+  return Object.keys(SECTIONS).filter(function (n) { return BASE[n] !== undefined && sectionJson(n) !== BASE[n]; });
+}
+function rebase(names) { if (D && CN) collect(); (names || Object.keys(SECTIONS)).forEach(function (n) { BASE[n] = sectionJson(n); }); }
+function labelsOf(names) { return names.map(function (n) { return SECTIONS[n].label; }).join(', '); }
+function barShow() { barRefresh(); }
+function barRefresh() {
+  var names = dirtyNames(), bar = $('.bar'), formTab = TAB !== 'status' && TAB !== 'settings';
+  bar.style.display = (names.length || formTab) ? 'flex' : 'none';
+  $('#save').disabled = !names.length || SAVING;
+  var p = $('#pending'); p.textContent = SAVING ? 'Saving…' : names.length ? 'Unsaved changes: ' + labelsOf(names) : 'All changes saved'; p.className = names.length ? 'dirty' : '';
+  var dirtyTabs = {}; names.forEach(function (n) { dirtyTabs[SECTIONS[n].tab] = true; });
+  document.querySelectorAll('#tabs button').forEach(function (b) { var d = b.querySelector('.dirty'); if (dirtyTabs[b.dataset.t] && !d) b.insertAdjacentHTML('beforeend', '<span class="dirty" title="Unsaved changes">●</span>'); else if (!dirtyTabs[b.dataset.t] && d) d.remove(); });
+}
+function barSoon() { clearTimeout(brTimer); brTimer = setTimeout(barRefresh, 150); }
+['input', 'change', 'click', 'drop'].forEach(function (ev) { document.addEventListener(ev, barSoon, true); });
+window.addEventListener('beforeunload', function (e) { if (dirtyNames().length) { e.preventDefault(); e.returnValue = ''; } });
+document.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveAll(); } });
+function renderChores() {
+  var h = '<p class="mute">Each chore appears on the day(s) ticked, in the routine you pick. Choose Anytime for chores that stay visible all day. Leave all days ticked for every day. Ticks reset every midnight.</p>';
+  D.people.concat([{ id: 'any', name: 'Anyone', color: 'black' }]).forEach(function (p) {
+    h += '<h2><span class="dot" style="background:' + colorHex(p.color) + '"></span>' + esc(p.name) + '</h2>';
+    D.chores.forEach(function (c, i) {
+      if (c.who !== p.id) return;
+      var days = c.days && c.days.length ? c.days : [0, 1, 2, 3, 4, 5, 6];
+      h += '<div class="card" data-i="' + i + '"><div class="row">' +
+        '<button class="btn ghost emoji-btn" data-pick-emoji="' + i + '" title="Pick an icon">' + esc(c.emoji) + '</button>' +
+        '<input data-f="title" value="' + esc(c.title) + '" placeholder="Chore">' +
+        '<select data-f="r">' + opts(ROUT, c.r) + '</select>' +
+        '<select data-f="who">' + peopleOpts(c.who, true) + '</select>' +
+        '<label class="mute">★ <input type="number" min="0" max="9" data-f="stars" value="' + (c.stars || 0) + '"></label>' +
+        '<button class="x" data-del-chore="' + i + '" title="Delete">×</button></div>' +
+        '<div class="days">' + DAYS.map(function (d, n) { return '<label><input type="checkbox" data-day="' + n + '"' + (days.indexOf(n) > -1 ? ' checked' : '') + '>' + d + '</label>'; }).join('') + '</div></div>';
+    });
+    h += '<button class="btn ghost" data-add-chore="' + p.id + '">+ Add chore for ' + esc(p.name) + '</button>';
+  });
+  $('#s-chores').innerHTML = h;
+}
+var GROC_TAB = 'list', COMMON_Q = '', COMMON_ONLY = false;
+function groceryNameOrder(a, b) { return a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }); }
+function filterCommonItems() {
+  var visible = 0, rows = $('#s-groceries').querySelectorAll('[data-common]'), query = COMMON_Q.trim().toLowerCase();
+  rows.forEach(function (row) {
+    var name = row.querySelector('[data-common-name]').value, cat = row.querySelector('[data-common-cat]').value;
+    row.hidden = (COMMON_ONLY && !row.querySelector('[data-common-usual]').checked) || (name + ' ' + cat).toLowerCase().indexOf(query) < 0;
+    if (!row.hidden) visible++;
+  });
+  $('#common-count').textContent = visible + ' of ' + rows.length + ' items';
+}
+function renderGroceries() {
+  var stores = D.stores.map(function (s) { return [s.id, s.name]; }), cats = D.categories.map(function (c) { return [c, c]; });
+  var usualCount = D.commonItems.filter(function (g) { return g.usual; }).length;
+  var h = '<div class="subtabs" aria-label="Grocery sections">' + [['list','Shopping list'],['common','Usuals & suggestions'],['setup','Stores & categories']].map(function (tab) {
+    return '<button data-grocery-tab="' + tab[0] + '" class="' + (GROC_TAB === tab[0] ? 'on' : '') + '">' + tab[1] + '</button>';
+  }).join('') + '</div><p class="mute">Changes in all three tabs are kept until you press Save changes.</p>';
+  h += '<div class="grocery-pane"' + (GROC_TAB !== 'list' ? ' hidden' : '') + '><h2>Shopping list</h2><p class="mute">Items to buy, grouped by category and sorted A–Z. Checked items are at the end.</p><button class="btn ghost" id="add-g">+ Add shopping item</button>';
+  var entries = D.groceries.map(function (g, i) { return { g: g, i: i }; }).sort(function (a, b) {
+    return Number(a.g.done) - Number(b.g.done) || (a.g.done ? 0 : D.categories.indexOf(a.g.cat) - D.categories.indexOf(b.g.cat)) || groceryNameOrder(a.g.name, b.g.name);
+  }), heading = '';
+  entries.forEach(function (entry) {
+    var g = entry.g, i = entry.i, group = g.done ? 'Checked items' : g.cat;
+    if (group !== heading) { h += '<h3 style="margin:18px 0 10px">' + esc(group) + '</h3>'; heading = group; }
+    h += '<div class="card" data-i="' + i + '"><div class="row">' +
+      '<input type="checkbox" data-f="done"' + (g.done ? ' checked' : '') + ' title="Got it">' +
+      '<input data-f="name" value="' + esc(g.name) + '" placeholder="Item">' +
+      '<input type="number" min="1" max="99" data-f="qty" value="' + g.qty + '">' +
+      '<select data-f="cat">' + opts(cats, g.cat) + '</select>' +
+      '<select data-f="store">' + opts(stores, g.store) + '</select>' +
+      '<button class="x" data-del-g="' + i + '" title="Delete">×</button></div>' +
+      '<input data-f="note" value="' + esc(g.note) + '" placeholder="Note (optional)" style="width:100%"></div>';
+  });
+  h += '<button class="btn ghost" id="clear-done">Remove checked items</button></div>';
+  h += '<div class="grocery-pane"' + (GROC_TAB !== 'common' ? ' hidden' : '') + '><div class="card" id="common-items"><h2>Usuals & suggestions</h2><p class="mute">' + usualCount + ' usuals appear as Quick-add tiles on the frame. All reusable items supply search suggestions. Items are sorted A–Z.</p>' +
+    '<div class="row"><input id="common-search" aria-label="Search common items" placeholder="Search items or categories…" value="' + esc(COMMON_Q) + '"><label><input type="checkbox" id="common-only"' + (COMMON_ONLY ? ' checked' : '') + '> Usuals only</label><button class="btn ghost" id="add-common"' + (D.commonItems.length >= 500 ? ' disabled' : '') + '>+ Add common item</button></div><p class="mute" id="common-count"></p>';
+  D.commonItems.map(function (g, i) { return { g: g, i: i }; }).sort(function (a, b) {
+    return Number(!a.g.name) - Number(!b.g.name) || groceryNameOrder(a.g.name, b.g.name);
+  }).forEach(function (entry) {
+    var g = entry.g, i = entry.i;
+    h += '<div class="row" data-common="' + i + '"><input aria-label="Common item name" maxlength="80" data-common-name value="' + esc(g.name) + '" placeholder="Item name"><select aria-label="Common item category" data-common-cat>' + opts(cats, g.cat) + '</select><label><input type="checkbox" data-common-usual' + (g.usual ? ' checked' : '') + '> Quick-add</label><button class="btn ghost" data-remove-common="' + i + '">Remove item</button></div>';
+  });
+  h += '</div></div><div class="grocery-pane"' + (GROC_TAB !== 'setup' ? ' hidden' : '') + '><p class="mute">Rename stores and categories here. Move shopping and common items before removing their category.</p>' +
+    '<details class="card" open><summary><b>Stores (' + D.stores.length + ')</b></summary>' + D.stores.map(function (st, i) {
+      var used = D.groceries.some(function (g) { return g.store === st.id; });
+      return '<div class="row"><input aria-label="Store name" maxlength="30" data-store="' + i + '" value="' + esc(st.name) + '"><button class="btn ghost" data-remove-store="' + i + '"' + (used || D.stores.length === 1 ? ' disabled' : '') + '>Remove store</button></div>';
+    }).join('') + '<div class="row"><input id="new-store" maxlength="30" aria-label="New store name" placeholder="New store name"><button class="btn ghost" id="add-store"' + (D.stores.length >= 8 ? ' disabled' : '') + '>+ Add store</button></div></details>' +
+    '<details class="card" open><summary><b>Categories (' + D.categories.length + ')</b></summary>' + D.categories.map(function (c, i) {
+      var used = D.groceries.some(function (g) { return g.cat === c; }) || D.commonItems.some(function (g) { return g.cat === c; });
+      return '<div class="row"><input aria-label="Category name" maxlength="40" data-category="' + i + '" value="' + esc(c) + '"><button class="btn ghost" data-remove-category="' + i + '"' + (used || D.categories.length === 1 ? ' disabled' : '') + '>Remove category</button></div>';
+    }).join('') + '<div class="row"><input id="new-category" maxlength="40" aria-label="New category name" placeholder="New category name"><button class="btn ghost" id="add-category"' + (D.categories.length >= 32 ? ' disabled' : '') + '>+ Add category</button></div></details></div>';
+  $('#s-groceries').innerHTML = h;
+  filterCommonItems();
+}
+function renderEvents() {
+  var h = '<p class="mute">One-off or repeating events that live on the frame. Your Google calendar events appear as well, automatically.</p>';
+  D.events.forEach(function (e, i) {
+    var sel = e.people || [];
+    h += '<div class="card" data-i="' + i + '"><div class="row">' +
+      '<input data-f="title" value="' + esc(e.title) + '" placeholder="What">' +
+      '<input type="date" data-f="date" value="' + esc(e.date) + '">' +
+      '<button class="x" data-del-e="' + i + '" title="Delete">×</button></div><div class="row">' +
+      '<label class="mute"><input type="checkbox" data-f="allDay"' + (e.allDay ? ' checked' : '') + '> all day</label>' +
+      '<input type="time" data-f="start" value="' + esc(e.start || '09:00') + '"><span class="mute">to</span><input type="time" data-f="end" value="' + esc(e.end || '10:00') + '">' +
+      '<select data-f="repeat">' + opts([['none', 'Once'], ['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly']], e.repeat || 'none') + '</select>' +
+      '<label class="mute">until <input type="date" data-f="until" value="' + esc(e.until || '') + '"></label></div><div class="row">' +
+      D.people.map(function (p) { return '<label class="mute"><input type="checkbox" data-ep="' + p.id + '"' + (sel.indexOf(p.id) > -1 ? ' checked' : '') + '> ' + esc(p.name) + '</label>'; }).join('') +
+      '<input data-f="loc" value="' + esc(e.loc || '') + '" placeholder="Where (optional)"></div></div>';
+  });
+  h += '<button class="btn ghost" id="add-e">+ Add event</button>';
+  $('#s-events').innerHTML = h;
+}
+var PCP = null;   // index of the person whose colour picker is open
+function colorPop(i, cur) {
+  var h = '<div class="color-pop">' + COLORS.map(function (c) { return '<button class="sw' + (cur === c ? ' on' : '') + '" style="background:' + HEX[c] + '" data-sw="' + i + ':' + c + '" title="' + c + '"></button>'; }).join('');
+  var isHex = /^#?[0-9a-f]{6}$/i.test(cur || ''), hex = isHex ? (cur[0] === '#' ? cur : '#' + cur) : (HEX[cur] || '#2D5BFF');
+  return h + '<label class="sw sw-custom' + (isHex ? ' on' : '') + '" title="Any colour"><input type="color" data-cc="' + i + '" value="' + hex.toLowerCase() + '"></label><span class="mute">any colour</span><button class="btn ghost" data-close-color="1">Done</button></div>';
+}
+function renderPeople() {
+  var h = '<p class="mute">Colours show up on the frame. "Kid" turns on stars and the weekly streak for that person.</p>';
+  D.people.forEach(function (p, i) {
+    h += '<div class="card" data-i="' + i + '"><div class="row"><button class="sw sw-main" data-open-color="' + i + '" style="background:' + colorHex(p.color) + '" title="Change colour"></button>' +
+      '<input data-f="name" value="' + esc(p.name) + '">' +
+      '<label class="mute"><input type="checkbox" data-f="kid"' + (p.kid ? ' checked' : '') + '> kid</label>' +
+      '<label class="mute">age <input type="number" min="0" max="120" data-f="age" value="' + (p.age || '') + '"></label>' +
+      '<button class="x" data-del-p="' + i + '" title="Remove">×</button></div>' + (PCP === i ? colorPop(i, p.color) : '') + '</div>';
+  });
+  h += '<button class="btn ghost" id="add-p">+ Add person</button>';
+  $('#s-people').innerHTML = h;
+}
+// ---------------------------------------------------------------- Status: what is working, and the automatic backups
+var HEALTH = null, BACKUPS = null;
+function loadHealth() {
+  return Promise.all([api('GET', '/api/admin/health'), api('GET', '/api/admin/backups')]).then(function (r) { HEALTH = r[0]; BACKUPS = r[1]; renderStatus(); })
+    .catch(function (e) { $('#s-status').innerHTML = '<div class="card"><p class="bad" style="margin:0">Could not read the status: ' + esc(e.message) + '</p></div>'; });
+}
+function renderStatus() {
+  if (!HEALTH) { $('#s-status').innerHTML = '<div class="card"><p class="mute" style="margin:0">Checking\u2026</p></div>'; return; }
+  var cs = HEALTH.checks, attention = cs.filter(function (c) { return c.state === 'bad' || c.state === 'warn'; }).length;
+  var h = '<div class="card"><div class="row" style="margin:0 0 6px"><b>What is working</b><span class="mute">' + (attention ? attention + ' thing' + (attention === 1 ? '' : 's') + ' to look at' : 'Everything that is set up is working') + '</span><button class="btn ghost" id="health-refresh" style="margin-left:auto">Check again</button></div>' +
+    cs.map(function (c) {
+      var fix = c.fix && c.state !== 'ok' ? '<button class="btn ghost" data-fix="' + esc(c.fix) + '">' + (c.state === 'off' ? 'Set up' : 'Fix') + ' \u203A</button>' : '';
+      return '<div class="hrow"><i class="hdot ' + c.state + '"></i><div class="ht"><b>' + esc(c.label) + '</b><span>' + esc(c.detail) + '</span></div>' + fix + '</div>';
+    }).join('') + '</div>';
+  var when = function (b) { var d = new Date(b.at); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) + ' \u00b7 ' + Math.max(1, Math.round(b.bytes / 1024)) + ' KB'; };
+  var list = function (which, items) { return items.length ? items.slice(0, 12).map(function (b) { return '<div class="bk-row"><span>' + esc(when(b)) + '</span><button class="btn ghost" data-restore="' + which + '" data-name="' + esc(b.name) + '">Restore</button></div>'; }).join('') : '<p class="mute" style="margin:4px 0">None yet. The first one is made the next time something here is saved.</p>'; };
+  h += '<div class="card"><b>Backups</b><p class="mute">Before the hub changes your settings or data it keeps a copy: at most one every ' + BACKUPS.windowMin + ' minutes, the newest ' + BACKUPS.keep + ' of each. Restoring puts that copy back and first keeps what you have now, so a restore can be undone too. Passwords and tokens are never copied.</p>' +
+    '<div class="res-h">Settings and data \u00b7 chores, groceries, schedule, people, display and tuning</div>' + list('state', BACKUPS.state) +
+    '<div class="res-h">Connections and home layout</div>' + list('config', BACKUPS.config) + '</div>';
+  $('#s-status').innerHTML = h;
+}
+// Jump to the tab (and page inside it) that fixes something: "connections#integrations", "settings#cameras", "photos".
+function goFix(where) {
+  var alias = { 'connections#integrations': 'connections#homelab', 'connections#proxmenux': 'connections#homelab' };   // the name the hub used for the services page
+  var p = String(alias[where] || where).split('#'), t = p[0], sub = p[1];
+  if (!TABS.some(function (x) { return x[0] === t; })) return;
+  if (t === 'connections' && sub) CN_TAB = sub === 'integrations' || sub === 'proxmenux' ? 'homelab' : sub;
+  if (t === 'settings' && sub) SET_TAB = sub;
+  enterTab(t); renderConnections(); renderSettings();
+}
+function restoreBackup(which, name, label) {
+  var warn = dirtyNames().length ? '\n\nYou have unsaved changes on this page; they will be discarded.' : '';
+  if (!confirm('Put back the copy from ' + label + '?\n\nWhat you have now is kept as a backup first, so you can undo this.' + warn)) return;
+  msg('Restoring\u2026');
+  api('POST', '/api/admin/restore', { which: which, name: name }).then(function () { msg('Restored. Reloading\u2026'); BASE = {}; setTimeout(function () { location.reload(); }, 600); })
+    .catch(function (e) { msg('Not restored: ' + e.message, true); });
+}
+// ---------------------------------------------------------------- Settings: one list, saved as you go
+// Every setting is a row from the hub (lib/tune.js): search finds any of them, "Changed only" lists what differs from the default, and a tag
+// says where it takes effect.
+var SET_TAB = 'display', SET_Q = '', SET_CHANGED = false;
+var SET_TABS = [['display', 'Display'], ['refresh', 'Refresh rates']];
+var WHERE = { frame: 'Frame', hub: 'Hub', kiosk: 'Frame app' };
+function settingsRows() { return (D.tuneSchema || []).filter(function (r) { return r.tab === 'settings'; }); }
+function isChanged(r) { var v = D.tune ? D.tune[r.key] : r.def; return r.type === 'select' ? v !== r.def : +v !== +r.def; }
+function settingsCounts() { var c = {}, total = 0; settingsRows().forEach(function (r) { if (isChanged(r)) { c[r.sub] = (c[r.sub] || 0) + 1; total++; } }); c._all = total; return c; }
+function subtabsHtml() {
+  var c = settingsCounts();
+  return '<div class="subtabs" id="set-subtabs">' + SET_TABS.map(function (x) { return '<button data-st="' + x[0] + '" class="' + (x[0] === SET_TAB && !SET_Q && !SET_CHANGED ? 'on' : '') + '">' + x[1] + (c[x[0]] ? '<span class="badge-n" title="Changed from the default">' + c[x[0]] + '</span>' : '') + '</button>'; }).join('') + '</div>';
+}
+// Search and "changed only" show matching settings from every page, grouped by page.
+function resultsHtml() {
+  var q = SET_Q.trim().toLowerCase(), rows = settingsRows().filter(function (r) {
+    if (SET_CHANGED && !isChanged(r)) return false;
+    if (!q) return true;
+    return (r.label + ' ' + (r.hint || '') + ' ' + r.group + ' ' + r.key).toLowerCase().indexOf(q) > -1;
+  });
+  if (!rows.length) return '<div class="card"><p class="mute" style="margin:0">' + (SET_CHANGED && !q ? 'Everything is at its default.' : 'No setting matches “' + esc(SET_Q) + '”.') + '</p></div>';
+  var h = '';
+  SET_TABS.forEach(function (t) {
+    var mine = rows.filter(function (r) { return r.sub === t[0]; }); if (!mine.length) return;
+    h += '<div class="res-h">' + esc(t[1]) + '</div><div class="card">' + mine.map(function (r) { return '<div class="mute" style="font-size:12px;margin-top:8px">' + esc(r.group) + (r.adv ? ' · advanced' : '') + '</div>' + tuneRow(r); }).join('') + '</div>';
+  });
+  return h;
+}
+function settingsBody() {
+  if (SET_Q.trim() || SET_CHANGED) return resultsHtml();
+  return (SET_TAB === 'display' ? tuneCards('settings', 'display') : tuneCards('settings', SET_TAB));
+}
+function renderSettings() {
+  if (!D) return;
+  var c = settingsCounts();
+  $('#s-settings').innerHTML = '<div class="card"><div class="row" style="margin:0"><input type="search" id="set-q" placeholder="Search every setting…" value="' + esc(SET_Q) + '" style="flex:1 1 240px"> ' +
+    '<label class="mute" style="display:inline-flex;align-items:center;gap:6px"><input type="checkbox" id="set-changed"' + (SET_CHANGED ? ' checked' : '') + '> Changed only (<span id="set-ccount">' + c._all + '</span>)</label></div>' +
+    '<p class="mute" style="margin:8px 0 0">These save as you change them and reach the frame within a few seconds. A dot marks anything that is not at its default; the tag shows what it affects.</p></div>' +
+    subtabsHtml() + '<div id="set-body">' + settingsBody() + '</div>';
+  tuneMark();
+  barShow();
+}
+function settingsRefresh() {   // re-draw the list below the search box without losing focus in it
+  var b = $('#set-body'); if (!b) return renderSettings();
+  b.innerHTML = settingsBody(); tuneMark();
+  var st = $('#set-subtabs'); if (st) st.outerHTML = subtabsHtml();
+  var cc = $('#set-ccount'); if (cc) cc.textContent = settingsCounts()._all;
+}
+document.addEventListener('input', function (e) { if (e.target.id === 'set-q') { SET_Q = e.target.value; settingsRefresh(); } });
+document.addEventListener('change', function (e) { if (e.target.id === 'set-changed') { SET_CHANGED = e.target.checked; settingsRefresh(); } });
+// ---------------------------------------------------------------- connections (calendars, accounts, integrations, security)
+var CN = null, CN_TAB = 'calendars';
+var WEATHER_RESULTS = [], WEATHER_SEARCH = 0;
+var CN_TABS = [['calendars', 'Calendars'], ['accounts', 'Accounts'], ['homeassistant', 'Home Assistant'], ['homelab', 'Homelab'], ['weather', 'Weather & time'], ['security', 'Security']];
+function cnInit(v) {
+  CN = v;
+  CN.calendars.forEach(function (c) { c.newUrl = ''; c.result = ''; });
+  CN.domReady = false;
+  CN.pxToken = ''; CN.pxResult = ''; CN.newPw = ''; CN.confirmPw = ''; CN.shownToken = CN.shownToken || '';
+  CN.homeassistant = CN.homeassistant || { url: '', climate: '', entities: [], controls: false, ecobeeResume: false, tokenSet: false };
+  CN.homelab = CN.homelab || { pihole: '', gitea: '', plane: '', rustdesk: { host: '', idPort: 21116, relayPort: 21117 }, backup: { path: '', destination: '', label: 'VM backup', maxAgeHours: 36 } };
+  CN.labResult = '';
+  CN.homelab.piholeToken = ''; CN.homelab.piholePassword = ''; CN.homelab.giteaToken = ''; CN.homelab.githubToken = '';
+  CN.homelab.piholeUnlink = false; CN.homelab.giteaUnlink = false; CN.homelab.githubUnlink = false;
+  CN.homelab.piholeSsh = CN.homelab.piholeSsh || { host: '', user: 'pi', port: 22, identityFile: '' };
+  CN.piSaved = JSON.stringify(CN.homelab.piholeSsh); CN.piStatus = null; CN.piMessage = ''; CN.piBusy = false;
+  CN.haToken = ''; CN.haResult = ''; CN.haEntities = [];
+}
+function homeassistantHtml() {
+  var h = CN.homeassistant, choices = CN.haEntities || [], chosen = h.entities || [];
+  var climates = choices.filter(function (e) { return e.domain === 'climate'; });
+  if (h.climate && !climates.some(function (e) { return e.id === h.climate; })) climates.push({ id: h.climate, name: h.climate });
+  var others = choices.filter(function (e) { return e.domain !== 'climate'; });
+  chosen.forEach(function (id) { if (!others.some(function (e) { return e.id === id; })) others.push({ id: id, name: id }); });
+  return '<div class="card"><b>Home Assistant</b><p class="mute">Connect the Home page to your thermostat and Ring readings. The frame displays only the entities you select below. Status and camera images are read-only. You can enable controls for the selected thermostat below.</p>' +
+    '<div class="fg"><label for="ha-address">Address</label><input id="ha-address" data-ha="url" value="' + esc(h.url) + '" placeholder="http://homeassistant.local"></div>' +
+    '<div class="fg"><label for="ha-token">Access token</label><input id="ha-token" data-ha="token" type="password" autocomplete="new-password" value="' + esc(CN.haToken || '') + '" placeholder="' + (h.tokenSet ? 'Token saved; leave blank to keep it' : 'Paste a long-lived access token') + '"></div>' +
+    '<p class="mute">In Home Assistant, open your profile → Security → Long-lived access tokens and create one named Photo frame hub. Paste it here and save. It stays on this server and is never sent to the frame. The token has the access of the account that created it.</p>' +
+    '<div class="row"><button class="btn ghost" id="test-ha">Find devices</button>' + (h.tokenSet ? '<button class="btn ghost" id="unlink-ha">Disconnect</button>' : '') + '<span class="mute">Save the address and token first.</span></div>' +
+    '<p class="mute" role="status">' + esc(CN.haResult || '') + '</p></div>' +
+    '<div class="card"><b>Show on the frame</b><div class="fg"><label for="ha-climate">Thermostat</label><select id="ha-climate" data-ha="climate">' + opts([['', 'None']].concat(climates.map(function (e) { return [e.id, e.name]; })), h.climate) + '</select></div>' +
+    '<label class="row"><input type="checkbox" data-ha-flag="controls"' + (h.controls ? ' checked' : '') + '> Allow thermostat controls from this dashboard</label>' +
+    '<label class="row"><input type="checkbox" data-ha-flag="ecobeeResume"' + (h.ecobeeResume ? ' checked' : '') + '> Ecobee: show Resume schedule</label>' +
+    '<p class="mute">Controls apply only to the selected thermostat and are available to people using this dashboard on your home network. Enable Resume schedule only for an ecobee thermostat.</p>' +
+    '<p class="mute">Choose Ring camera status, motion/doorbell events, battery readings, or other home sensors. Up to 16 readings. Find devices again after adding an integration in Home Assistant.</p>' +
+    (others.length ? '<div style="max-height:420px;overflow:auto">' + others.map(function (e) { return '<label style="display:flex;gap:10px;padding:9px 0;align-items:start;overflow-wrap:anywhere"><input type="checkbox" data-ha-entity="' + esc(e.id) + '"' + (chosen.indexOf(e.id) >= 0 ? ' checked' : '') + '><span>' + esc(e.name) + '<small class="mute" style="display:block">' + esc(e.id) + '</small></span></label>'; }).join('') + '</div>' : '<p class="mute">Use Find devices to choose what appears here.</p>') + '</div>';
+}
+function testHA() {
+  collectConnections(); CN.haResult = 'Reading the saved Home Assistant connection…'; renderConnections();
+  api('POST', '/api/admin/test', { what: 'homeassistant' }).then(function (r) {
+    CN.haResult = r.ok ? 'Connected. Choose the devices below, then save changes.' : r.error;
+    if (r.ok) CN.haEntities = r.entities;
+  }).catch(function (e) { CN.haResult = e.message; }).then(renderConnections);
+}
+function unlinkHA() {
+  collectConnections();
+  if (!confirm('Disconnect Home Assistant and remove its saved token from this hub?')) return;
+  api('PUT', '/api/admin/connections', { homeassistant: { unlink: true } }).then(function () {
+    CN.homeassistant = { url: '', climate: '', entities: [], controls: false, ecobeeResume: false, tokenSet: false }; CN.haToken = ''; CN.haEntities = []; CN.haResult = '';
+    var base = JSON.parse(BASE.connections); base.homeassistant = { url: '', climate: '', entities: [], controls: false, ecobeeResume: false }; BASE.connections = JSON.stringify(base);
+    renderConnections(); return load();
+  }).catch(function (e) { msg(e.message, true); });
+}
+function calendarsHtml() {
+  var h = '<div class="card"><b>Calendars</b><p class="mute">Google Calendar on the web: your calendar, <i>Settings and sharing</i>, <i>Secret address in iCal format</i>. The link is saved on the hub and is never shown again. Leave the link box empty to keep the one already saved.</p>';
+  CN.calendars.forEach(function (c, i) {
+    h += '<div class="card" data-cal="' + i + '"><div class="row">' +
+      '<input data-c="name" value="' + esc(c.name) + '" placeholder="Calendar name">' +
+      '<button class="btn ghost" data-test-cal="' + i + '">Test</button>' +
+      '<button class="x" data-del-cal="' + i + '" title="Remove (also deletes its saved link)">×</button></div>' +
+      '<div class="row mute">Shown for: ' + D.people.map(function (p) { return '<label><input type="checkbox" data-cp="' + esc(p.id) + '"' + (c.people.indexOf(p.id) > -1 ? ' checked' : '') + '> ' + esc(p.name) + '</label>'; }).join(' ') +
+      ' <span>(none ticked = everyone; a name in an event title, like "Jordan: dentist", still wins)</span></div>' +
+      '<div class="row"><input type="password" autocomplete="off" data-c="newUrl" placeholder="' + (c.urlSet ? 'A link is saved. Paste a new one to replace it' : 'Paste the iCal link') + '"></div>' +
+      '<div class="mute" data-cal-res="' + i + '">' + esc(c.result) + '</div></div>';
+  });
+  (CN.unusedLinks || []).forEach(function (k) {
+    h += '<div class="row"><span class="mute">A saved link named "' + esc(k) + '" is not used by any calendar.</span><button class="btn ghost" data-use-link="' + esc(k) + '">Use it</button></div>';
+  });
+  return h + '<button class="btn ghost" id="add-cal">+ Add calendar</button></div>';
+}
+function accountsHtml() {
+  var help = {
+    codex: { label: 'Codex auth.json', instructions: 'Paste the auth.json from your Codex login. Only the access token and account ID are saved; update it when it expires.' },
+    claude: { label: 'Claude credentials JSON', instructions: 'On the computer where Claude Code is signed in, use ~/.claude/.credentials.json. Paste or select that JSON file below. Only its access token, plan and expiry are saved. The original Claude login keeps managing its refresh token; update this copy when it expires.' },
+    openrouter: { label: 'OpenRouter API key', instructions: 'Paste the OpenRouter key whose usage you want to show. Account credits left are shared across keys; spending and the key allowance apply to this key. Account balance appears when the saved key can read it. The hub makes read-only usage and balance requests, never model requests.' }
+  };
+  var h = '<div class="card"><p class="mute">Linked accounts refresh on the server every five minutes. Credentials stay on the server and are never sent to the frame. Blank fields keep the saved connection.</p></div>';
+  (CN.accounts || []).forEach(function (a) {
+    var info = help[a.id]; if (!info) return;
+    var value = esc((CN.acctInput || {})[a.id] || '');
+    h += '<div class="card" data-acct="' + esc(a.id) + '"><b>' + esc(a.name) + '</b> <span class="mute">· ' + (a.unofficial ? 'unofficial usage endpoint' : 'official API') + '</span>' +
+      '<p class="mute">Status: ' + (a.source === 'local' ? 'PC login sync — credentials stay on the PC. Entering credentials below switches back to a saved server login.' : a.linked ? (a.expired ? '<span class="bad">login expired — update below</span>' : 'linked' + (a.expiresAt ? ', token valid until ' + esc(new Date(a.expiresAt).toLocaleString()) : '')) : 'not linked') + '</p>' +
+      '<p class="mute">' + esc(info.instructions) + '</p>' +
+      (a.unofficial ? '<p class="mute">This uses an undocumented usage endpoint that may change. The login token can access your account; Unlink removes the saved copy.</p>' : '') +
+      '<label>' + esc(info.label) + '</label>' +
+      (a.id === 'openrouter' ? '<input type="password" data-acct-json autocomplete="new-password" style="width:100%" placeholder="' + (a.linked ? 'Key saved; enter a new key to replace it' : 'sk-or-…') + '" value="' + value + '">' :
+        '<textarea class="secret-box" data-acct-json rows="3" style="width:100%" autocomplete="off" spellcheck="false" placeholder="' + (a.linked ? 'Login saved; paste fresh JSON to replace it' : 'Paste credentials JSON') + '">' + value + '</textarea>' +
+        '<div class="row"><label class="mute account-file">Or choose a credentials file <input type="file" data-acct-file="' + esc(a.id) + '" accept=".json,application/json"></label></div>') +
+      '<div class="row"><button class="btn ghost" data-test-acct="' + esc(a.id) + '">Test</button>' + (a.id !== 'openrouter' && a.source !== 'local' && CN.localAccountsTokenSet ? '<button class="btn ghost" data-use-local-acct="' + esc(a.id) + '">Use PC login</button>' : '') + (a.linked ? '<button class="btn ghost" data-unlink-acct="' + esc(a.id) + '">Unlink</button>' : '') + '<span class="mute">Save first, then test.</span></div>' +
+      '<div class="mute" style="white-space:pre-wrap">' + esc((CN.acctResult || {})[a.id] || '') + '</div></div>';
+  });
+  return h;
+}
+document.addEventListener('change', function (event) {
+  var input = event.target;
+  if (!input.matches('[data-acct-file]') || !input.files[0]) return;
+  var file = input.files[0];
+  if (file.size > 65536) { msg('That file is too large for account credentials.', true); return; }
+  var reader = new FileReader();
+  reader.onload = function () {
+    var card = input.closest('[data-acct]'); if (!card) return;
+    var field = card.querySelector('[data-acct-json]'); field.value = reader.result;
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  reader.readAsText(file);
+});
+function testAccount(id) {
+  collectConnections(); CN.acctResult = CN.acctResult || {}; CN.acctResult[id] = 'Testing the saved login…'; renderConnections();
+  api('POST', '/api/admin/test', { what: 'account', id: id })
+    .then(function (r) {
+      CN.acctResult[id] = r.ok ? (r.message || 'Works. Plan: ' + (r.plan || 'unknown') + '\n' + (r.credits ? 'Key today: $' + r.credits.daily.toFixed(2) + '\nKey this week: $' + r.credits.weekly.toFixed(2) + '\nKey this month: $' + r.credits.monthly.toFixed(2) : (r.meters.length ? r.meters.join('\n') : 'No usage windows returned.')))
+        : 'Problem: ' + r.error;
+    })
+    .catch(function (e) { CN.acctResult[id] = 'Problem: ' + e.message; }).then(renderConnections);
+}
+function unlinkAccount(id) {
+  if (!confirm('Unlink this account? The saved login is deleted from the hub.')) return;
+  api('PUT', '/api/admin/connections', { accounts: (function () { var o = {}; o[id] = { unlink: true }; return o; })() })
+    .then(function () { if (CN.acctInput) delete CN.acctInput[id]; if (CN.acctResult) delete CN.acctResult[id]; msg('Unlinked. The saved login is deleted.'); return load(); }).catch(function (e) { msg('Not done: ' + e.message, true); });
+}
+function homelabHtml() {
+  var h = CN.homelab;
+  function field(key, label, value, placeholder, type) { return '<div class="fg"><label for="lab-' + key + '">' + label + '</label><input id="lab-' + key + '" data-lab="' + key + '" type="' + (type || 'text') + '" value="' + esc(value) + '" placeholder="' + esc(placeholder || '') + '"></div>'; }
+  function token(id, label) { return field(id + 'Token', label, h[id + 'Token'] || '', h[id + 'TokenSet'] ? 'Saved — leave blank to keep' : 'Paste API token', 'password') + (h[id + 'TokenSet'] ? '<label class="mute"><input type="checkbox" data-lab-clear="' + id + '"' + (h[id + 'Unlink'] ? ' checked' : '') + '> Remove saved token when saving</label>' : ''); }
+  return '<div class="card"><b>Homelab services</b><p class="mute">The hub checks these over your network when Homelab opens, then every five minutes while it stays open. Recent results are reused. The frame’s refresh button checks immediately. Leave an address empty to disconnect it.</p>' +
+    field('pihole', 'Pi-hole web address', h.pihole, 'http://pi.hole/admin/') +
+    '<div class="fg"><label for="lab-pihole-version">Pi-hole version</label><select id="lab-pihole-version" data-lab="piholeVersion">' + opts([['5', 'Version 5'], ['6', 'Version 6']], h.piholeVersion || '5') + '</select></div>' +
+    (h.piholeVersion === '6' ? field('piholePassword', 'Pi-hole v6 application password', h.piholePassword || '', h.piholePasswordSet ? 'Saved — leave blank to keep' : 'Paste application password', 'password') + (h.piholePasswordSet ? '<label class="mute"><input type="checkbox" data-lab-clear="pihole"' + (h.piholeUnlink ? ' checked' : '') + '> Remove saved Pi-hole credentials when saving</label>' : '') : token('pihole', 'Pi-hole v5 API token')) +
+    '<p class="mute">For v5, use Settings → API / Web interface → Show API token. For v6, generate an application password under Settings → Web interface / API (Expert mode). After upgrading the Pi, select Version 6 and save that password here. The hub signs in for each poll and closes its session afterward. Only aggregate DNS totals, blocking, software versions and the blocklist refresh time are read; query history is never requested. The API does not report the last reboot or software installation date. Software update and reboot controls need a separate management connection; they are not run by these checks.</p>' +
+    field('gitea', 'Gitea base address', h.gitea, 'http://gitea.local:3000') +
+    token('gitea', 'Gitea API token') +
+    field('giteaOrganization', 'Organization activity (optional)', h.giteaOrganization || '', 'Organization name; blank uses your activity feed') +
+    '<p class="mute">Use a token with read access to your user, repositories, issues and organizations. The frame shows repository counts, open work, contributions and recent push titles. Tokens stay on the server; private repository names and commit titles visible to this account will appear on the household frame.</p>' +
+    field('github', 'GitHub account', h.github || '', 'Tech0001') +
+    token('github', 'GitHub API token (optional)') +
+    '<p class="mute">Public repositories, open pull requests/issues, recent pushes and the contribution grid from your public GitHub profile. No token is required. An optional token increases API limits; only public data is requested. GitHub refreshes every 15 minutes and its activity feed can be delayed. Tokens stay on the server.</p>' +
+    field('plane', 'Plane web address', h.plane, 'http://plane.local') +
+    '<p class="mute">Availability checks work without tokens. Adding a token enables the detail pages. All checks are read-only.</p></div>' + piManagementHtml() +
+    '<div class="card"><b>RustDesk</b>' + field('host', 'Server hostname or IP', h.rustdesk.host, 'server.local') +
+    field('idPort', 'ID server TCP port', h.rustdesk.idPort, '21116', 'number') + field('relayPort', 'Relay TCP port', h.rustdesk.relayPort, '21117', 'number') +
+    '<p class="mute">Checks both listening TCP ports. This does not test a complete remote desktop session.</p></div>' +
+    '<div class="card"><b>Time Machine backup</b><p class="mute">Read the Omarchy Time Machine plugin’s cached status file on this server. No backup passwords are needed. This does not start backups or change their schedule.</p>' +
+    field('path', 'Status file on the hub server', h.backup.path, '/home/your-user/.local/state/omarchy-time-machine/status.json') +
+    field('destination', 'Destination name', h.backup.destination, 'Leave blank if there is only one destination') +
+    field('label', 'Name on the frame', h.backup.label, 'VM backup') +
+    field('maxAgeHours', 'Warn after this many hours without success', h.backup.maxAgeHours, '36', 'number') + '</div>' +
+    '<div class="card"><button class="btn ghost" id="test-lab">Check saved connections</button><p class="mute">Save changes first.</p><div role="status" style="white-space:pre-wrap">' + esc(CN.labResult || '') + '</div></div>' +
+    '<details class="adv"><summary>Optional Proxmox / ProxMenux connection</summary><p class="mute">Used on the frame when none of the services or Time Machine above are connected.</p>' + proxmenuxHtml() + '</details>';
+}
+function testHomelab() {
+  collectConnections(); CN.labResult = 'Checking saved connections…'; renderConnections();
+  api('POST', '/api/admin/test', { what: 'homelab' }).then(function (r) {
+    CN.piStatus = r.pihole.management;
+    CN.labResult = r.services.map(function (s) { return s.name + ': ' + s.detail; }).concat([r.backup.label + ': ' + r.backup.detail, 'Pi-hole details: ' + r.pihole.detail, 'Gitea activity: ' + r.gitea.detail, 'GitHub activity: ' + (r.github ? r.github.detail : 'Not connected')]).join('\n');
+  }).catch(function (e) { CN.labResult = e.message; }).then(renderConnections);
+}
+function piManagementHtml() {
+  var s = CN.homelab.piholeSsh, r = CN.piStatus, actions = r && r.actions || [];
+  function field(k, label, type) { return '<div class="fg"><label for="pi-ssh-' + k + '">' + label + '</label><input id="pi-ssh-' + k + '" data-pi-ssh="' + k + '" type="' + (type || 'text') + '" value="' + esc(s[k]) + '"></div>'; }
+  return '<div class="card"><b>Pi-hole management</b><p class="mute">Uses a restricted SSH key and the frame-pihole helper installed on the Pi-hole host. Save the connection, then check it to enable available controls. Routine checks never reboot, restart or update anything.</p>' +
+    field('host', 'Pi-hole SSH hostname or IP') + field('user', 'SSH username') + field('port', 'SSH port', 'number') + field('identityFile', 'Restricted private key file on the hub server') +
+    '<button class="btn ghost" id="check-pi-management"' + (CN.piBusy ? ' disabled' : '') + '>Check management</button><p role="status">' + esc(CN.piMessage || (r ? r.detail : 'Check the saved connection to load status.')) + '</p>' +
+    (r && r.os ? '<p class="mute">' + esc(r.os) + ' · Last boot: ' + esc(r.bootedAt ? new Date(r.bootedAt).toLocaleString() : 'unknown') + '</p>' : '') +
+    (r && r.job ? '<p>Last action: <b>' + esc(r.job.action) + '</b> — ' + esc(r.job.state.replace(/_/g, ' ')) + (r.job.finished ? ' · ' + esc(new Date(r.job.finished).toLocaleString()) : '') + '</p>' : '') +
+    '<div class="row">' + [['gravity', 'Refresh blocklists'], ['restart', 'Restart DNS'], ['reboot', 'Reboot Pi-hole host'], ['update', 'Update Pi-hole software']].map(function (a) { return '<button class="btn ghost" data-pi-action="' + a[0] + '"' + (CN.piBusy || actions.indexOf(a[0]) < 0 ? ' disabled' : '') + '>' + a[1] + '</button>'; }).join('') + '</div>' +
+    (r && r.updateReason ? '<p class="mute">Software update unavailable: ' + esc(r.updateReason) + '</p>' : '') +
+    '<p class="mute">Restarting DNS or rebooting briefly interrupts name resolution for devices using this Pi-hole. Software updates are separate from refreshing blocklists. Last successful software update through this hub: ' + esc(r && r.softwareUpdatedAt ? new Date(r.softwareUpdatedAt).toLocaleString() : 'not recorded') + '.</p></div>';
+}
+function checkPiManagement(repeat) {
+  if (CN.piBusy) return;
+  collectConnections(); CN.piBusy = true; CN.piMessage = 'Checking management…'; renderConnections();
+  api('GET', '/api/admin/pihole').then(function (r) { CN.piStatus = r; CN.piMessage = r.detail; }).catch(function (e) { CN.piStatus = null; CN.piMessage = e.message; }).then(function () {
+    collectConnections(); CN.piBusy = false; renderConnections();
+    if (repeat > 0 && TAB === 'connections' && CN_TAB === 'homelab' && (!CN.piStatus || CN.piStatus.state !== 'ok' || CN.piStatus.job && ['queued', 'running', 'reboot_requested'].indexOf(CN.piStatus.job.state) >= 0)) setTimeout(function () { if (TAB === 'connections' && CN_TAB === 'homelab') checkPiManagement(repeat - 1); }, 5000);
+  });
+}
+function runPiAction(action) {
+  collectConnections();
+  if (CN.piBusy) return;
+  if (JSON.stringify(CN.homelab.piholeSsh) !== CN.piSaved) return msg('Save the SSH connection changes before running an action.', true);
+  var question = { gravity: 'Refresh Pi-hole’s blocklists now?', restart: 'Restart Pi-hole DNS now? DNS lookups will be interrupted briefly.', reboot: 'Reboot the Pi-hole host now? Devices using it will lose DNS until it finishes booting.', update: 'Update Pi-hole software now? DNS may be interrupted. Review the Pi-hole release notes first.' }[action];
+  if (!question || !confirm(question + '\nSaved host: ' + CN.homelab.piholeSsh.host)) return;
+  CN.piBusy = true; CN.piMessage = 'Sending action…'; renderConnections();
+  api('POST', '/api/admin/pihole', { action: action, confirm: action }).then(function (r) { CN.piMessage = r.detail; CN.piBusy = false; checkPiManagement(24); }).catch(function (e) { CN.piMessage = e.message; CN.piBusy = false; renderConnections(); });
+}
+function proxmenuxHtml() {
+  return '<div class="card"><b>ProxMenux</b><p class="mute">The Homelab screen reads this. The token is write-only here: ' + (CN.proxmenux.tokenSet ? 'one is saved.' : 'none saved yet.') + ' Save first, then test.</p>' +
+    '<div class="fg"><label>Address</label><input data-px="url" value="' + esc(CN.proxmenux.url) + '" placeholder="https://menux.example.com"></div>' +
+    '<div class="fg"><label>API token</label><input type="password" autocomplete="off" data-px="token" value="' + esc(CN.pxToken || '') + '" placeholder="' + (CN.proxmenux.tokenSet ? 'Paste a new token to replace the saved one' : 'Paste an API token') + '"></div>' +
+    '<div class="row"><label class="mute"><input type="checkbox" data-px="insecure"' + (CN.proxmenux.insecureTLS ? ' checked' : '') + '> allow a certificate this hub does not trust</label>' +
+    '<button class="btn ghost" id="test-px">Test connection</button></div><div class="mute" id="px-res">' + esc(CN.pxResult) + '</div></div>';
+}
+function weatherHtml() {
+  var w = CN.weather || {};
+  return '<div class="card"><b>Weather and time</b><p class="mute">Choose your city or postal code, then save. Weather comes from Open-Meteo. Your location stays in the hub settings and can be changed any time.</p>' +
+    '<div class="fg"><label for="weather-search">City or postal code</label><div class="fg-w"><input id="weather-search" type="search" placeholder="City or postal code" style="flex:1;min-width:140px"><button class="btn ghost" id="weather-find">Search</button></div></div>' +
+    '<div id="weather-results" role="status" aria-live="polite"></div>' +
+    ((window.isSecureContext && navigator.geolocation) ? '<div class="row"><button class="btn ghost" id="weather-locate">Use this device’s location</button></div>' : '') +
+    '<p class="mute">' + (w.name ? 'Selected: ' + esc(w.name) : w.lat != null ? 'Selected coordinates below.' : 'No weather location selected.') + '</p>' +
+    '<div class="fg"><label>Temperature</label><select data-w="units">' + opts([['f', 'Fahrenheit (°F)'], ['c', 'Celsius (°C)']], w.units || 'f') + '</select></div>' +
+    '<div class="fg"><label>Time zone</label><input data-w="tz" list="tzlist" value="' + esc(CN.timezone) + '" placeholder="Choose a city to fill this in">' +
+    '<datalist id="tzlist">' + ['America/Phoenix', 'America/Los_Angeles', 'America/Denver', 'America/Chicago', 'America/New_York', 'America/Toronto', 'Europe/London', 'Europe/Paris', 'Australia/Sydney', 'UTC'].map(function (z) { return '<option value="' + z + '">'; }).join('') + '</datalist></div>' +
+    '<details class="adv"><summary>Enter coordinates manually</summary><div class="fg" style="margin-top:12px"><label>Coordinates</label><div class="fg-w"><input aria-label="Latitude" type="number" min="-90" max="90" step="any" style="width:130px" data-w="lat" value="' + (w.lat == null ? '' : w.lat) + '" placeholder="Latitude"> ' +
+    '<input aria-label="Longitude" type="number" min="-180" max="180" step="any" style="width:130px" data-w="lon" value="' + (w.lon == null ? '' : w.lon) + '" placeholder="Longitude"></div></div></details>' +
+    '<div class="row" style="margin-top:12px"><button class="btn ghost" id="weather-clear">Clear location</button></div>' +
+    '<p class="mute">Location search: Open-Meteo / GeoNames. The time zone also controls calendar dates and chore resets.</p></div>';
+}
+function searchWeather() {
+  var query = $('#weather-search').value.trim(), output = $('#weather-results'), seq = ++WEATHER_SEARCH;
+  WEATHER_RESULTS = [];
+  output.textContent = 'Searching…';
+  api('GET', '/api/admin/locations?q=' + encodeURIComponent(query)).then(function (r) {
+    if (seq !== WEATHER_SEARCH || !output.isConnected) return;
+    WEATHER_RESULTS = r.results;
+    output.innerHTML = r.results.length ? r.results.map(function (p, i) {
+      return '<div class="row"><button class="btn ghost" data-weather-place="' + i + '">' + esc(p.name) + '</button></div>';
+    }).join('') : '<p class="mute">No places found. Try a nearby city or enter coordinates.</p>';
+  }).catch(function (e) { if (seq === WEATHER_SEARCH && output.isConnected) output.textContent = e.message; });
+}
+function chooseWeather(place) {
+  collectConnections();
+  var units = $('#s-connections [data-w=units]').value;
+  CN.weather = { lat: place.lat, lon: place.lon, name: place.name, units: units };
+  if (place.timezone) CN.timezone = place.timezone;
+  ++WEATHER_SEARCH;
+  renderConnections(); barRefresh();
+  msg('Location selected. Save changes to apply it to the frame.');
+}
+function locateWeather() {
+  var output = $('#weather-results'), seq = ++WEATHER_SEARCH;
+  output.textContent = 'Waiting for location permission…';
+  navigator.geolocation.getCurrentPosition(function (p) {
+    if (seq !== WEATHER_SEARCH || !output.isConnected) return;
+    chooseWeather({ lat: p.coords.latitude, lon: p.coords.longitude, name: 'Device location', timezone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  }, function () {
+    if (seq === WEATHER_SEARCH && output.isConnected) output.textContent = 'Location was unavailable. Search for your city instead.';
+  }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+}
+document.addEventListener('keydown', function (e) {
+  if (e.target.id === 'weather-search' && e.key === 'Enter') { e.preventDefault(); searchWeather(); }
+});
+document.addEventListener('input', function (e) {
+  if (e.target.matches('[data-w=lat], [data-w=lon]') && CN && CN.weather) CN.weather.name = '';
+});
+function securityHtml() {
+  return '<div class="card"><b>Security</b><p class="mute">Admin password for this page: ' + (CN.adminPasswordSet ? 'set.' : '<span class="bad">not set. Anyone on your network can open this page.</span>') + ' Changing it signs you out.</p>' +
+    '<div class="fg"><label>New password</label><input type="password" autocomplete="new-password" data-s="pw" placeholder="8+ characters"></div><div class="fg"><label>Repeat it</label><input type="password" autocomplete="new-password" data-s="pw2" placeholder="Type it again"></div>' +
+    '<p class="mute" style="margin-top:14px">Collector token (lets a computer send AI-usage numbers to the hub): ' + (CN.agentsTokenSet ? 'set.' : 'not set.') + '</p>' +
+    '<div class="row"><button class="btn ghost" id="regen-agents">Generate a new token</button></div>' +
+    (CN.shownToken ? '<div class="card"><p class="mute">New token. It is shown only now. Put it in <code>tools/agent-usage/config.local.json</code> on the computer that runs the collector:</p><code style="word-break:break-all">' + esc(CN.shownToken) + '</code></div>' : '') +
+    '<p class="mute" style="margin-top:20px">Evergreen progress token: ' + (CN.progressTokenSet ? 'set.' : 'not set.') + ' Allows the sync tool to publish Evergreen reports. It is separate from account usage and admin access.</p>' +
+    '<div class="row"><button class="btn ghost" id="regen-progress">Generate Evergreen token</button></div>' +
+    (CN.shownProgressToken ? '<div class="card"><p class="mute">Shown only now. Save this in the publisher’s protected token file. See <code>tools/project-progress/README.md</code> for the automatic sync setup.</p><code style="word-break:break-all">' + esc(CN.shownProgressToken) + '</code></div>' : '') + '</div>';
+}
+function renderConnections() {
+  if (!CN) { $('#s-connections').innerHTML = '<p class="mute">Loading…</p>'; return; }
+  var h = '<p class="mute" style="margin-top:0">Accounts and outside services.</p><div class="subtabs">' + CN_TABS.map(function (t) { return '<button data-ct="' + t[0] + '" class="' + (t[0] === CN_TAB ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</div>';
+  h += CN_TAB === 'accounts' ? accountsHtml() : CN_TAB === 'homeassistant' ? homeassistantHtml() : CN_TAB === 'homelab' ? homelabHtml() : CN_TAB === 'weather' ? weatherHtml() : CN_TAB === 'security' ? securityHtml() : calendarsHtml();
+  h += '<p class="mute">Saved on the hub in <code>' + esc((CN.files || {}).config || 'config.json') + '</code> and <code>' + esc((CN.files || {}).secrets || 'secrets.json') + '</code>. Photos folder: <code>' + esc(CN.photosDir || '') + '</code> (set when the hub is installed).</p>';
+  $('#s-connections').innerHTML = h;
+}
+// Only what is on a page has fields in the document, so read each one only if it is there. Skipped until the pages have been drawn from this CN,
+// so a page left over from before a reload can never overwrite fresh values.
+function collectConnections() {
+  if (!CN || !CN.domReady) return;
+  var root = $('#s-connections'), el;
+  if (CN_TAB === 'calendars') {
+    root.querySelectorAll('[data-cal]').forEach(function (card) {
+      var c = CN.calendars[+card.dataset.cal]; if (!c) return;
+      c.name = card.querySelector('[data-c=name]').value;
+      c.newUrl = card.querySelector('[data-c=newUrl]').value;
+      c.people = []; card.querySelectorAll('[data-cp]').forEach(function (x) { if (x.checked) c.people.push(x.dataset.cp); });
+    });
+  }
+  if (CN_TAB === 'accounts') { CN.acctInput = CN.acctInput || {}; root.querySelectorAll('[data-acct]').forEach(function (card) { CN.acctInput[card.dataset.acct] = card.querySelector('[data-acct-json]').value; }); }
+  if ((el = root.querySelector('[data-ha=url]'))) {
+    CN.homeassistant.url = el.value; CN.haToken = root.querySelector('[data-ha=token]').value;
+    CN.homeassistant.climate = root.querySelector('[data-ha=climate]').value;
+    root.querySelectorAll('[data-ha-flag]').forEach(function (input) { CN.homeassistant[input.dataset.haFlag] = input.checked; });
+    CN.homeassistant.entities = Array.from(root.querySelectorAll('[data-ha-entity]:checked')).map(function (e) { return e.dataset.haEntity; });
+  }
+  root.querySelectorAll('[data-lab]').forEach(function (input) {
+    var k = input.dataset.lab;
+    if (['host', 'idPort', 'relayPort'].indexOf(k) >= 0) CN.homelab.rustdesk[k] = k === 'host' ? input.value : Number(input.value);
+    else if (['path', 'destination', 'label', 'maxAgeHours'].indexOf(k) >= 0) CN.homelab.backup[k] = k === 'maxAgeHours' ? Number(input.value) : input.value;
+    else CN.homelab[k] = input.value;
+  });
+  root.querySelectorAll('[data-lab-clear]').forEach(function (input) { CN.homelab[input.dataset.labClear + 'Unlink'] = input.checked; });
+  root.querySelectorAll('[data-pi-ssh]').forEach(function (input) { CN.homelab.piholeSsh[input.dataset.piSsh] = input.dataset.piSsh === 'port' ? Number(input.value) : input.value; });
+  if ((el = root.querySelector('[data-px=url]'))) {
+    CN.proxmenux.url = el.value;
+    CN.pxToken = root.querySelector('[data-px=token]').value;
+    CN.proxmenux.insecureTLS = root.querySelector('[data-px=insecure]').checked;
+  }
+  if ((el = root.querySelector('[data-w=tz]'))) {
+    CN.timezone = el.value;
+    var lat = root.querySelector('[data-w=lat]').value, lon = root.querySelector('[data-w=lon]').value;
+    CN.weather = (lat === '' && lon === '') ? null : { lat: lat, lon: lon, units: root.querySelector('[data-w=units]').value, name: (CN.weather || {}).name || '' };
+  }
+  if ((el = root.querySelector('[data-s=pw]'))) { CN.newPw = el.value; CN.confirmPw = root.querySelector('[data-s=pw2]').value; }
+}
+// What the Connections forms would send, in pieces so each page can tell whether IT has unsaved changes. Together they are the whole save.
+function connPieces() {
+  if (!CN) return null;
+  var p = {
+    core: {
+      timezone: CN.timezone, weather: CN.weather ? { lat: CN.weather.lat === '' ? null : +CN.weather.lat, lon: CN.weather.lon === '' ? null : +CN.weather.lon, units: CN.weather.units, name: CN.weather.name || '' } : null,   // numbers either way, so a field read back from the page is not a "change"
+      proxmenux: { url: CN.proxmenux.url, insecureTLS: !!CN.proxmenux.insecureTLS, token: CN.pxToken || undefined },
+      homelab: CN.homelab,
+      homeassistant: { url: CN.homeassistant.url, climate: CN.homeassistant.climate, entities: CN.homeassistant.entities, controls: !!CN.homeassistant.controls, ecobeeResume: !!CN.homeassistant.ecobeeResume, token: CN.haToken || undefined },
+      calendars: CN.calendars.map(function (c) { return { key: c.key || undefined, name: c.name, people: c.people, url: c.newUrl || undefined }; }),
+      adminPassword: CN.newPw || undefined, accounts: undefined
+    }
+  };
+  Object.keys(CN.acctInput || {}).forEach(function (id) { if ((CN.acctInput[id] || '').trim()) { p.core.accounts = p.core.accounts || {}; p.core.accounts[id] = { authJson: CN.acctInput[id] }; } });
+  return p;
+}
+function connPayload() {
+  var p = connPieces(); if (!p) return null;
+  var c = p.core, b = { timezone: c.timezone, weather: c.weather, homelab: c.homelab, proxmenux: c.proxmenux, homeassistant: c.homeassistant, calendars: c.calendars, accounts: c.accounts, adminPassword: c.adminPassword };
+  return b;
+}
+function saveConnectionsCall() {
+  collectConnections();
+  if (CN.newPw !== CN.confirmPw) return Promise.reject(new Error('The two passwords do not match'));
+  return api('PUT', '/api/admin/connections', connPayload()).then(function (r) { CN.acctInput = {}; CN.haToken = ''; return r; });
+}
+function testCalendar(i) {
+  collectConnections();
+  var c = CN.calendars[i]; c.result = 'Testing…'; renderConnections();
+  api('POST', '/api/admin/test', { what: 'calendar', key: c.key || undefined, url: c.newUrl || undefined })
+    .then(function (r) { c.result = r.ok ? 'Works: ' + r.events + ' events found' : 'Problem: ' + r.error; })
+    .catch(function (e) { c.result = 'Problem: ' + e.message; }).then(renderConnections);
+}
+function testProxmenux() {
+  collectConnections(); CN.pxResult = 'Testing the saved settings…'; renderConnections();
+  api('POST', '/api/admin/test', { what: 'proxmenux' })
+    .then(function (r) { CN.pxResult = r.ok ? 'Works: host "' + r.host + '", ' + r.guests + ' VMs and containers' : 'Problem: ' + r.error; })
+    .catch(function (e) { CN.pxResult = 'Problem: ' + e.message; }).then(renderConnections);
+}
+function regenAgents() {
+  if (!confirm('Generate a new collector token? The old one stops working, so the computer that sends AI-usage numbers must be given the new one.')) return;
+  api('PUT', '/api/admin/connections', { agentsToken: 'regenerate' }).then(function (r) { CN.shownToken = r.generatedAgentsToken; return load(); })
+    .catch(function (e) { msg('Not done: ' + e.message, true); });
+}
+function regenProgress() {
+  if (CN.progressTokenSet && !confirm('Replace the Evergreen progress token? The sync tool must be given the new token afterward.')) return;
+  api('PUT', '/api/admin/connections', { progressToken: 'regenerate' }).then(function (r) { CN.shownProgressToken = r.generatedProgressToken; return load(); })
+    .catch(function (e) { msg('Not done: ' + e.message, true); });
+}
+
+// ---------------------------------------------------------------- emoji picker
+var PK = { i: null, group: 'home' };
+function openPicker(i) {
+  PK.i = i; var cur = D.chores[i].emoji;
+  PK.group = (EMOJI_GROUPS.filter(function (g) { return EMOJI[g[0]].indexOf(cur) > -1; })[0] || EMOJI_GROUPS[0])[0];
+  renderPicker(); $('#picker').hidden = false;
+}
+function renderPicker() {
+  var cur = D.chores[PK.i].emoji;
+  $('#picker-body').innerHTML = '<div class="pk-groups">' + EMOJI_GROUPS.map(function (g) { return '<button data-pk-group="' + g[0] + '" class="' + (g[0] === PK.group ? 'on' : '') + '">' + esc(g[1]) + '</button>'; }).join('') + '</div>' +
+    '<div class="pk-grid">' + EMOJI[PK.group].map(function (e) { return '<button data-emoji="' + e + '" class="' + (e === cur ? 'on' : '') + '">' + e + '</button>'; }).join('') + '</div>';
+}
+function closePicker() { $('#picker').hidden = true; PK.i = null; }
+
+// ---------------------------------------------------------------- photo folders
+var PHF = null;
+function loadPhotos(rescan) {
+  PHF = null; renderPhotos(); loadUploads();
+  return api('GET', '/api/admin/photo-folders' + (rescan ? '?rescan=1' : '')).then(function (r) { PHF = r; PHF.sel = r.enabled.slice(); BASE.photos = JSON.stringify(PHF.sel); renderPhotos(); })
+    .catch(function (e) { msg('Could not read the photo folders: ' + e.message, true); });
+}
+function phDirect(p) { return PHF.sel.indexOf(p) > -1; }
+function phIncluded(p) { return PHF.sel.some(function (s) { return s === '.' || p === s || p.indexOf(s + '/') === 0; }); }
+// ---------------------------------------------------------------- tunable settings
+// Rows come from the hub (lib/tune.js, sent as D.tuneSchema); values as D.tune. Edits save by themselves a moment after you stop
+// and reach the frame on its next poll. To add one, add a row to lib/tune.js, nothing here changes.
+function tuneRow(r) {
+  var v = D.tune ? D.tune[r.key] : r.def, c;
+  if (r.type === 'select') c = '<select aria-label="' + esc(r.label) + '" data-tune="' + r.key + '">' + opts(r.options, v) + '</select>';
+  else {
+    c = (r.slider === false ? '' : '<input type="range" min="' + r.min + '" max="' + r.max + '" step="' + (r.step || 1) + '" data-tune="' + r.key + '" value="' + v + '">') +
+      '<input type="number" min="' + r.min + '" max="' + r.max + '" step="' + (r.step || 1) + '" style="width:80px;flex:none" data-tune="' + r.key + '" value="' + v + '"><span class="mute" style="flex:none">' + esc(r.unit || '') + '</span>';
+  }
+  var dv = r.type === 'select' ? (r.options.filter(function (o) { return o[0] === r.def; })[0] || [0, r.def])[1] : r.def + (r.unit ? ' ' + r.unit : '');
+  return '<div class="tune"><div class="tune-g"><span class="tune-ln"><span class="tune-l tt">' + esc(r.label) + '</span><span class="tag" title="Where this setting takes effect">' + (WHERE[r.where] || 'Frame') + '</span></span><span class="tune-c">' + c + '</span>' +
+    '<button type="button" class="btn ghost tt" data-tune-reset="' + r.key + '" title="Back to the default: ' + esc(String(dv)) + '">Default: ' + esc(String(dv)) + '</button></div>' +
+    (r.hint ? '<div class="mute" style="font-size:13px;margin-top:2px">' + esc(r.hint) + '</div>' : '') +
+    (r.previews ? '<div class="theme-options">' + r.previews.map(function (p) {
+      return '<button type="button" class="theme-option" data-theme-choice="' + esc(p.id) + '" aria-label="Apply ' + esc(p.label) + ' theme" aria-pressed="' + (v === p.id) + '"><span class="theme-sample" style="--sample-paper:' + esc(p.paper) + ';--sample-card:' + esc(p.card) + ';--sample-ink:' + esc(p.ink) + ';--sample-accent:' + esc(p.accent) + '"><i></i><span><b>10:24</b><small>Home · 72°</small></span></span><span class="theme-caption">' + esc(p.label) + '<small>' + esc(p.description) + '</small></span></button>';
+    }).join('') + '</div>' : '') + '</div>';
+}
+function tuneGroups(rows, wrap) {
+  var groups = [], by = {};
+  rows.forEach(function (r) { if (!by[r.group]) { by[r.group] = []; groups.push(r.group); } by[r.group].push(r); });
+  return groups.map(function (g) { return wrap(g, by[g].map(tuneRow).join('')); }).join('');
+}
+// Everyday settings as cards, rarely-touched ones (adv in lib/tune.js) in an Advanced fold, then a reset button for the page.
+function tuneCards(tab, sub) {
+  var rows = (D.tuneSchema || []).filter(function (r) { return r.tab === tab && (!sub || r.sub === sub); });
+  var main = rows.filter(function (r) { return !r.adv; }), adv = rows.filter(function (r) { return r.adv; });
+  var h = tuneGroups(main, function (g, body) { return '<div class="card"><b>' + esc(g) + '</b>' + body + '</div>'; });
+  if (adv.length) {
+    var changed = adv.some(function (r) { return D.tune && D.tune[r.key] !== r.def; });
+    h += '<details class="card adv"' + (changed ? ' open' : '') + '><summary><b>Advanced</b> <span class="mute">sizes, safety holds and hub internals</span></summary>' +
+      tuneGroups(adv, function (g, body) { return '<div class="adv-g"><div class="mute" style="margin-top:12px;font-weight:600">' + esc(g) + '</div>' + body + '</div>'; }) + '</details>';
+  }
+  if (sub && sub !== 'display' && rows.length) h += '<div class="row"><button type="button" class="btn ghost" data-tune-reset-page="' + sub + '">Reset this page to defaults</button></div>';
+  return h;
+}
+// A dot after the label and an enabled Default button show what has been changed from the default.
+function tuneMark() {
+  document.querySelectorAll('.tune').forEach(function (row) {
+    var el = row.querySelector('[data-tune]'); if (!el) return;
+    var r = tuneSchemaRow(el.dataset.tune); if (!r) return;
+    var same = r.type === 'select' ? el.value === r.def : +el.value === +r.def;
+    row.classList.toggle('mod', !same);
+    var btn = row.querySelector('[data-tune-reset]'); if (btn) btn.disabled = same;
+  });
+}
+var tunePending = {}, tuneTimer = null;
+function tuneSchemaRow(k) { return (D.tuneSchema || []).filter(function (r) { return r.key === k; })[0]; }
+function tuneSync() {   // put the stored values back into every control
+  document.querySelectorAll('[data-tune]').forEach(function (i) { if (D.tune && D.tune[i.dataset.tune] !== undefined && document.activeElement !== i) i.value = D.tune[i.dataset.tune]; });
+  document.querySelectorAll('[data-theme-choice]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.themeChoice === D.tune.theme)); });
+  tuneMark();
+}
+function setTune(key, val, now) {
+  var r = tuneSchemaRow(key); if (!r) return;
+  if (r.type !== 'select') { val = +val; if (!isFinite(val)) return; val = Math.max(r.min, Math.min(r.max, val)); }
+  document.querySelectorAll('[data-tune="' + key + '"]').forEach(function (i) { if (document.activeElement !== i || i.type === 'range') i.value = val; });
+  tunePending[key] = val;
+  tuneMark();
+  clearTimeout(tuneTimer);
+  tuneTimer = setTimeout(function () {
+    var values = tunePending; tunePending = {};
+    api('PUT', '/api/admin/tune', { values: values }).then(function (res) {
+      D.tune = res.tune; tuneSync(); var st = $('#set-subtabs'); if (st) { st.outerHTML = subtabsHtml(); var cc = $('#set-ccount'); if (cc) cc.textContent = settingsCounts()._all; }
+      msg('Saved. The frame picks it up within a few seconds.');
+    }).catch(function (e) { msg('Not saved: ' + e.message, true); tuneSync(); });
+  }, now ? 0 : 400);
+}
+function renderPhotos() {
+  var el = $('#s-photos'), UPH = '<div id="ph-upload"></div>' + tuneCards('photos');
+  if (!PHF) { el.innerHTML = UPH + '<p class="mute">Reading the folders…</p>'; renderUpload(); return; }
+  var all = PHF.sel.indexOf('.') > -1;
+  var h = '<div class="card"><b>Photo folders</b><p class="mute">Tick the folders whose photos should appear on the frame. A ticked folder includes everything inside it. Folders you add or remove on the NAS show up here and on the frame within a minute. Looking in <code>' + esc(PHF.root) + '</code>.</p>' +
+    '<div class="ph-row"><label><input type="checkbox" data-ph="."' + (all ? ' checked' : '') + '> <b>Everything</b></label><span class="mute">' + PHF.rootTotal + ' photos</span></div>';
+  PHF.nodes.forEach(function (n) {
+    var inc = phIncluded(n.path), own = phDirect(n.path);
+    h += '<div class="ph-row" style="padding-left:' + (n.depth - 1) * 22 + 'px"><label><input type="checkbox" data-ph="' + esc(n.path) + '"' + (inc ? ' checked' : '') + (inc && !own ? ' disabled' : '') + '> ' + esc(n.name) + '</label>' +
+      '<span class="mute">' + n.direct + ' here' + (n.total > n.direct ? ', ' + n.total + ' with subfolders' : '') + (inc && !own ? ' · included by a parent folder' : '') + '</span></div>';
+  });
+  if (!PHF.nodes.length) h += '<p class="mute">No subfolders here yet.</p>';
+  h += '</div><p class="mute">Showing <b>' + PHF.showing + '</b> photos on the frame now.' + (PHF.skippedHeic ? ' ' + PHF.skippedHeic + ' HEIC files are skipped (convert them to JPEG).' : '') + '</p>' +
+    '<div class="row"><button class="btn ghost" id="rescan-photos">Rescan now</button></div>';
+  el.innerHTML = UPH + h;
+  tuneMark();
+  renderUpload();
+}
+
+// ---------------------------------------------------------------- add photos from the browser
+var UP = { list: null, folders: [], q: [], busy: false, max: 40 * 1024 * 1024, folder: '', moveTo: '', sel: {}, drag: null };
+var upInput = document.createElement('input');
+upInput.type = 'file'; upInput.multiple = true; upInput.hidden = true; upInput.accept = 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp';
+document.body.appendChild(upInput);
+upInput.addEventListener('change', function () { uploadFiles(upInput.files); upInput.value = ''; });
+function selKey(f, n) { return f + '/' + n; }
+function loadUploads() {
+  return api('GET', '/api/admin/uploads').then(function (r) {
+    UP.list = r.photos; UP.folders = r.folders || []; UP.max = r.max || UP.max;
+    if (UP.folder && UP.folders.indexOf(UP.folder) < 0) UP.folder = '';
+    if (UP.moveTo && UP.folders.indexOf(UP.moveTo) < 0) UP.moveTo = '';
+    var have = {}; UP.list.forEach(function (p) { have[selKey(p.folder, p.name)] = 1; });
+    Object.keys(UP.sel).forEach(function (k) { if (!have[k]) delete UP.sel[k]; });
+    renderUpload();
+  }).catch(function (e) { msg('Could not read the uploaded photos: ' + e.message, true); });
+}
+function folderOpts(cur) { return '<option value="">Top level</option>' + UP.folders.map(function (f) { return '<option value="' + esc(f) + '"' + (f === cur ? ' selected' : '') + '>' + esc(f) + '</option>'; }).join(''); }
+function renderUpload() {
+  var el = $('#ph-upload'); if (!el) return;
+  var nsel = Object.keys(UP.sel).length;
+  var h = '<div class="card"><b>Add photos</b><p class="mute">Choose or drop photos, JPEG, PNG or WebP, up to ' + (UP.max >> 20) + ' MB each. They are kept on the hub (in its data folder, so a Proxmox backup of the container includes them) and join the folders below on the frame. Drag a photo onto a folder to move it, or tap photos to select them and use Move.</p>' +
+    '<div class="row"><label class="mute">Add to</label><select id="up-folder">' + folderOpts(UP.folder) + '</select><button class="btn ghost" id="up-newfolder">New folder</button></div>' +
+    '<div id="dropzone"><button class="btn" id="up-choose">Choose photos</button><div class="mute" style="margin-top:8px">or drop them here</div></div>';
+  if (UP.q.length) {
+    h += '<div class="up-q">' + UP.q.map(function (it) {
+      var st = it.state === 'wait' ? 'waiting' : it.state === 'up' ? it.pct + '%' : it.state === 'ok' ? '<span class="ok">added</span>' : '<span class="bad">' + esc(it.err) + '</span>';
+      return '<div><span>' + esc(it.file.name) + (it.folder ? ' → ' + esc(it.folder) : '') + '</span><span>' + st + '</span></div>';
+    }).join('') + '</div>';
+  }
+  if (nsel) h += '<div class="row up-bar"><b>' + nsel + ' selected</b><label class="mute">Move to</label><select id="up-moveto">' + folderOpts(UP.moveTo) + '</select><button class="btn" id="up-move">Move</button><button class="btn ghost" id="up-clear">Clear</button></div>';
+  if (UP.list) {
+    ['' ].concat(UP.folders).forEach(function (f) {
+      var items = UP.list.filter(function (p) { return p.folder === f; });
+      if (!f && !items.length && UP.folders.length) return;   // an empty top level is only worth showing when it is the only place
+      h += '<div class="up-grp" data-drop-folder="' + esc(f) + '"><div class="up-gh"><b>' + (f ? esc(f) : 'Top level') + '</b><span class="mute">' + items.length + ' photo' + (items.length === 1 ? '' : 's') + '</span>' +
+        (f && !items.length ? '<button class="btn ghost" data-del-folder="' + esc(f) + '">Remove folder</button>' : '') + '</div>';
+      if (items.length) h += '<div class="up-grid">' + items.map(function (p) {
+        return '<figure draggable="true" data-up-name="' + esc(p.name) + '" data-up-folder="' + esc(p.folder) + '"' + (UP.sel[selKey(p.folder, p.name)] ? ' class="sel"' : '') + '><img loading="lazy" draggable="false" src="/photo/' + encodeURIComponent(p.id) + '?w=160" alt="' + esc(p.name) + '" title="' + esc(p.name) + '"><button class="x" data-del-up="' + esc(p.name) + '" data-del-folder-of="' + esc(p.folder) + '" title="Delete">×</button></figure>';
+      }).join('') + '</div>';
+      else h += '<p class="mute" style="margin:6px 0 0">' + (f ? 'Empty. Drop photos here to add them to this folder.' : 'Nothing added from the browser yet.') + '</p>';
+      h += '</div>';
+    });
+  }
+  el.innerHTML = h + '</div>';
+}
+function uploadFiles(files, folder) {
+  var to = folder === undefined ? UP.folder : folder;
+  Array.prototype.forEach.call(files, function (f) {
+    var it = { file: f, folder: to, state: 'wait', pct: 0, err: '' };
+    if (/\.(heic|heif)$/i.test(f.name)) { it.state = 'err'; it.err = 'HEIC is not supported yet, convert to JPEG'; }
+    else if (!/\.(jpe?g|png|webp)$/i.test(f.name)) { it.state = 'err'; it.err = 'not a JPEG, PNG or WebP'; }
+    else if (f.size > UP.max) { it.state = 'err'; it.err = 'over ' + (UP.max >> 20) + ' MB'; }
+    UP.q.push(it);
+  });
+  renderUpload();
+  if (!UP.busy) pumpUploads();
+}
+function pumpUploads() {
+  var it = UP.q.filter(function (x) { return x.state === 'wait'; })[0];
+  if (!it) {
+    UP.busy = false;
+    var ok = UP.q.filter(function (x) { return x.state === 'ok'; }).length, bad = UP.q.filter(function (x) { return x.state === 'err'; }).length;
+    if (ok || bad) msg(ok + ' photo' + (ok === 1 ? '' : 's') + ' added' + (bad ? ', ' + bad + ' failed' : '') + '.', !ok && bad > 0);
+    UP.q = UP.q.filter(function (x) { return x.state === 'err'; });   // finished ones move into the list below, failed ones stay visible
+    return loadUploads().then(function () { return loadPhotos(true); });
+  }
+  UP.busy = true; it.state = 'up';
+  var x = new XMLHttpRequest();
+  x.open('POST', '/api/admin/photo-upload?name=' + encodeURIComponent(it.file.name) + '&folder=' + encodeURIComponent(it.folder || '') + '&mtime=' + (it.file.lastModified || 0));
+  x.setRequestHeader('Content-Type', 'application/octet-stream');
+  x.upload.onprogress = function (e) { if (e.lengthComputable) { it.pct = Math.round(100 * e.loaded / e.total); renderUpload(); } };
+  x.onload = function () {
+    if (x.status === 200) it.state = 'ok';
+    else { it.state = 'err'; try { it.err = JSON.parse(x.responseText).error; } catch (e) { it.err = x.status === 401 ? 'sign in again' : 'failed (' + x.status + ')'; } }
+    renderUpload(); pumpUploads();
+  };
+  x.onerror = function () { it.state = 'err'; it.err = 'network error'; renderUpload(); pumpUploads(); };
+  x.send(it.file);
+}
+// move photos one at a time, then refresh what the frame shows
+function movePhotos(items, to) {
+  items = items.filter(function (p) { return p.folder !== to; });
+  if (!items.length) return;
+  var done = 0, failed = '';
+  items.reduce(function (chain, p) {
+    return chain.then(function () { return api('POST', '/api/admin/photo-move', { name: p.name, from: p.folder, to: to }).then(function () { done++; }, function (e) { failed = e.message; }); });
+  }, Promise.resolve()).then(function () {
+    UP.sel = {};
+    msg(done + ' photo' + (done === 1 ? '' : 's') + ' moved' + (to ? ' to ' + to : '') + (failed ? '; ' + failed : '') + '.', !done && !!failed);
+    return loadUploads().then(function () { return loadPhotos(true); });
+  });
+}
+function selectedItems() { return Object.keys(UP.sel).map(function (k) { return UP.sel[k]; }); }
+document.addEventListener('change', function (e) {
+  if (e.target.id === 'up-folder') UP.folder = e.target.value;
+  else if (e.target.id === 'up-moveto') UP.moveTo = e.target.value;
+});
+document.addEventListener('click', function (e) {
+  var f = e.target.closest && e.target.closest('figure[data-up-name]');
+  if (!f || e.target.closest('button')) return;
+  var k = selKey(f.dataset.upFolder, f.dataset.upName);
+  if (UP.sel[k]) delete UP.sel[k]; else UP.sel[k] = { name: f.dataset.upName, folder: f.dataset.upFolder };
+  renderUpload();
+});
+document.addEventListener('dragstart', function (e) {
+  var f = e.target.closest && e.target.closest('figure[data-up-name]');
+  if (!f) return;
+  var k = selKey(f.dataset.upFolder, f.dataset.upName);
+  UP.drag = UP.sel[k] ? selectedItems() : [{ name: f.dataset.upName, folder: f.dataset.upFolder }];   // dragging a selected photo takes the whole selection
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', 'frame-photo'); } catch (x) { /* some browsers need data to start a drag */ }
+});
+document.addEventListener('dragend', function () { UP.drag = null; Array.prototype.forEach.call(document.querySelectorAll('.over'), function (n) { n.classList.remove('over'); }); });
+document.addEventListener('dragover', function (e) {
+  var z = e.target.closest && (e.target.closest('#dropzone') || e.target.closest('.up-grp'));
+  if (z) { e.preventDefault(); z.classList.add('over'); }
+});
+document.addEventListener('dragleave', function (e) {
+  var z = e.target.closest && (e.target.closest('#dropzone') || e.target.closest('.up-grp'));
+  if (z && !z.contains(e.relatedTarget)) z.classList.remove('over');
+});
+document.addEventListener('drop', function (e) {
+  var g = e.target.closest && e.target.closest('.up-grp'), z = e.target.closest && e.target.closest('#dropzone');
+  if (!g && !z) return;
+  e.preventDefault();
+  Array.prototype.forEach.call(document.querySelectorAll('.over'), function (n) { n.classList.remove('over'); });
+  if (UP.drag) { var items = UP.drag; UP.drag = null; if (g) movePhotos(items, g.dataset.dropFolder); return; }   // a photo from this page, onto a folder
+  if (e.dataTransfer && e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files, g ? g.dataset.dropFolder : undefined);
+});
+
+function savePhotosCall() {
+  if (!PHF) return Promise.resolve();
+  if (!PHF.sel.length) return Promise.reject(new Error('Tick at least one folder'));
+  return api('PUT', '/api/admin/photo-folders', { folders: PHF.sel }).then(function (r) { return loadPhotos().then(function () { return r; }); });
+}
+
+function render() { tabs(); renderConnections(); if (CN) CN.domReady = true; renderPhotos(); renderChores(); renderGroceries(); renderEvents(); renderPeople(); renderSettings(); renderStatus(); }
+
+// ---------------------------------------------------------------- read fields back into D
+function readCards(root, list, map) {
+  root.querySelectorAll('.card[data-i]').forEach(function (card) {
+    var o = list[+card.dataset.i]; if (!o) return;
+    card.querySelectorAll('[data-f]').forEach(function (el) {
+      var k = el.dataset.f, v = el.type === 'checkbox' ? el.checked : el.value;
+      if (el.type === 'number') v = v === '' ? 0 : +v;
+      o[k] = v;
+    });
+    if (map) map(card, o);
+  });
+}
+function collect() {
+  readCards($('#s-chores'), D.chores, function (card, o) {
+    var days = []; card.querySelectorAll('[data-day]').forEach(function (d) { if (d.checked) days.push(+d.dataset.day); });
+    o.days = days.length === 7 || !days.length ? null : days;
+  });
+  readCards($('#s-groceries'), D.groceries);
+  var gr = $('#s-groceries'), beforeStores = JSON.stringify(D.stores), beforeCats = D.categories.slice();
+  gr.querySelectorAll('[data-common]').forEach(function (row) {
+    var item = D.commonItems[+row.dataset.common];
+    item.name = row.querySelector('[data-common-name]').value; item.cat = row.querySelector('[data-common-cat]').value; item.usual = row.querySelector('[data-common-usual]').checked;
+  });
+  gr.querySelectorAll('[data-store]').forEach(function (el) { D.stores[+el.dataset.store].name = el.value; });
+  gr.querySelectorAll('[data-category]').forEach(function (el) { D.categories[+el.dataset.category] = el.value; });
+  if (JSON.stringify(beforeCats) !== JSON.stringify(D.categories)) {
+    D.groceries.forEach(function (g) { var i = beforeCats.indexOf(g.cat); if (i >= 0) g.cat = D.categories[i]; });
+    D.commonItems.forEach(function (g) { var i = beforeCats.indexOf(g.cat); if (i >= 0) g.cat = D.categories[i]; });
+    gr.querySelectorAll('[data-common-cat]').forEach(function (el) { el.innerHTML = opts(D.categories.map(function (c) { return [c, c]; }), D.commonItems[+el.closest('[data-common]').dataset.common].cat); });
+    gr.querySelectorAll('.card[data-i] [data-f="cat"]').forEach(function (el) { el.innerHTML = opts(D.categories.map(function (c) { return [c, c]; }), D.groceries[+el.closest('[data-i]').dataset.i].cat); });
+  }
+  if (beforeStores !== JSON.stringify(D.stores)) gr.querySelectorAll('[data-f="store"]').forEach(function (el) { var val = el.value; el.innerHTML = opts(D.stores.map(function (s) { return [s.id, s.name]; }), val); });
+  readCards($('#s-events'), D.events, function (card, o) {
+    o.people = []; card.querySelectorAll('[data-ep]').forEach(function (c) { if (c.checked) o.people.push(c.dataset.ep); });
+  });
+  readCards($('#s-people'), D.people);
+  collectConnections();
+}
+
+// ---------------------------------------------------------------- actions
+$('#picker').addEventListener('click', function (e) { if (e.target.id === 'picker') closePicker(); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#picker').hidden) closePicker(); });
+document.addEventListener('input', function (ev) { if (ev.target.id === 'common-search') { COMMON_Q = ev.target.value; filterCommonItems(); } });
+document.addEventListener('change', function (ev) {
+  if (ev.target.id === 'common-only') { COMMON_ONLY = ev.target.checked; filterCommonItems(); }
+  if (ev.target.hasAttribute('data-common-usual')) filterCommonItems();
+  if (ev.target.dataset.lab === 'piholeVersion') { collectConnections(); renderConnections(); barRefresh(); return; }
+  var ph = ev.target.dataset && ev.target.dataset.ph;
+  if (ph !== undefined && PHF) {   // a photo folder was ticked or unticked
+    var i = PHF.sel.indexOf(ph);
+    if (ev.target.checked && i < 0) PHF.sel.push(ph); else if (!ev.target.checked && i > -1) PHF.sel.splice(i, 1);
+    renderPhotos(); return;
+  }
+  var cc = ev.target.dataset && ev.target.dataset.cc;
+  if (cc !== undefined) { collect(); D.people[+cc].color = ev.target.value.toUpperCase(); PCP = null; renderPeople(); }   // a colour picked from the full palette
+});
+
+document.addEventListener('click', function (ev) {   // a click anywhere else closes an open colour picker
+  if (PCP !== null && !ev.target.closest('.color-pop') && !ev.target.closest('[data-open-color]')) { collect(); PCP = null; renderPeople(); }
+});
+
+document.addEventListener('click', function (ev) {
+  var t = ev.target.closest('button'); if (!t) return;
+  if (t.dataset.t) { enterTab(t.dataset.t); return; }
+  if (t.id === 'weather-find') { searchWeather(); return; }
+  if (t.dataset.weatherPlace !== undefined) { chooseWeather(WEATHER_RESULTS[+t.dataset.weatherPlace]); return; }
+  if (t.id === 'weather-locate') { locateWeather(); return; }
+  if (t.id === 'weather-clear') { collectConnections(); CN.weather = null; ++WEATHER_SEARCH; renderConnections(); barRefresh(); return; }
+  if (t.id === 'rescan-photos') { loadPhotos(true); return; }
+  if (t.id === 'up-choose') { upInput.click(); return; }
+  if (t.id === 'up-newfolder') {
+    var nm = prompt('Name for the new folder'); if (!nm || !nm.trim()) return;
+    api('POST', '/api/admin/upload-folder', { name: nm }).then(function (r) { UP.folder = r.name; msg('Folder "' + r.name + '" created. New uploads go there.'); return loadUploads(); })
+      .catch(function (e) { msg('Not created: ' + e.message, true); });
+    return;
+  }
+  if (t.id === 'up-move') { var sel = selectedItems(); if (sel.length) movePhotos(sel, UP.moveTo); return; }
+  if (t.id === 'up-clear') { UP.sel = {}; renderUpload(); return; }
+  if (t.dataset.delFolder && !t.dataset.delUp) {
+    if (!confirm('Remove the empty folder ' + t.dataset.delFolder + '?')) return;
+    api('POST', '/api/admin/upload-folder-delete', { name: t.dataset.delFolder }).then(function () { return loadUploads(); }).catch(function (e) { msg('Not removed: ' + e.message, true); });
+    return;
+  }
+  if (t.dataset.delUp) {
+    if (!confirm('Delete ' + t.dataset.delUp + '? The file is removed from the hub and the frame.')) return;
+    api('POST', '/api/admin/photo-delete', { name: t.dataset.delUp, folder: t.dataset.delFolderOf || '' }).then(function () { msg('Deleted.'); return loadUploads().then(function () { return loadPhotos(true); }); })
+      .catch(function (e) { msg('Not deleted: ' + e.message, true); });
+    return;
+  }
+  if (t.id === 'health-refresh') { HEALTH = null; renderStatus(); loadHealth(); return; }
+  if (t.dataset.fix) { goFix(t.dataset.fix); return; }
+  if (t.dataset.restore) { restoreBackup(t.dataset.restore, t.dataset.name, t.parentNode.firstChild.textContent); return; }
+  collect();
+  var d = t.dataset;
+  if (d.groceryTab) { GROC_TAB = d.groceryTab; renderGroceries(); barRefresh(); return; }
+  if (d.addChore) { D.chores.push({ id: '', r: 'after', who: d.addChore, title: '', emoji: '✅', stars: 0, days: null }); renderChores(); }
+  else if (d.delChore !== undefined) { D.chores.splice(+d.delChore, 1); renderChores(); }
+  else if (t.id === 'add-g') { D.groceries.push({ id: '', name: '', cat: D.categories.indexOf('Pantry') >= 0 ? 'Pantry' : D.categories[0], qty: 1, store: D.stores[0].id, done: false, note: '' }); renderGroceries(); var fields = $('#s-groceries').querySelectorAll('[data-f=name]'); var newField = Array.from(fields).find(function (el) { return el.value === ''; }); if (newField) newField.focus(); }
+  else if (t.id === 'add-common') { COMMON_Q = ''; COMMON_ONLY = false; D.commonItems.push({ id: '', name: '', cat: D.categories.indexOf('Pantry') >= 0 ? 'Pantry' : D.categories[0], usual: true }); renderGroceries(); var commonFields = $('#common-items').querySelectorAll('[data-common-name]'); commonFields[commonFields.length - 1].focus(); }
+  else if (d.removeCommon !== undefined) { D.commonItems.splice(+d.removeCommon, 1); renderGroceries(); }
+  else if (t.id === 'add-store' || t.id === 'add-category') {
+    var isStore = t.id === 'add-store', input = $(isStore ? '#new-store' : '#new-category'), name = input.value.trim();
+    var names = isStore ? D.stores.map(function (s) { return s.name; }) : D.categories;
+    if (!name || names.some(function (n) { return n.toLowerCase() === name.toLowerCase(); })) { msg('Enter a new, unique name.', true); return; }
+    if (names.length >= (isStore ? 8 : 32)) { msg('The limit is ' + (isStore ? 8 : 32) + '.', true); return; }
+    if (isStore) D.stores.push({ id: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name }); else D.categories.push(name);
+    renderGroceries(); $('#s-groceries ' + (isStore ? '[data-store]' : '[data-category]')).closest('details').open = true;
+  }
+  else if (d.removeStore !== undefined) { var removed = D.stores[+d.removeStore]; if (D.stores.length > 1 && !D.groceries.some(function (g) { return g.store === removed.id; })) D.stores.splice(+d.removeStore, 1); renderGroceries(); }
+  else if (d.removeCategory !== undefined) { var removedCat = D.categories[+d.removeCategory]; if (D.categories.length > 1 && !D.groceries.some(function (g) { return g.cat === removedCat; })) D.categories.splice(+d.removeCategory, 1); renderGroceries(); }
+  else if (d.delG !== undefined) { D.groceries.splice(+d.delG, 1); renderGroceries(); }
+  else if (t.id === 'clear-done') { D.groceries = D.groceries.filter(function (g) { return !g.done; }); renderGroceries(); }
+  else if (t.id === 'add-e') { var n = new Date(); D.events.push({ id: '', title: '', date: n.toISOString().slice(0, 10), start: '09:00', end: '10:00', allDay: false, people: [], repeat: 'none', loc: '' }); renderEvents(); }
+  else if (d.delE !== undefined) { D.events.splice(+d.delE, 1); renderEvents(); }
+  else if (t.id === 'add-p') { D.people.push({ id: '', name: '', color: 'blue', kid: false }); renderPeople(); }
+  else if (d.delP !== undefined) { if (D.people.length > 1) { D.people.splice(+d.delP, 1); renderPeople(); } }
+  else if (d.addCal !== undefined || t.id === 'add-cal') { CN.calendars.push({ key: null, name: '', people: [], urlSet: false, newUrl: '', result: '' }); renderConnections(); }
+  else if (d.delCal !== undefined) { CN.calendars.splice(+d.delCal, 1); renderConnections(); }
+  else if (d.useLink !== undefined) { CN.calendars.push({ key: d.useLink, name: d.useLink, people: [], urlSet: true, newUrl: '', result: '' }); CN.unusedLinks = CN.unusedLinks.filter(function (k) { return k !== d.useLink; }); renderConnections(); }
+  else if (d.testCal !== undefined) testCalendar(+d.testCal);
+  else if (d.useLocalAcct !== undefined) {
+    var localUpdate = {}; localUpdate[d.useLocalAcct] = { source: 'local' };
+    api('PUT', '/api/admin/connections', { accounts: localUpdate }).then(load).catch(function (e) { msg('Not changed: ' + e.message, true); });
+  }
+  else if (d.testAcct !== undefined) testAccount(d.testAcct);
+  else if (d.unlinkAcct !== undefined) unlinkAccount(d.unlinkAcct);
+  else if (d.ct !== undefined) { CN_TAB = d.ct; renderConnections(); }
+  else if (d.pickEmoji !== undefined) openPicker(+d.pickEmoji);
+  else if (d.pkGroup !== undefined) { PK.group = d.pkGroup; renderPicker(); }
+  else if (d.emoji !== undefined) { D.chores[PK.i].emoji = d.emoji; closePicker(); renderChores(); }
+  else if (t.id === 'picker-close') closePicker();
+  else if (d.sw !== undefined) { var sp = d.sw.split(':'); D.people[+sp[0]].color = sp[1]; PCP = null; renderPeople(); }
+  else if (d.openColor !== undefined) { PCP = (PCP === +d.openColor ? null : +d.openColor); renderPeople(); }
+  else if (d.closeColor !== undefined) { PCP = null; renderPeople(); }
+  else if (t.id === 'test-lab') testHomelab();
+  else if (t.id === 'check-pi-management') checkPiManagement(0);
+  else if (d.piAction) runPiAction(d.piAction);
+  else if (t.id === 'test-px') testProxmenux();
+  else if (t.id === 'test-ha') testHA();
+  else if (t.id === 'unlink-ha') unlinkHA();
+  else if (t.id === 'regen-agents') regenAgents();
+  else if (t.id === 'regen-progress') regenProgress();
+  else if (d.st !== undefined) { collect(); SET_TAB = d.st; renderSettings(); }
+  else if (d.tuneResetPage !== undefined) {
+    if (!confirm('Reset every setting on this page to its default?')) return;
+    (D.tuneSchema || []).filter(function (r) { return r.tab === 'settings' && r.sub === d.tuneResetPage; }).forEach(function (r) { setTune(r.key, r.def, true); });
+  }
+  else if (d.themeChoice !== undefined) { setTune('theme', d.themeChoice, true); }
+  else if (d.tuneReset !== undefined) { var tr = tuneSchemaRow(d.tuneReset); if (tr) setTune(d.tuneReset, tr.def, true); }
+  else if (t.id === 'save') saveAll();
+});
+document.addEventListener('input', function (e) {
+  var t = e.target; if (!t.dataset || t.dataset.tune === undefined) return;
+  var r = tuneSchemaRow(t.dataset.tune);
+  if (r && r.type === 'num' && t.type === 'number' && (t.value === '' || +t.value < r.min || +t.value > r.max)) return;   // still typing
+  setTune(t.dataset.tune, t.value);
+});
+document.addEventListener('change', function (e) { var t = e.target; if (t.dataset && t.dataset.tune !== undefined && t.type === 'number') setTune(t.dataset.tune, t.value, true); });
+
+// Save every form that has unsaved changes. One that fails does not undo the others, and nothing is reloaded over what you typed.
+function saveAll() {
+  if (SAVING) return;
+  var names = dirtyNames();
+  if (!names.length) { msg('Nothing to save.'); return; }
+  SAVING = true; barRefresh(); msg('Saving…');
+  var done = [], failed = [], extra = '', pw = false, keys = [], byKey = {};
+  names.forEach(function (n) { var k = SECTIONS[n].saveKey || n; if (!byKey[k]) { byKey[k] = []; keys.push(k); } byKey[k].push(n); });
+  keys.reduce(function (p, k) {
+    var n = byKey[k][0];
+    return p.then(function () {
+      return SECTIONS[n].save().then(function (r) {
+        done = done.concat(byKey[k]);
+        if (r && r.passwordChanged) pw = true;
+        if (k === 'photos' && r && r.showing != null) extra = ' ' + r.showing + ' photos will show on the frame.' + (r.skipped && r.skipped.length ? ' Ignored folders that no longer exist: ' + r.skipped.join(', ') + '.' : '');
+      }, function (e) { failed.push(labelsOf(byKey[k]) + ': ' + e.message); });
+    });
+  }, Promise.resolve()).then(function () {
+    SAVING = false;
+    if (pw) { msg('Saved. Your password changed; reloading so you can sign in again…'); setTimeout(function () { location.reload(); }, 1500); return; }
+    if (failed.length) { rebase(done); msg((done.length ? 'Saved ' + labelsOf(done) + '. ' : '') + 'Not saved — ' + failed.join('; '), true); barRefresh(); return; }
+    rebase(done);   // what was just written is now what the hub has, so the reload below does not treat it as unsaved
+    return load().then(function () { msg('Saved ' + labelsOf(done) + '.' + extra + ' The frame picks it up within about 20 seconds.'); });
+  });
+}
+
+// Fetch everything again. Sections with unsaved edits keep what is on the page; the rest are refreshed from the hub.
+function load() {
+  var keep = {}; dirtyNames().forEach(function (n) { keep[n] = true; });
+  var oldD = D, oldCN = keep.connections ? CN : null;
+  return Promise.all([api('GET', '/api/admin/data'), api('GET', '/api/state'), api('GET', '/api/admin/connections')]).then(function (r) {
+    var nd = r[0]; nd.groceryBase = (nd.groceries || []).map(function (g) { return g.id; });
+    if (oldD) {
+      if (keep.chores) nd.chores = oldD.chores;
+      if (keep.groceries) { nd.groceries = oldD.groceries; nd.stores = oldD.stores; nd.categories = oldD.categories; nd.commonItems = oldD.commonItems; nd.groceryBase = oldD.groceryBase; }
+      if (keep.events) nd.events = oldD.events;
+      if (keep.people) nd.people = oldD.people;
+    }
+    D = nd; FEEDS = r[1].feeds || []; PH = (r[1].photos || []).length;
+    var shown = CN && CN.shownToken, progressShown = CN && CN.shownProgressToken, haChoices = CN && CN.homeassistant.url === r[2].homeassistant.url ? CN.haEntities : [];
+    cnInit(r[2]); if (shown) CN.shownToken = shown; if (progressShown) CN.shownProgressToken = progressShown; CN.haEntities = haChoices || [];
+    if (oldCN) {   // typed values stay; things only the hub knows (accounts, password state) are refreshed
+      var fresh = CN; CN = oldCN; CN.homeassistant.tokenSet = fresh.homeassistant.tokenSet;
+      ['accounts', 'adminPasswordSet', 'agentsTokenSet', 'progressTokenSet', 'shownProgressToken', 'files', 'photosDir', 'unusedLinks'].forEach(function (k) { CN[k] = fresh[k]; });
+    }
+    render();
+    rebase(Object.keys(SECTIONS).filter(function (n) { return !keep[n] && n !== 'photos'; }));
+    barRefresh();
+  });
+}
+load().then(function () { if (TAB === 'photos') loadPhotos(); if (TAB === 'status') loadHealth(); }).catch(function (e) { msg('Could not load: ' + e.message, true); });
+</script>
+</body>
+</html>

@@ -17,32 +17,29 @@ The kiosk opens the hosted demo dashboard by default. To show your own, save its
 adb shell am start -n com.wesbos.homehq/.MainActivity --es url https://your-dashboard/
 ```
 
-Every later launch, including after a reboot, opens the saved URL. Links that other apps open
-in the kiosk, such as a sign-in page, are shown but not saved.
+Every later launch, including after a reboot, opens the saved URL. This fork also
+remembers HTTP(S) URLs supplied by VIEW intents, preserving existing frame setups.
+`--ez reset_url true` clears the saved URL and returns to bundled assets when
+available, otherwise the hosted demo. `KIOSK_BUNDLE=1 bash kiosk/build.sh` includes
+`dashboard/dist` in the APK after building the web dashboard.
 
 ## Start at boot
 
-To have the frame boot into the dashboard, make the kiosk its Home app. Installing the kiosk
-does not offer it as a Home app, so nothing changes until you run:
-
-```sh
-adb shell am start -n com.wesbos.homehq/.MainActivity --ez home true
-adb shell cmd package set-home-activity com.wesbos.homehq/.Home
-```
-
-Android 6 frames (PF1007L, BIUFRAME) don't have `cmd package set-home-activity`. After the first
-command, open the Home chooser instead, then tap **Home HQ** and **Always** on the frame. Keep
-another launcher installed so **Open launcher** has somewhere to go.
+This fork keeps Home HQ available in Android's Home chooser and starts it on
+`BOOT_COMPLETED`. Choose **Home HQ → Always** on the frame to make it the default
+Home app. Its existing `.MainActivity` component is preserved so updates do not
+break that choice. Unlike upstream's optional `.Home` alias, no `--ez home true`
+step is needed in this fork.
 
 ```sh
 adb shell am start -a android.intent.action.MAIN -c android.intent.category.HOME
-adb shell 'grep -A2 "<preferred-activities" /data/system/users/0/package-restrictions.xml'   # check it stuck
 ```
 
-The kiosk then opens the saved URL at boot, and the Home button returns to it. If the page
-fails to load at boot because Wi-Fi isn't up yet, the kiosk keeps retrying. In the controls,
-**Open launcher** skips the kiosk and opens another Home app. To undo, pick another Home app in
-Settings → Apps → Default apps, then run the first command with `--ez home false`.
+Keep another launcher installed so **Open launcher** has somewhere to go.
+To undo the default, choose another Home app in Settings → Apps → Default apps.
+The kiosk keeps retrying if Wi-Fi or the hub isn't ready at startup, with a
+native offline screen and a button for Wi-Fi settings. Retry timers pause while
+another app is in front; failed images and API requests do not reload the page.
 
 ## Frames without Home or Back buttons
 

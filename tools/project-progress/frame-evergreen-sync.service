@@ -1,0 +1,9 @@
+[Unit]
+Description=Publish Evergreen progress to the household frame
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/.local/lib/frame-progress/publish.py --config %h/.config/frame-progress/publisher.json
+UMask=0077
+TimeoutStartSec=60

@@ -1,0 +1,23 @@
+{
+  "timezone": "UTC",
+  "port": 8099,
+  "photosDir": "/photos",
+  "calendars": [
+    { "name": "Family (Google)", "secret": "google", "people": [] }
+  ],
+  "proxmenux": {
+    "url": "https://proxmenux.example.lan",
+    "tokenSecret": "proxmenux_token",
+    "insecureTLS": false
+  },
+  "homelab": {
+    "pihole": "",
+    "piholeSsh": { "host": "", "user": "pi", "port": 22, "identityFile": "" },
+    "gitea": "",
+    "giteaOrganization": "",
+    "plane": "",
+    "rustdesk": { "host": "", "idPort": 21116, "relayPort": 21117 },
+    "backup": { "path": "", "destination": "", "label": "VM backup", "maxAgeHours": 36 }
+  },
+  "weather": null
+}

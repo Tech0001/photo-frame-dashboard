@@ -1,9 +1,12 @@
 # SI006 Uhale frame access notes
 
+This fork retains the local kiosk features described below. The upstream device
+report separates those local features from its stock hosted dashboard setup.
+
 One 10.1-inch Uhale frame tested on Linux on 2026-10-11. **Root USB ADB, a verified
-firmware backup, WebView 106, and the repo's dashboard are working.** Our locally
-modified kiosk boots into Home HQ, and USB ADB reconnects without an SD card or
-another RSA prompt. This is a record of this unit, not a universal SI006 setup script.
+firmware backup, WebView 106, and the repo's dashboard are working.** The frame
+boots into Home HQ and reconnects over USB without an SD card or another RSA
+prompt. This is a record of this unit, not a universal SI006 setup script.
 
 This frame uses Spreadtrum hardware. The
 [PF1007L start guide](pf1007l-start-here.md) is for Allwinner A33 hardware; its FEL,
@@ -131,11 +134,17 @@ file retains its Android ADB ownership, mode, and label. Readback matched the
 prepared file; `/system` was remounted read-only. Never put a private `adbkey`
 on the device. Keep both original files for undo.
 
-The working USB configuration is MTP + ADB (`mtp,adb`). A local, device-specific
-boot workaround reapplies it using the shipped `su`; this workaround is not in
-the upstream kiosk. Controlled reboots with that workaround preserved USB access.
-If the frame enumerates incorrectly after a restart, select **MTP** again in
-Developer options. SELinux remains enforcing.
+MTP + ADB (`persist.sys.usb.config=mtp,adb`) survives controlled reboot on this
+unit. Home HQ also has an **opt-in**, exact-model boot workaround that restores
+MTP + ADB using the shipped `su`:
+
+```sh
+adb -d shell am start -n com.wesbos.homehq/.MainActivity --ez keep_usb true
+```
+
+Use `--ez keep_usb false` to turn that workaround off. It does not import keys or
+enable network ADB. The workaround is gated on `SI006` and `sp7731g_1h10` and is
+disabled by default. SELinux remains enforcing.
 
 This firmware also had `service.adb.tcp.port=5555` in `/system/build.prop`.
 Setting only `persist.adb.tcp.port=-1` did **not** prevent the service property
@@ -158,8 +167,8 @@ The factory WebView is version **80.0.3987.132**, package
 Google-signed update conflicts with the vendor signature; the other frames'
 `com.android.webview` replacement recipe cannot be applied unchanged.
 
-A locally built copy of the dashboard initially showed only its sidebar. WebView
-debugging confirmed a JavaScript syntax error in the Chromium-106-targeted bundle.
+The bundled dashboard initially showed only its sidebar. WebView debugging
+confirmed a JavaScript syntax error in the Chromium-106-targeted bundle.
 
 The working solution on this unit:
 
@@ -207,29 +216,63 @@ update, not a complete modernization of Android's trust store.
 ## Dashboard, launcher, and disabled apps
 
 Installed Rootless Pixel Launcher 3.9.1 as an escape route, Firefox 143.0.4 ARMv7,
-and a locally modified build of the repo's Home HQ kiosk. The stock repository
-uses a hosted dashboard over the frame's own Wi-Fi. **It does not require a
-USB tether, a running PC, or an SD card for normal use.** USB was used here for
-setup and diagnostics. See [the dashboard](../dashboard/) for its hosting setup;
-set `DEFAULT_URL` in the kiosk to your own deployment when needed.
-
-The kiosk build used JDK 17, Android build-tools 34.0.0, and platform 34. This host's
-JDK 21 caused D8 compilation errors; JDK 17 built successfully.
-
-This firmware showed no system navigation bar even with `qemu.hw.mainkeys=0`.
-Opening Android Settings or the launcher's Home settings could leave the owner
-without a way back. Until navigation controls are installed, keep USB ADB available
-while configuring those screens. This returns to Home HQ:
+and the repo's Home HQ kiosk with the dashboard bundled in its APK:
 
 ```sh
-adb -d shell am start -n com.wesbos.homehq/.MainActivity
+cd dashboard
+npm ci
+npm run build
+ANDROID_HOME=/path/to/android-sdk KIOSK_BUNDLE=1 bash kiosk/build.sh
+adb -d install -r kiosk/build/homehq.apk
+adb -d shell am start -n com.wesbos.homehq/.MainActivity --ez keep_usb true
 ```
 
-Native kiosk controls and optional floating Back/Dashboard buttons were tested
-locally and are proposed separately. Automatic startup and bundled web assets
-were also local kiosk changes; this device report does not add those features
-to the upstream app. Neither asset bundling nor USB tethering is necessary to
-use the hosted dashboard.
+The kiosk build used JDK 17, Android build-tools 34.0.0, and platform 34. This host's
+JDK 21 caused D8 compilation errors; JDK 17 built successfully. Select **Home HQ →
+Always** in Android's Home chooser. Home HQ also starts on `BOOT_COMPLETED`.
+The two-finger hold opens a native menu with **Open launcher**, **Android settings**,
+and **Reload dashboard**, avoiding a loop back into the kiosk when it is default Home.
+The gesture works only inside Home HQ. This firmware still showed no system
+navigation bar with `qemu.hw.mainkeys=0`, so opening launcher settings or Android
+Settings initially left the owner without a way back. Home HQ 1.2 adds an optional
+**Home HQ navigation** accessibility service: floating **Back** and **Dashboard**
+buttons outside the kiosk. Drag the dots to move them. They hide when Home HQ is
+active and return when it pauses. Enable it in Android **Settings → Accessibility**;
+disable that service to undo. The service requests no screen-content access or
+accessibility events and uses Android's global Back action. It was enabled on
+this unit while preserving the original accessibility settings for rollback.
+On-device checks passed for Back from Wi-Fi to Settings, Dashboard from both
+Android Settings and launcher Home settings, dragging the buttons, and returning
+automatically after a further reboot. The buttons were absent inside the kiosk.
+The APK serves local dashboard assets from `https://appassets.androidplatform.net/`;
+no PC web server or SD card is required. Fonts and sample photos still need internet.
+
+For a hosted dashboard, Home HQ 1.3 remembers the HTTP(S) URL supplied with its
+VIEW intent across app restarts and boot. On this SI006, starting the hosted page
+at boot produced `net::ERR_ADDRESS_UNREACHABLE`; reloading after Wi-Fi connected
+worked. Home HQ 1.4 retries failed main-page network loads every five seconds,
+with a **Waiting for dashboard** screen and **Retry now** button. Retries stop
+when the page loads, when another URL is selected, or when the activity is
+destroyed; they pause while Android Settings or another app is in front.
+Temporary HTTP server errors also retry. Failed images and API requests do not
+reload the whole page, and certificate errors retain WebView's default handling.
+This follows the boot-race fix suggested in [upstream PR #9](https://github.com/wesbos/photo-frame-dashboard/pull/9),
+adapted for bundled assets and the native controls. To select a host, substitute
+an address that the frame can resolve:
+
+```sh
+adb -d shell am start -a android.intent.action.VIEW -d http://SERVER:8099/ -n com.wesbos.homehq/.MainActivity
+# Return to the bundled dashboard:
+adb -d shell am start -n com.wesbos.homehq/.MainActivity --ez reset_url true
+```
+
+On-device 1.4 checks passed: loading with Wi-Fi disabled showed the waiting screen
+and repeated retries; enabling Wi-Fi brought back the live dashboard without a
+tap or further reloads. A temporary HTTP 503 also recovered, a failed image did
+not restart the page, and changing URLs cancelled the old retry. A normal reboot
+reproduced five network failures before loading the live dashboard automatically
+about one minute after the reboot command. Navigation stayed enabled, and WebView
+debugging was turned off after testing.
 
 After backing up their APKs and package state, these packages were disabled with
 `pm disable-user --user 0` and force-stopped. Their files and data remain for undo:
@@ -252,7 +295,7 @@ For these previously enabled packages, undo is `adb -d shell pm enable PACKAGE`.
 Do not disable shared Android services merely because they have a vendor-looking
 name. Core Settings, SystemUI, networking, media, and storage services remain enabled.
 
-Downloads used (binaries are not included):
+Downloads used (keep APKs out of the PR):
 
 | App | Source | SHA-256 of APK |
 | --- | --- | --- |
@@ -262,12 +305,12 @@ Downloads used (binaries are not included):
 
 ## Limits and remaining work
 
-On-device validation of the local kiosk build covered all seven tabs with injected
-touch taps, loaded fonts and photos, and no JavaScript or network errors during
-that check. Controlled reboots preserved the host key and disabled-app state;
-the locally modified kiosk started automatically without an SD card. These tests
-establish the device and WebView configuration, not upstream support for the
-local kiosk features. WebView remote debugging is off for ordinary launches.
+On-device validation covered all seven tabs with injected touch taps, loaded
+fonts and photos, and no JavaScript or network errors during that check. The
+two-finger hold opened the native controls; both launcher and Settings entries
+worked, and Home returned to the dashboard. Three controlled reboots preserved the
+host key, disabled-app state, and automatic Home HQ startup without an SD card.
+WebView remote debugging is off for ordinary launches and after reboot.
 
 - The dashboard is the repo's **prototype with mock data**, including a demo
   clock starting at 3:18 PM. Long-press its sidebar clock for demo controls and
@@ -282,5 +325,6 @@ local kiosk features. WebView remote debugging is off for ordinary launches.
 - The watchdog reboot's cause and an offline firmware restore path remain untested.
 - A reusable, parameterized initial ADB key-import helper would improve the guide.
 
-Raw diagnostics, photos, keys, dumps, and vendor APKs are kept privately and
-are not included in this report.
+Raw diagnostics, photos, keys, dumps, and vendor APKs stay in ignored local
+directories. Do not include serial numbers, network addresses, or device dumps
+in a PR.

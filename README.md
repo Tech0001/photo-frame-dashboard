@@ -57,6 +57,7 @@ Settings → About before you follow any guide:
   intentionally not published; the doc shows where the app checks it.
 - **LOOFII C-3 21.5" calendar** (Allwinner A133, Android 10): root ADB over USB out of the box. See
   [allwinner-a133-loofii-c3.md](docs/allwinner-a133-loofii-c3.md); don't run the Rockchip or A33 scripts on it.
+- **Uhale SI006** (Spreadtrum `sp7731g_1h10`): see [SI006 setup notes](docs/si006-uhale.md).
 - **Frameo, Dragon Touch, Joyhong, Uhale, VESWWE, Pastigio and others:** see the
   [device index](docs/devices.md).
 - **Something else:** work through the [phase map](#phase-map), create `docs/<device>.md`, and
@@ -64,11 +65,21 @@ Settings → About before you follow any guide:
 
 ## The dashboard
 
-[`dashboard/`](dashboard) is the family dashboard we run on the BIUFRAME (it uses mock data): a Vite
-web app deployed to Cloudflare Workers. `dashboard/kiosk/` is a small full-screen WebView Android app,
-built without Gradle, that shows it. Hold two fingers still for 1.5 s to open a menu for the
-launcher, Android settings, and reloading. On frames without system navigation, optional floating
-**Back** and **Dashboard** buttons help; see the [kiosk guide](dashboard/kiosk/README.md).
+[`dashboard/`](dashboard) is the family dashboard we run on the BIUFRAME (it uses mock data).
+It is a Vite web app deployed to Cloudflare Workers, plus `dashboard/kiosk/`: a small full-screen
+WebView Android app, built without Gradle, that shows it. Hold two fingers still for 1.5 s to
+open launcher, settings, and reload controls. Build with `KIOSK_BUNDLE=1` after `npm run build`
+to include the dashboard in the APK instead of requiring a web server. External fonts and
+sample photos still require internet access.
+For a hosted dashboard, the kiosk remembers a URL supplied through its VIEW intent.
+If Wi-Fi or the server is unavailable at startup, it shows **Waiting for dashboard**
+and retries every five seconds until the page loads. The two-finger controls remain available.
+On frames without system navigation, enable **Home HQ navigation** in Android's
+Accessibility settings for floating Back/Dashboard buttons outside the kiosk.
+
+This fork also includes a self-hosted [frame hub](hub/README.md) with live household
+data, Home Assistant, Homelab, account usage, and Evergreen checklist progress.
+See the [kiosk guide](dashboard/kiosk/README.md) for native controls and upstream setup.
 
 ## For agents: start here
 

@@ -10,6 +10,8 @@
   var handlers = {};
   App.on = function (e, fn) { (handlers[e] = handlers[e] || []).push(fn); };
   App.emit = function (e, a) { (handlers[e] || []).forEach(function (fn) { fn(a); }); };
+  // Tunable setting from /admin (hub/lib/tune.js), with the fallback to use before the hub has answered or in demo mode.
+  App.tune = function (key, fallback) { var t = window.TUNE; return t && t[key] != null ? t[key] : fallback; };
 
   // ------------------------------------------------------------ time (demo clock)
   var offset = 0;
@@ -125,9 +127,10 @@
   // ------------------------------------------------------------ chores + weather helpers
   App.currentRoutine = function () {
     var h = App.now().getHours();
-    for (var i = 0; i < D.routines.length; i++) if (h >= D.routines[i].from && h < D.routines[i].to) return D.routines[i];
+    for (var i = 0; i < D.routines.length; i++) if (D.routines[i].id !== 'anytime' && h >= D.routines[i].from && h < D.routines[i].to) return D.routines[i];
     return D.routines[2];
   };
+  App.choresInRoutine = function (chore, routine) { return chore.r === routine.id || chore.r === 'anytime'; };
   App.weatherNow = function () {
     var W = D.weather, h = App.now().getHours();
     var rainAt = -1;
@@ -142,8 +145,9 @@
       var soccer = App.timedOn(App.now()).filter(function (e) { return /soccer/i.test(e.title) && e.start > App.now(); })[0];
       advice = soccer ? 'Pack a rain jacket for soccer' : 'Grab a rain jacket';
     } else {
-      summary = W.t[h] < 12 ? 'Clear and cool' : 'Dry all day';
-      advice = W.t[h] < 12 ? 'Jacket weather' : 'Light layers';
+      var tempC = W.units === 'F' ? (W.t[h] - 32) * 5 / 9 : W.t[h];
+      summary = tempC < 12 ? 'Clear and cool' : 'Dry all day';
+      advice = tempC < 12 ? 'Jacket weather' : 'Light layers';
     }
     var labels = { sun: 'Sunny', moon: 'Clear', partly: 'Partly cloudy', cloud: 'Overcast', rain: 'Rain' };
     return { temp: W.t[h], cond: W.c[h], label: labels[W.c[h]], hi: W.hi, lo: W.lo, summary: summary, advice: advice, hour: h };
@@ -294,14 +298,22 @@
   var idleSec = 0;
   function onIdleTick() {
     idleSec++;
-    var blocked = $('#takeover').classList.contains('is-open');
-    if (App.mode === 'nightdash' && idleSec >= 20) { App.setMode('night'); return; }
+    var settings = $('#sheetLayer');
+    var blocked = $('#takeover').classList.contains('is-open') || (settings.classList.contains('is-open') && !!settings.querySelector('.sheet--display-settings'));
+    var idleMode = App.isNight() ? 'night' : 'ambient';
+    // A running idle display must follow the clock, including after the browser
+    // resumes from sleep. Leave the dashboard alone while someone is using it.
+    if (!blocked && (App.mode === 'ambient' || App.mode === 'night')) {
+      if (App.mode !== idleMode) App.setMode(idleMode);
+      return;
+    }
+    if (App.mode === 'nightdash' && idleSec >= 20 && !blocked) { App.setMode(idleMode); return; }
     if (App.mode !== 'day' || blocked) return;
     if (idleSec === App.idle.home && App.current !== 'home') { App.closeSheet(); App.go('home'); }
     if (idleSec >= App.idle.ambient) {
       App.closeSheet();
       App.go('home');
-      App.setMode(App.isNight() ? 'night' : 'ambient');
+      App.setMode(idleMode);
     }
   }
   App.resetIdle = function () { idleSec = 0; };
@@ -326,8 +338,14 @@
   }
 
   // ------------------------------------------------------------ boot
+  // Wait (briefly) for live data from the hub; without it we run on the demo data and demo clock.
   App.start = function () {
-    App.setTime(15, 18); // demo default: a busy weekday afternoon
+    var boot = window.liveBoot ? window.liveBoot() : Promise.resolve(false);
+    boot.then(begin, function () { begin(false); });
+  };
+  function begin(live) {
+    App.live = !!live;
+    if (!live) App.setTime(15, 18); // demo default: a busy weekday afternoon
     fit();
     window.addEventListener('resize', fit);
     // Switch tabs the instant a finger lands (pointerdown), not on release. Keyboard "clicks"
@@ -347,7 +365,7 @@
     setInterval(tick, 1000);
     App.emit('ready');
     refreshStale(1500);
-    setTimeout(function () { App.toast('Tip: press and hold the <b>clock</b> in the sidebar for demo controls', { ms: 6000, icon: 'bolt' }); }, 1200);
-  };
+    if (!live) setTimeout(function () { App.toast('Tip: press and hold the <b>clock</b> in the sidebar for demo controls', { ms: 6000, icon: 'bolt' }); }, 1200);
+  }
   document.addEventListener('DOMContentLoaded', function () { App.start(); });
 })();

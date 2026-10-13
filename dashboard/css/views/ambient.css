@@ -5,6 +5,11 @@
 .amb-scrim { position: absolute; left: 0; right: 0; bottom: 0; height: 60%; background: linear-gradient(0deg, rgba(0, 0, 0, .75), rgba(0, 0, 0, 0)); pointer-events: none; }
 .amb-info { position: absolute; left: 60px; right: 60px; bottom: 48px; display: flex; justify-content: space-between; align-items: flex-end; }
 .amb-time { font-size: 230px; line-height: .78; letter-spacing: -.04em; }
+/* Keep the photo visible through the clock and temperature; unsupported browsers keep white text. */
+@supports (-webkit-text-stroke: 2px white) {
+  .amb-time, .amb-wx .num { -webkit-text-fill-color: transparent; -webkit-text-stroke: 2px rgba(255, 255, 255, .95); filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .65)); }
+  .amb-wx .num { -webkit-text-stroke-width: 1px; }
+}
 .amb-date { font-family: var(--serif); font-size: 38px; margin-top: 16px; }
 .amb-right { display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
 .amb-wx { display: flex; align-items: center; gap: 12px; }

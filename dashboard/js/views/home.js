@@ -10,13 +10,19 @@
   }
 
   function weather() {
+    if (App.live && !D.weatherLive) {
+      return '<div class="h-wx-top"><span class="h-wx-meta"><b>' +
+        (D.weatherConfigured ? 'Weather unavailable' : 'Set up your weather') +
+        '</b><span>' + (D.weatherConfigured ? 'Waiting for an updated forecast.' : 'Choose a city in Frame admin → Weather & time.') +
+        '</span></span></div>';
+    }
     var w = App.weatherNow();
     var hours = App.hourly(7);
     var tmin = Math.min.apply(null, hours.map(function (h) { return h.t; }));
     var tmax = Math.max.apply(null, hours.map(function (h) { return h.t; }));
     return '<div class="h-wx-top">' +
       '<span class="h-wx-icon">' + App.icon(w.cond, 60) + '</span>' +
-      '<span class="h-wx-temp num">' + w.temp + '°</span>' +
+      '<span class="h-wx-temp num">' + w.temp + '°' + (D.weather.units || '') + '</span>' +
       '<span class="h-wx-meta"><b>' + w.label + '</b><span>H ' + w.hi + '°  L ' + w.lo + '°</span></span>' +
       '</div>' +
       '<div class="h-wx-say"><b>' + w.summary + '.</b> ' + w.advice + '.</div>' +
@@ -98,8 +104,8 @@
   function chores() {
     var r = App.currentRoutine();
     var who = D.people.map(function (p) { return p.id; }).concat(['any']);
-    return '<div class="label">Chores · ' + r.name + '</div><div class="h-rings">' + who.map(function (id) {
-      var list = D.chores.filter(function (c) { return c.r === r.id && c.who === id; });
+    return '<div class="label">Chores · ' + r.name + (D.chores.some(function (c) { return c.r === 'anytime'; }) ? ' + Anytime' : '') + '</div><div class="h-rings">' + who.map(function (id) {
+      var list = D.chores.filter(function (c) { return App.choresInRoutine(c, r) && c.who === id; });
       if (!list.length) return '';
       var done = list.filter(function (c) { return c.done; }).length;
       var p = App.person(id);
@@ -119,6 +125,7 @@
   }
 
   function status() {
+    if (App.live && App.homeView) return App.homeView.summary();
     var lights = D.devices.filter(function (d) { return d.type === 'light' && d.on; }).length;
     var unlocked = D.devices.filter(function (d) { return d.type === 'lock' && !d.locked; });
     var garage = D.devices.filter(function (d) { return d.type === 'garage'; })[0];
@@ -183,4 +190,5 @@
     if (n.getMinutes() === 0) { V.el.querySelector('.h-weather').innerHTML = weather(); V.el.querySelector('.h-lanes').innerHTML = lanes(); }
   });
   App.on('data', function () { if (App.current === 'home') paint(); });
+  App.on('home-data', function () { if (App.current === 'home') paint(); });
 })();

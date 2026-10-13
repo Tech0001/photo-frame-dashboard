@@ -23,6 +23,7 @@ ul { margin: 0; padding: 0; list-style: none; }
 /* ---------------------------------------------------------------- type utilities */
 .num { font-stretch: 62%; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .serif { font-family: var(--serif); font-weight: 400; letter-spacing: -.01em; }
+img.emoji { display: inline-block; width: 1em; height: 1em; max-width: none; margin: 0 .04em; vertical-align: -.12em; object-fit: contain; }
 .serif i, i.serif { font-style: italic; }
 .label {
   font-size: var(--fs-label);
@@ -45,6 +46,7 @@ ul { margin: 0; padding: 0; list-style: none; }
   margin: -400px 0 0 -640px;
   transform-origin: 50% 50%;
   background: var(--paper);
+  color: var(--ink);
   overflow: hidden;
   display: grid;
   grid-template-columns: 76px 1fr;
@@ -65,7 +67,7 @@ ul { margin: 0; padding: 0; list-style: none; }
   color: var(--ink-2);
   position: relative;
 }
-.rail-item.is-active { background: var(--ink); color: var(--paper); }
+.rail-item.is-active { background: var(--accent); color: var(--accent-ink); }
 .rail-item:active { background: var(--paper-2); }
 .rail-item.is-active:active { background: var(--ink-2); }
 .rail-clock { margin-top: auto; padding: 10px 0; text-align: center; line-height: 1; position: relative; overflow: hidden; }
@@ -96,6 +98,10 @@ button.card:active, .h-hero:active, .h-photo:active { transform: scale(.985); }
 .avatar--away { background: transparent; color: var(--c); box-shadow: inset 0 0 0 3px var(--c); }
 .dots { display: inline-flex; gap: 4px; align-items: center; }
 .dots i { width: 12px; height: 12px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px var(--card); }
+/* Black person/provider accents need a readable equivalent on dark surfaces. */
+.stage[data-theme-dark="true"] [style*="--c:#111111"] {
+  --c: var(--ink) !important; --c-rgb: var(--ink-rgb) !important; --c-ink: var(--paper) !important;
+}
 
 .btn {
   min-height: var(--tap); padding: 0 28px;
@@ -309,3 +315,21 @@ button.card:active, .h-hero:active, .h-photo:active { transform: scale(.985); }
 }
 .diag b { color: #fff; }
 .diag u { text-decoration: none; color: #aaa; }
+
+/* Clock tap: household display settings, independent of the demo drawer. */
+.sheet--display-settings { width:860px; max-height:calc(100% - 40px); overflow:auto; padding:28px; }
+.sheet--display-settings h2 { font-size:42px; line-height:1; padding-right:48px; }
+.ds-intro { color:var(--mute); font-size:18px; margin:10px 0 18px; }
+.ds-themes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.ds-themes > button { background:var(--paper); border:2px solid var(--line); border-radius:12px; overflow:hidden; }
+.ds-themes > button[aria-pressed="true"] { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+.ds-sample { display:flex; align-items:center; gap:14px; background:var(--sample-bg); color:var(--sample-ink); padding:12px; }
+.ds-sample i { display:block; flex:none; width:7px; height:32px; border-radius:4px; background:var(--sample-accent); }
+.ds-sample b { display:block; background:var(--sample-card); padding:5px 12px; border-radius:6px; font-size:25px; }
+.ds-themes > button > span:last-child { display:block; padding:9px 12px; font-size:18px; font-weight:700; }
+.ds-timers { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:22px; }
+.ds-timers label { display:flex; flex-direction:column; gap:8px; font-size:19px; }
+.ds-timers select { min-height:52px; border:1px solid var(--line); border-radius:10px; font:inherit; background:var(--paper-2); color:var(--ink); padding:8px 12px; }
+.ds-note { font-size:15px; color:var(--mute); margin-top:18px; }
+.ds-status { font-size:17px; min-height:24px; margin-top:12px; color:var(--warning-emphasis); }
+.ds-actions { display:flex; justify-content:flex-end; gap:12px; margin-top:12px; }
