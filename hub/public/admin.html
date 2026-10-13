@@ -560,7 +560,7 @@ function homelabHtml() {
     '<p class="mute">Use a token with read access to your user, repositories, issues and organizations. The frame shows repository counts, open work, contributions and recent push titles. Tokens stay on the server; private repository names and commit titles visible to this account will appear on the household frame.</p>' +
     field('github', 'GitHub account', h.github || '', 'Tech0001') +
     token('github', 'GitHub API token (optional)') +
-    '<p class="mute">Public repositories, open pull requests/issues and recent pushes. No token is required. An optional token increases API limits; only public data is requested. GitHub refreshes every 15 minutes and its activity feed can be delayed. Tokens stay on the server.</p>' +
+    '<p class="mute">Public repositories, open pull requests/issues, recent pushes and the contribution grid from your public GitHub profile. No token is required. An optional token increases API limits; only public data is requested. GitHub refreshes every 15 minutes and its activity feed can be delayed. Tokens stay on the server.</p>' +
     field('plane', 'Plane web address', h.plane, 'http://plane.local') +
     '<p class="mute">Availability checks work without tokens. Adding a token enables the detail pages. All checks are read-only.</p></div>' + piManagementHtml() +
     '<div class="card"><b>RustDesk</b>' + field('host', 'Server hostname or IP', h.rustdesk.host, 'server.local') +
