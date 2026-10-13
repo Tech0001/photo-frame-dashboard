@@ -437,8 +437,8 @@ function cnInit(v) {
   CN.homeassistant = CN.homeassistant || { url: '', climate: '', entities: [], controls: false, ecobeeResume: false, tokenSet: false };
   CN.homelab = CN.homelab || { pihole: '', gitea: '', plane: '', rustdesk: { host: '', idPort: 21116, relayPort: 21117 }, backup: { path: '', destination: '', label: 'VM backup', maxAgeHours: 36 } };
   CN.labResult = '';
-  CN.homelab.piholeToken = ''; CN.homelab.piholePassword = ''; CN.homelab.giteaToken = '';
-  CN.homelab.piholeUnlink = false; CN.homelab.giteaUnlink = false;
+  CN.homelab.piholeToken = ''; CN.homelab.piholePassword = ''; CN.homelab.giteaToken = ''; CN.homelab.githubToken = '';
+  CN.homelab.piholeUnlink = false; CN.homelab.giteaUnlink = false; CN.homelab.githubUnlink = false;
   CN.homelab.piholeSsh = CN.homelab.piholeSsh || { host: '', user: 'pi', port: 22, identityFile: '' };
   CN.piSaved = JSON.stringify(CN.homelab.piholeSsh); CN.piStatus = null; CN.piMessage = ''; CN.piBusy = false;
   CN.haToken = ''; CN.haResult = ''; CN.haEntities = [];
@@ -558,6 +558,9 @@ function homelabHtml() {
     token('gitea', 'Gitea API token') +
     field('giteaOrganization', 'Organization activity (optional)', h.giteaOrganization || '', 'Organization name; blank uses your activity feed') +
     '<p class="mute">Use a token with read access to your user, repositories, issues and organizations. The frame shows repository counts, open work, contributions and recent push titles. Tokens stay on the server; private repository names and commit titles visible to this account will appear on the household frame.</p>' +
+    field('github', 'GitHub account', h.github || '', 'Tech0001') +
+    token('github', 'GitHub API token (optional)') +
+    '<p class="mute">Public repositories, open pull requests/issues and recent pushes. No token is required. An optional token increases API limits; only public data is requested. GitHub refreshes every 15 minutes and its activity feed can be delayed. Tokens stay on the server.</p>' +
     field('plane', 'Plane web address', h.plane, 'http://plane.local') +
     '<p class="mute">Availability checks work without tokens. Adding a token enables the detail pages. All checks are read-only.</p></div>' + piManagementHtml() +
     '<div class="card"><b>RustDesk</b>' + field('host', 'Server hostname or IP', h.rustdesk.host, 'server.local') +
@@ -575,7 +578,7 @@ function testHomelab() {
   collectConnections(); CN.labResult = 'Checking saved connections…'; renderConnections();
   api('POST', '/api/admin/test', { what: 'homelab' }).then(function (r) {
     CN.piStatus = r.pihole.management;
-    CN.labResult = r.services.map(function (s) { return s.name + ': ' + s.detail; }).concat([r.backup.label + ': ' + r.backup.detail, 'Pi-hole details: ' + r.pihole.detail, 'Gitea activity: ' + r.gitea.detail]).join('\n');
+    CN.labResult = r.services.map(function (s) { return s.name + ': ' + s.detail; }).concat([r.backup.label + ': ' + r.backup.detail, 'Pi-hole details: ' + r.pihole.detail, 'Gitea activity: ' + r.gitea.detail, 'GitHub activity: ' + (r.github ? r.github.detail : 'Not connected')]).join('\n');
   }).catch(function (e) { CN.labResult = e.message; }).then(renderConnections);
 }
 function piManagementHtml() {

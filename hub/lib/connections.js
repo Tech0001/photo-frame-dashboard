@@ -42,7 +42,7 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
   function view() {
     const tokenKey = cfg.proxmenux.tokenSecret || 'proxmenux_token';
     return {
-      homelab: Object.assign(homelab.cleanSettings(cfg.homelab), { piholeTokenSet: !!secrets.homelab_pihole_token, piholePasswordSet: !!secrets.homelab_pihole_password, giteaTokenSet: !!secrets.homelab_gitea_token }),
+      homelab: Object.assign(homelab.cleanSettings(cfg.homelab), { piholeTokenSet: !!secrets.homelab_pihole_token, piholePasswordSet: !!secrets.homelab_pihole_password, giteaTokenSet: !!secrets.homelab_gitea_token, githubTokenSet: !!secrets.homelab_github_token }),
       timezone: cfg.timezone,
       weather: cfg.weather || null,
       proxmenux: { url: cfg.proxmenux.url || '', insecureTLS: !!cfg.proxmenux.insecureTLS, tokenSet: !!secrets[tokenKey] },
@@ -66,7 +66,7 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
     const ncfg = { timezone: cfg.timezone, weather: cfg.weather, proxmenux: clone(cfg.proxmenux), calendars: clone(cfg.calendars || []) };
     const out = { ok: true };
     ncfg.homelab = homelab.cleanSettings(b.homelab === undefined ? cfg.homelab : b.homelab);
-    for (const id of ['pihole', 'gitea']) {
+    for (const id of ['pihole', 'gitea', 'github']) {
       const key = 'homelab_' + id + '_token', incoming = b.homelab || {};
       if (id === 'pihole') {
         const passwordKey = 'homelab_pihole_password', changed = ncfg.homelab.pihole !== (cfg.homelab?.pihole || '');
@@ -234,7 +234,7 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
       delete secrets.homeassistant_token;
       writeJsonAtomic(secFile, secrets, 0o600);
     }
-    for (const id of ['pihole', 'gitea']) {
+    for (const id of ['pihole', 'gitea', 'github']) {
       const key = 'homelab_' + id + '_token';
       if (raw.homelab && raw.homelab[id] !== (cfg.homelab?.[id] || '') && secrets[key]) { delete secrets[key]; writeJsonAtomic(secFile, secrets, 0o600); }
     }
