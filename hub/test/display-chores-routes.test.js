@@ -1,0 +1,38 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),http=require('node:http');
+const {spawn}=require('node:child_process'),{once}=require('node:events');
+const {Store}=require('../lib/store');
+test('frame display controls are same-origin and limited; Anytime chores persist without losing completion', {timeout:20000},async t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'frame-display-test-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+ const probe=http.createServer();probe.listen(0,'127.0.0.1');await once(probe,'listening');const port=probe.address().port;await new Promise(r=>probe.close(r));
+ for(const name of ['photos','data','cache'])fs.mkdirSync(path.join(dir,name));
+ const cfg={port,photosDir:path.join(dir,'photos'),dataDir:path.join(dir,'data'),cacheDir:path.join(dir,'cache'),dashboardDir:path.resolve(__dirname,'../../dashboard/dist'),timezone:'America/Denver',calendars:[],weather:null};
+ const store=new Store(cfg.dataDir);const id=store.state.chores[0].id;store.toggleChore(id,true);
+ fs.writeFileSync(path.join(dir,'config.json'),JSON.stringify(cfg));fs.writeFileSync(path.join(dir,'secrets.json'),JSON.stringify({admin_password:'test-only-password'}));
+ const child=spawn(process.execPath,[path.resolve(__dirname,'../server.js')],{env:{...process.env,HUB_CONFIG:path.join(dir,'config.json'),HUB_SECRETS:path.join(dir,'secrets.json'),PORT:String(port),PHOTOS_DIR:cfg.photosDir,DATA_DIR:cfg.dataDir,CACHE_DIR:cfg.cacheDir},stdio:'ignore'});
+ t.after(async()=>{if(child.exitCode===null){child.kill();await once(child,'exit');}});
+ const base='http://127.0.0.1:'+port;let r;
+ for(let i=0;i<80;i++){try{r=await fetch(base+'/api/display-settings');break;}catch{await new Promise(r=>setTimeout(r,40));}}
+ assert(r?.ok);assert.equal(r.headers.get('access-control-allow-origin'),null);
+ const settings=await r.json();assert.equal(settings.values.theme,'paper');assert(settings.token);
+ const headers={'Content-Type':'application/json','X-Display-Token':settings.token,Origin:base};
+ const put=(values,extra={})=>fetch(base+'/api/display-settings',{method:'PUT',headers:{...headers,...extra},body:JSON.stringify({values})});
+ assert.equal((await fetch(base+'/api/display-settings',{headers:{Origin:'https://foreign.example','Sec-Fetch-Site':'cross-site'}})).status,400);
+ r=await fetch(base+'/api/%64isplay-settings');assert.equal(r.headers.get('access-control-allow-origin'),null);
+ assert.equal((await put({theme:'autumn'},{'X-Display-Token':'missing'})).status,400);
+ assert.equal((await put({theme:'autumn'},{Origin:'https://foreign.example'})).status,400);
+ assert.equal((await put({pollSec:5})).status,400);
+ assert.equal((await put({theme:'not-a-theme'})).status,400);
+ assert.equal((await put({homeSec:300,ambientSec:60})).status,400);
+ r=await put({theme:'autumn',homeSec:30,ambientSec:300});assert(r.ok);
+ const values=(await r.json()).values;assert.deepEqual(values,{theme:'autumn',homeSec:30,ambientSec:300});
+ r=await fetch(base+'/api/admin/data');assert.equal(r.status,401);
+ const admin={Authorization:'Basic '+Buffer.from('admin:test-only-password').toString('base64'),'Content-Type':'application/json'};
+ const d=await(await fetch(base+'/api/admin/data',{headers:admin})).json();const doneOn=d.chores[0].doneOn;
+ d.chores[0].r='anytime';d.chores[0].days=null;
+ r=await fetch(base+'/api/admin/chores',{method:'PUT',headers:admin,body:JSON.stringify({chores:d.chores})});assert(r.ok);
+ const saved=await(await fetch(base+'/api/admin/data',{headers:admin})).json();assert.equal(saved.chores[0].r,'anytime');assert.equal(saved.chores[0].doneOn,doneOn);
+ const publicState=await(await fetch(base+'/api/state')).json();const chore=publicState.chores.find(c=>c.id===id);assert.equal(chore.r,'anytime');assert.equal(chore.done,true);
+ const restarted=new Store(cfg.dataDir);assert.equal(restarted.state.chores[0].r,'anytime');assert.equal(restarted.state.settings.tune.theme,'autumn');
+});

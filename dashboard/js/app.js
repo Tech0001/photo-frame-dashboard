@@ -127,9 +127,10 @@
   // ------------------------------------------------------------ chores + weather helpers
   App.currentRoutine = function () {
     var h = App.now().getHours();
-    for (var i = 0; i < D.routines.length; i++) if (h >= D.routines[i].from && h < D.routines[i].to) return D.routines[i];
+    for (var i = 0; i < D.routines.length; i++) if (D.routines[i].id !== 'anytime' && h >= D.routines[i].from && h < D.routines[i].to) return D.routines[i];
     return D.routines[2];
   };
+  App.choresInRoutine = function (chore, routine) { return chore.r === routine.id || chore.r === 'anytime'; };
   App.weatherNow = function () {
     var W = D.weather, h = App.now().getHours();
     var rainAt = -1;
@@ -297,7 +298,8 @@
   var idleSec = 0;
   function onIdleTick() {
     idleSec++;
-    var blocked = $('#takeover').classList.contains('is-open');
+    var settings = $('#sheetLayer');
+    var blocked = $('#takeover').classList.contains('is-open') || (settings.classList.contains('is-open') && !!settings.querySelector('.sheet--display-settings'));
     var idleMode = App.isNight() ? 'night' : 'ambient';
     // A running idle display must follow the clock, including after the browser
     // resumes from sleep. Leave the dashboard alone while someone is using it.

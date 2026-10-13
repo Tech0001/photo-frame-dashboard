@@ -6,12 +6,13 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 async function frame() {
-  let tick, blocked = false, now = new Date(2026, 9, 12, 21, 59, 59);
+  let tick, blocked = false, settingsOpen = false, now = new Date(2026, 9, 12, 21, 59, 59);
   const stage = { dataset: {}, style: {} };
   const noop = () => {};
   const document = {
     addEventListener: noop,
-    querySelector: selector => selector === '#stage' ? stage : selector === '#takeover'
+    querySelector: selector => selector === '#stage' ? stage : selector === '#sheetLayer'
+      ? { classList: { contains: () => settingsOpen }, querySelector: () => settingsOpen ? {} : null } : selector === '#takeover'
       ? { classList: { contains: () => blocked } }
       : { addEventListener: noop, innerHTML: '' }
   };
@@ -30,7 +31,7 @@ async function frame() {
   await new Promise(resolve => setImmediate(resolve));
   return { app, stage, tick: () => tick(), time: (h, m = 0, s = 0) => {
     now = new Date(2026, 9, 12, h, m, s);
-  }, block: value => { blocked = value; } };
+  }, block: value => { blocked = value; }, settings: value => { settingsOpen = value; } };
 }
 
 test('running slideshow switches at 10 PM and night clock returns to photos at 6 AM', async () => {
@@ -66,4 +67,15 @@ test('dimmed dashboard returns to the scheduled idle display after 20 seconds', 
   f.time(23); f.app.setMode('nightdash');
   for (let i = 0; i < 20; i++) f.tick();
   assert.equal(f.app.mode, 'night');
+});
+
+test('clock settings stay usable at night until closed', async () => {
+  const f = await frame();
+  f.time(23); f.app.setMode('nightdash'); f.settings(true);
+  for (let i = 0; i < 30; i++) f.tick();
+  assert.equal(f.app.mode, 'nightdash');
+  f.settings(false); f.app.resetIdle();
+  for (let i = 0; i < 19; i++) f.tick();
+  assert.equal(f.app.mode, 'nightdash');
+  f.tick(); assert.equal(f.app.mode, 'night');
 });

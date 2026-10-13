@@ -26,3 +26,17 @@ theme selection. Seasonal choices are manual; there is no seasonal rotation.
 and the frame's color values. `dashboard/js/themes.js` applies those colors to
 the stage when live settings arrive. Paper removes all palette overrides so
 the original stylesheet remains authoritative.
+
+## Settings on the frame
+
+Tap the bottom sidebar clock to open **Display settings**. Pick a theme and the
+return-to-Today/slideshow timers, then tap **Apply**. Cancel leaves saved settings
+unchanged. A slideshow timer must be longer than the return-to-Today timer.
+Changes persist on the hub and reach other connected frames on their normal poll.
+The settings sheet stays open while you choose, including during night dashboard
+mode. Press and hold the clock for 700 ms still opens the separate demo controls.
+
+This small menu can only write theme and idle timers. Server connections,
+credentials, refresh rates and maintenance controls stay in the server admin.
+Its write token is same-origin and renewed when the hub restarts; reopen the
+menu if a restart invalidates a pending save.

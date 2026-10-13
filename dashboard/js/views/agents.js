@@ -138,6 +138,7 @@
 
   function render() {
     var progress = V.tab === 'evergreen', scroller = V.el.querySelector('.ag-progress'), scrollTop = scroller ? scroller.scrollTop : 0;
+    var progressView = progress ? App.evergreen.capture(V.el) : null;
     App.evergreen.active = progress && App.current === 'agents';
     var showSummary = !App.live || D.agents.some(function (a) { return a.status !== 'off' && !a.limits && !a.credits; });
     V.el.innerHTML = '<div class="agents">' +
@@ -148,6 +149,7 @@
       (progress ? App.evergreen.render() : '<div class="ag-grid' + (!showSummary ? ' ag-grid--accounts' : '') + '">' + D.agents.map(function (a) { var h = card(a); return a.limits ? h.replace('class="ag-card"', 'class="ag-card ag-card--limits"') : h; }).join('') + (showSummary ? summary() : '') + '</div>') +
       '</div>';
     scroller = V.el.querySelector('.ag-progress'); if (scroller) scroller.scrollTop = scrollTop;
+    if (progress) App.evergreen.restore(V.el, progressView);
   }
 
   App.register('agents', {

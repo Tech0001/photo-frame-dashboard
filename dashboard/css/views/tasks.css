@@ -68,3 +68,5 @@
 .ch-week-row .is-today i { box-shadow: inset 0 0 0 3px var(--ink); }
 .ch-week-row .is-today { color: var(--ink); }
 .ch-week-row .is-future i { opacity: .4; }
+.t-head .seg button { padding-left:16px; padding-right:16px; }
+.ch-anytime { color:var(--ink-2) !important; }
