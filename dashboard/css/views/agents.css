@@ -255,3 +255,5 @@
 .eg-card-change { flex-wrap:nowrap; font-size:11px; gap:4px; }
 .eg-card-change small { font-size:9px; white-space:nowrap; }
 .eg-visual .eg-context > summary { min-height:56px; padding:10px 16px; }
+
+.eg-subtask-progress .eg-section-bar { margin-top:5px; }
