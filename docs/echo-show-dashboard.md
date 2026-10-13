@@ -72,3 +72,23 @@ or JavaScript bridge is exposed. Subframe app-link requests are discarded.
 
 Verified on the Echo: button launches Spotify, Home returns to Home HQ, a cold
 app restart keeps the household sidebar, fullscreen fit and disabled lock screen.
+
+## Rendering and memory (kiosk 1.7)
+
+Android can retain separate HOME and ordinary app tasks for the same singleTask
+activity. On the Echo this left two dashboard activities/WebViews loaded. When
+Home HQ is the selected home app, ordinary app launches now forward to its HOME
+task before creating a WebView. Non-default-home installations retain their
+normal app launch behavior. This also preserves URI/extras during forwarding.
+
+The window, content container and WebView explicitly use opaque black backgrounds,
+and the activity clears SHOW_WALLPAPER. This makes photo transitions independent
+of the Android wallpaper beneath them. On-device validation found one activity
+and one WebView after repeated app/Home launches and a Spotify round trip.
+
+This device has approximately 1 GB of RAM. Android's window, transition and
+animator scales were changed from their defaults to 0.5 for quicker navigation;
+original values are preserved in local device diagnostics. No ROM change or
+Spotify data reset was made. The reported faint ripple pattern was absent from
+an ADB screensaver screenshot; physical panel retention or a compositor issue
+remains possible if it is still visible on the device after opaque rendering.

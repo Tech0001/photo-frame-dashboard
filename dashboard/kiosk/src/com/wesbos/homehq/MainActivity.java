@@ -6,6 +6,7 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -67,11 +68,15 @@ public class MainActivity extends Activity {
   protected void onCreate(Bundle state) {
     super.onCreate(state);
     saveOptions(getIntent());
+    if (redirectToDefaultHome(getIntent())) return;
     applyDebugFlag(getIntent());
+    getWindow().setBackgroundDrawable(new ColorDrawable(Color.BLACK));
+    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
         | WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
     web = new WebView(this);
+    web.setBackgroundColor(Color.BLACK);
     WebSettings s = web.getSettings();
     s.setJavaScriptEnabled(true);
     s.setDomStorageEnabled(true);
@@ -82,6 +87,7 @@ public class MainActivity extends Activity {
     s.setAllowFileAccess(false);
     s.setAllowContentAccess(false);
     FrameLayout content = new FrameLayout(this);
+    content.setBackgroundColor(Color.BLACK);
     content.addView(web);
     LinearLayout waiting = new LinearLayout(this);
     waiting.setOrientation(LinearLayout.VERTICAL);
@@ -115,14 +121,18 @@ public class MainActivity extends Activity {
   @Override
   protected void onResume() {
     super.onResume();
-    NavigationService.setDashboardVisible(true);
-    dashboard.resume();
+    if (dashboard != null) {
+      NavigationService.setDashboardVisible(true);
+      dashboard.resume();
+    }
   }
 
   @Override
   protected void onPause() {
-    NavigationService.setDashboardVisible(false);
-    dashboard.pause();
+    if (dashboard != null) {
+      NavigationService.setDashboardVisible(false);
+      dashboard.pause();
+    }
     super.onPause();
   }
 
@@ -167,6 +177,25 @@ public class MainActivity extends Activity {
     } catch (IOException e) {
       return DEFAULT_URL;
     }
+  }
+
+  /** Android keeps HOME and ordinary app tasks separate even for singleTask.
+   * Route shortcuts/reloads into our default HOME task instead of retaining two WebViews. */
+  private boolean redirectToDefaultHome(Intent incoming) {
+    if (incoming != null && incoming.hasCategory(Intent.CATEGORY_HOME)) return false;
+    Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+    ResolveInfo selected = getPackageManager().resolveActivity(home, 0);
+    if (selected == null || selected.activityInfo == null
+        || !getPackageName().equals(selected.activityInfo.packageName)
+        || !getClass().getName().equals(selected.activityInfo.name)) return false;
+    Intent canonical = new Intent(incoming == null ? new Intent() : incoming);
+    canonical.setAction(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        .removeCategory(Intent.CATEGORY_LAUNCHER);
+    canonical.setComponent(new ComponentName(this, MainActivity.class));
+    canonical.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+    startActivity(canonical);
+    finish();
+    return true;
   }
 
   private void openSpotify() {
