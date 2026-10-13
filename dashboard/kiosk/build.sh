@@ -24,7 +24,7 @@ fi
 
 "$BT/aapt2" compile --dir res -o build/res.zip
 "$BT/aapt2" link -o build/base.apk -I "$JAR" --manifest AndroidManifest.xml build/res.zip \
-  --java build/gen --min-sdk-version 23 --target-sdk-version 23 --version-code 5 --version-name 1.4 "${ASSET_ARGS[@]}"
+  --java build/gen --min-sdk-version 23 --target-sdk-version 23 --version-code 6 --version-name 1.5 "${ASSET_ARGS[@]}"
 
 javac -nowarn -source 8 -target 8 -classpath "$JAR" -d build/classes \
   src/com/wesbos/homehq/*.java build/gen/com/wesbos/homehq/R.java
