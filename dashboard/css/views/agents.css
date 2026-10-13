@@ -222,3 +222,11 @@
 .eg-evidence > div + div { margin-top:10px; }
 .eg-evidence dt { font-size:14px; font-weight:800; color:var(--ink-2); }
 .eg-evidence dd { margin:4px 0 0; font-size:15px; line-height:1.35; }
+
+.eg-project-detail { margin-bottom:12px; background:var(--paper-2); border-radius:12px; }
+.eg-project-detail > summary { padding:12px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; cursor:pointer; }
+.eg-project-detail > summary b { font-size:18px; }
+.eg-project-detail > summary small { color:var(--mute); font-size:13px; }
+.eg-project-detail > .eg-detail { padding:0; }
+.eg-project-detail .eg-checklist-board { background:transparent; padding:12px; }
+.eg-project-detail .eg-work-scroll { overflow:visible; flex:none; }

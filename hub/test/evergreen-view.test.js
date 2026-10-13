@@ -73,3 +73,13 @@ test('checklist view shows achieved milestones without completing their parent o
  const second=JSON.parse(JSON.stringify(r.sections[0]));second.id='C13';second.title='Network checks';second.items[0].id='C13.1';r.sections.push(second);
  f.App.evergreen.selectSection('C13');assert.match(f.html(),/Network checks/);
 });
+
+test('partial checklist detail preserves the whole-project overview',async()=>{
+ const r=report();r.schemaVersion=2;r.sections=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/progress-sample-v2.json'))).sections;
+ const f=await view(r),html=f.html();
+ assert.match(html,/Scope &lt;zero&gt;/);assert.match(html,/Built: 1 reported/);
+ assert.match(html,/Milestone detail · S1/);assert.match(html,/4 achieved · 1 detailed item/);
+ assert.match(html,/data-eg-open="checklist-detail"/);
+ assert(!html.includes('data-eg-open="checklist-detail" open'));
+ assert(!html.includes('aria-label="Reported checklist items"'));
+});

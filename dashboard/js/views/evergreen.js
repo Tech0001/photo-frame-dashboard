@@ -38,8 +38,8 @@
         '<i class="is-reported" style="width:' + (rows.length ? yes / rows.length * 100 : 0) + '%"></i><i class="is-pending" style="width:' + (rows.length ? pending / rows.length * 100 : 0) + '%"></i><i class="is-unknown" style="width:' + (rows.length ? unknown / rows.length * 100 : 0) + '%"></i></div></section>';
     }).join('') + '</div>';
   }
-  function work(rows) {
-    return '<section class="eg-board eg-card"><header><h3>Delivery map</h3><span class="eg-map-key">✓ reported · ○ pending · ? unknown</span></header><p class="eg-map-note">Fully reported scopes (may overlap), not overall completion. Tap for evidence.</p><div class="eg-work-scroll" data-eg-scroll="work"><div class="eg-work-grid">' + (rows.length ? rows.map(function (row) {
+  function work(rows, sections, section) {
+    return '<section class="eg-board eg-card"><header><h3>Delivery map</h3><span class="eg-map-key">✓ reported · ○ pending · ? unknown</span></header><p class="eg-map-note">Fully reported scopes (may overlap), not overall completion. Tap for evidence.</p><div class="eg-work-scroll" data-eg-scroll="work">' + (section ? detailLink(sections, section) : '') + '<div class="eg-work-grid">' + (rows.length ? rows.map(function (row) {
       var cells = stages.map(function (s) {
         var v = row.stages[s[0]], state = stageState(v);
         return '<span class="eg-cell' + (v === true ? ' is-reported' : v === false ? ' is-pending' : ' is-unknown') + '" title="' + s[1] + ': ' + state + '" aria-label="' + s[1] + ': ' + state + '">' + (v === true ? '✓' : v === false ? '○' : '?') + '<small>' + s[1] + '</small></span>';
@@ -103,6 +103,11 @@
           }).join('') + '</ol>' : '<p class="eg-empty">No milestones reported for this item.</p>') + '</article>';
       }).join('') + '</div></section>';
   }
+  function detailLink(sections, section) {
+    var items = section.items, achieved = 0;
+    items.forEach(function (item) { achieved += counts(item.milestones).completed; });
+    return disclosure('checklist-detail', '<b>Milestone detail · ' + esc(section.id) + '</b><small>' + achieved + ' achieved · ' + items.length + ' detailed ' + (items.length === 1 ? 'item' : 'items') + ' · tap to expand</small>', checklist(sections, section), 'eg-project-detail');
+  }
   function render() {
     if (!data || !data.report) return '<div class="ag-progress"><section class="eg-card eg-setup"><h2 class="serif">Evergreen</h2><p>' + (error ? 'The hub could not be reached. Try Refresh.' : busy ? 'Checking for Evergreen progress…' : 'Waiting for the first Evergreen report.') + '</p><p class="eg-empty">The configured progress feed will bring the objective, recent progress, blockers and decisions here automatically.</p></section></div>';
     var r = data.report, warn = warnings();
@@ -111,7 +116,7 @@
     var brief = (r.objective.match(/^.*?[.!?](?:\s|$)/) || [r.objective])[0].trim();
     return '<div class="ag-progress eg-visual">' + (warn.length ? '<div class="eg-warning" role="status">' + esc(warn.join(' ')) + '</div>' : '') +
       disclosure('context', '<span class="eg-objective-label">Evergreen <small>Objective & next step</small></span><b class="eg-objective-brief">' + esc(brief) + '</b>', '<p>' + esc(r.objective) + '</p>' + (r.next ? '<p class="eg-next"><b>Next</b> ' + esc(r.next) + '</p>' : '') + '<p class="eg-source">' + esc(r.source) + ' · reconciled ' + esc(when(r.updatedAt)) + '</p>', 'eg-context') +
-      (section ? checklistTotals(section) : totals(r.work)) + '<div class="eg-dashboard">' + (section ? checklist(r.sections, section) : work(r.work)) + '<aside class="eg-sidebar" data-eg-scroll="sidebar">' + recent(r.recent) +
+      (r.work.length ? totals(r.work) : section ? checklistTotals(section) : totals(r.work)) + '<div class="eg-dashboard">' + (r.work.length ? work(r.work, r.sections, section) : section ? checklist(r.sections, section) : work(r.work)) + '<aside class="eg-sidebar" data-eg-scroll="sidebar">' + recent(r.recent) +
       attention(r.decisions, 'Needs you', 'No decisions requested in this report.', 'eg-decisions') +
       attention(r.blockers, 'Blockers & follow-up', 'No blockers reported.', 'eg-blockers') + '</aside></div></div>';
   }
