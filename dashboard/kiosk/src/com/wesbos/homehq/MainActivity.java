@@ -5,6 +5,10 @@ import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.ResolveInfo;
+import android.content.pm.PackageManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.Uri;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
@@ -41,6 +45,7 @@ public class MainActivity extends Activity {
 
   private WebView web;
   private DashboardClient dashboard;
+  private TextView waitingMessage;
   private final Handler handler = new Handler(Looper.getMainLooper());
   private final int[] exitIds = new int[2];
   private final float[] exitX = new float[2];
@@ -54,10 +59,11 @@ public class MainActivity extends Activity {
       Log.i(TAG, "Two-finger hold: opening controls");
       new AlertDialog.Builder(MainActivity.this)
           .setTitle("Home HQ")
-          .setItems(new String[] {"Open launcher", "Android settings", "Reload dashboard"},
+          .setItems(new String[] {"Open launcher", "Android settings", "Wi-Fi settings", "Reload dashboard"},
               (dialog, which) -> {
                 if (which == 0) openLauncher();
                 else if (which == 1) startActivity(new Intent(Settings.ACTION_SETTINGS));
+                else if (which == 2) openWifiSettings();
                 else dashboard.reload();
               })
           .setNegativeButton("Back to dashboard", null).show();
@@ -70,6 +76,7 @@ public class MainActivity extends Activity {
     saveOptions(getIntent());
     if (redirectToDefaultHome(getIntent())) return;
     applyDebugFlag(getIntent());
+    keepNavigationEnabled();
     getWindow().setBackgroundDrawable(new ColorDrawable(Color.BLACK));
     getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
@@ -95,6 +102,7 @@ public class MainActivity extends Activity {
     waiting.setBackgroundColor(Color.rgb(243, 239, 230));
     waiting.setClickable(true);
     TextView message = new TextView(this);
+    waitingMessage = message;
     message.setText("Waiting for dashboard\nIt will open automatically when the connection is ready.");
     message.setTextColor(Color.rgb(32, 32, 32));
     message.setTextSize(24);
@@ -104,17 +112,21 @@ public class MainActivity extends Activity {
     Button retry = new Button(this);
     retry.setText("Retry now");
     retry.setOnClickListener(v -> dashboard.reload());
+    Button wifi = new Button(this);
+    wifi.setText("Open Wi-Fi settings");
+    wifi.setOnClickListener(v -> openWifiSettings());
+    waiting.addView(wifi);
     waiting.addView(retry, new LinearLayout.LayoutParams(
         LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
     waiting.setVisibility(View.GONE);
     content.addView(waiting, new FrameLayout.LayoutParams(
         FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-    dashboard = new DashboardClient(getAssets(), web, waiting, this::openSpotify,
+    dashboard = new DashboardClient(getAssets(), web, waiting, this::showOffline, this::openSpotify,
         getSharedPreferences("kiosk", 0).getBoolean("household_sidebar", false));
     web.setWebViewClient(dashboard);
     setContentView(content);
 
-    String url = getIntent().getDataString();
+    String url = requestedUrl(getIntent());
     dashboard.load(url != null ? url : defaultUrl());
   }
 
@@ -129,6 +141,7 @@ public class MainActivity extends Activity {
 
   @Override
   protected void onPause() {
+    cancelExit();
     if (dashboard != null) {
       NavigationService.setDashboardVisible(false);
       dashboard.pause();
@@ -142,7 +155,7 @@ public class MainActivity extends Activity {
     setIntent(intent);
     saveOptions(intent);
     applyDebugFlag(intent);
-    String url = intent.getDataString();
+    String url = requestedUrl(intent);
     if (url != null) dashboard.load(url);
     else if (intent.getBooleanExtra("reset_url", false)) dashboard.load(defaultUrl());
   }
@@ -151,12 +164,14 @@ public class MainActivity extends Activity {
     if (intent != null && intent.getBooleanExtra("reset_url", false)) {
       getSharedPreferences("kiosk", 0).edit().remove("dashboard_url").apply();
     }
-    if (intent != null && intent.getData() != null) {
-      String scheme = intent.getData().getScheme();
+    String requested = requestedUrl(intent);
+    if (requested != null) {
+      Uri uri = Uri.parse(requested);
+      String scheme = uri.getScheme();
       if (("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))
-          && intent.getData().getHost() != null) {
+          && uri.getHost() != null) {
         getSharedPreferences("kiosk", 0).edit()
-            .putString("dashboard_url", intent.getDataString()).apply();
+            .putString("dashboard_url", requested).apply();
       }
     }
     if (intent != null && intent.hasExtra("household_sidebar")) {
@@ -204,6 +219,65 @@ public class MainActivity extends Activity {
     else new AlertDialog.Builder(this).setTitle("Spotify")
         .setMessage("Install Spotify on this display first.")
         .setPositiveButton("OK", null).show();
+  }
+
+  private boolean wifiConnected() {
+    ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+    @SuppressWarnings("deprecation")
+    NetworkInfo n = cm != null ? cm.getNetworkInfo(ConnectivityManager.TYPE_WIFI) : null;
+    return n != null && n.isConnected();
+  }
+
+  private void showOffline() {
+    waitingMessage.setText(wifiConnected()
+        ? "Can't reach the dashboard\nWi-Fi is connected. Retrying every few seconds."
+        : "Connect to Wi-Fi?\nThe dashboard comes back by itself once the connection is ready.");
+  }
+
+  private void openWifiSettings() {
+    try {
+      startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
+    } catch (Exception e) {
+      Log.w(TAG, "No Wi-Fi settings screen, opening Settings", e);
+      startActivity(new Intent(Settings.ACTION_SETTINGS));
+    }
+  }
+
+  /**
+   * Some frames (PF1007L) run a vendor BackgroundManagerService that drops the navigation service
+   * after the kiosk is updated or force-stopped, leaving no way back from Settings. If the owner
+   * opted in by granting WRITE_SECURE_SETTINGS, put the service back on the enabled list:
+   *   adb shell pm grant com.wesbos.homehq android.permission.WRITE_SECURE_SETTINGS
+   */
+  private void keepNavigationEnabled() {
+    if (checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS") != PackageManager.PERMISSION_GRANTED) return;
+    String svc = getPackageName() + "/" + NavigationService.class.getName();
+    String cur = Settings.Secure.getString(getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+    if (cur != null) {
+      ComponentName want = new ComponentName(this, NavigationService.class);
+      for (String entry : cur.split(":")) {
+        if (want.equals(ComponentName.unflattenFromString(entry))) return;
+      }
+    }
+    String next = cur == null || cur.isEmpty() ? svc : cur + ":" + svc;
+    try {
+      Settings.Secure.putString(getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, next);
+      Settings.Secure.putString(getContentResolver(), Settings.Secure.ACCESSIBILITY_ENABLED, "1");
+      Log.i(TAG, "Re-enabled navigation service");
+    } catch (SecurityException e) {
+      Log.w(TAG, "Could not re-enable navigation service", e);
+    }
+  }
+
+  /** Accept upstream's saved URL extra while preserving this fork's VIEW persistence. */
+  private String requestedUrl(Intent intent) {
+    if (intent == null) return null;
+    String explicit = intent.getStringExtra("url");
+    if (explicit == null) return intent.getDataString();
+    Uri uri = Uri.parse(explicit);
+    if (("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme()))
+        && uri.getHost() != null) return explicit;
+    return null;
   }
 
   private void openLauncher() {

@@ -17,7 +17,14 @@ and read [the AiMOR remote root shell notes](aimor-remote-root-shell.md) first. 
 below is from one unit. Check each value on your own unit; stop at the first mismatch.
 
 Scripts are in [`scripts/a33-uboot/`](../scripts/a33-uboot). Host-specific scripts end in
-`-macos.py`; on Linux use the guide's `lsblk`/`dd` equivalents.
+`-macos.py`; on Linux use the guide's `lsblk`/`dd` equivalents. Windows has its own
+`-windows.ps1` scripts, see [section 9](#9-windows-host-wsl2--usbipd).
+
+A later [May 2026 macOS unit report](pf1007l-macos-20260529-report.md) reached root
+with this route, after locally correcting U-Boot's START STOP handling and adding
+write/readback error guards to the generated scripts. Those changes are **not** in
+the scripts at the repository revision cited in that report. Read its checks and
+limitations before treating the commands below as a tested path for that firmware.
 
 ## 1. Get USB data on the USB-C-only unit
 
@@ -39,6 +46,10 @@ With a working path, this unit enumerated as:
 | After the boot patch | `1f3a:1002`, mass storage + ADB |
 
 On macOS, `ioreg -p IOUSB -l -w0` lists the tree. Vendor `1f3a` is 7994 in decimal.
+For a concise tree, use `ioreg -p IOUSB -w 0`. A "Generic Billboard Device" can be
+the hub itself; it does not establish that the frame enumerated. A later unit had
+intermittent C-to-C data through a hub, but used A-to-C for stable power and data:
+see the [cable observations](pf1007l-macos-20260529-report.md#cable-power-and-usb-observations).
 
 ## 2. FEL from the SD card (macOS)
 
@@ -122,6 +133,34 @@ The partition layout matched the tested unit in the PF1007L guide: env at sector
 **boot at 172032**, system (1 GiB ext4) at 237568, **recovery at 2400256**. Parse your own.
 `UDISK` (p1) is listed past the end of the eMMC, as the PF1007L guide notes.
 
+### If the UMS disks disappear on macOS
+
+An additional unit lost both read-only disks at about 30 seconds, while its cables
+stayed untouched and both hub halves remained enumerated. Null console input alone
+did not fix it. A local correction to `do_start_stop()` kept ordinary start/stop
+requests from setting `common->eject`; only an unload request ejects. The corrected
+build completed two full-device reads. See the [controlled tests and exact source
+change](pf1007l-macos-20260529-report.md#ums-disappeared-after-about-30-seconds).
+The current build script does not include that correction.
+The report includes a [host-only rebuild recipe](pf1007l-macos-20260529-report.md#reproduce-the-ram-only-build)
+and a [comparison with other UMS failures](pf1007l-macos-20260529-report.md#distinguish-other-ums-failure-reports).
+MMC read errors, loss of power, and a reset into FEL need different evidence from
+an idle START STOP exit. Do not copy every board workaround into one build.
+
+If `diskutil info` fails for a previously observed disk, first confirm that the UMS
+gadget still exists. After a reload or a script that exposes only eMMC, macOS can
+assign a different disk number and U-Boot can label it "UMS disk 0" instead of "1".
+Recheck exact size, USB/external identity, media name, and read-only status before
+every read. Keep all of `emmc-macos.py`'s guards.
+
+`sudo` may leave the backup files administrator-owned with mode 0600. If tools run
+as the owner cannot inspect them, change ownership of only the three backup files,
+preserving their private permissions:
+
+```sh
+sudo chown "$USER" backups/a33-emmc-full.{img,img.gz,sha256}
+```
+
 ## 5. Build the boot patch from your own backup
 
 ```sh
@@ -151,6 +190,15 @@ eMMC, then writes the ramdisk and then the header **only if** all four payloads 
 CRC-32 (`crc32 -v`) **and** the eMMC still holds the original bytes (`cmp.b`). If any check
 fails, nothing is written. Either way it ends in read-only `ums`.
 
+These are preflight guards. At the checked revision, the generator does not stop
+the header write on a failed ramdisk write or readback. The May session added
+explicit I/O-result checks and device readback before each next write, for both
+apply and restore; see [the tested local guards](pf1007l-macos-20260529-report.md#stronger-generated-write-script-guards).
+They are not included in the current generator and do not make the write atomic.
+Review the report's [RAM map and executable-script checks](pf1007l-macos-20260529-report.md#stronger-generated-write-script-guards)
+when adapting those local guards. Editing the `.cmd` without rebuilding and checking
+the `.scr` leaves the old commands in the executable image.
+
 With the owner approving **this specific boot-partition write**, power-cycle into FEL and run:
 
 ```sh
@@ -168,8 +216,10 @@ sudo python3 -I scripts/a33-uboot/emmc-macos.py verify diskN <exact-bytes>
 ```
 
 This reads the whole eMMC. Every byte must equal the backup, except the planned ranges,
-which must equal the patched payloads. A mismatch only in the boot ranges means the guard
-refused the write.
+which must equal the patched payloads. A mismatch does not by itself prove that the
+guard refused the write: an operation may have been incomplete. Only a complete
+match with the unchanged original proves the original bytes remain. If neither the
+full original nor the backup plus exact plan matches, stop and investigate.
 
 A first attempt here read the 5.4 MiB payloads back over FEL before starting U-Boot. The
 read timed out (`usb_bulk_recv() ERROR -7`). `sunxi-fel` stopped before "Starting U-Boot",
@@ -208,6 +258,13 @@ Observations from the setup in the PF1007L guide (launcher, WebView 106, kiosk):
   SHA-256 fingerprint `96:BC:EC:06:26:49:76:F3:74:60:77:9A:CF:28:C5:A7:CF:E8:A3:C0:AA:E1:1A:8F:FC:EE:05:C0:BD:DF:08:C6`
   against a second source before installing. The guide's alternative, a host proxy, avoids
   changing `/system`.
+- **Cloudflare Workers.** On a `FL-AIMOR-OS.0.20260519` unit, the stock trust store also had
+  no GlobalSign Root CA (`5ad8a5d6.0`) and no GTS roots. A dashboard deployed to
+  `*.workers.dev` failed the same way (`net_error -202`): its chain ends at GTS Root R4,
+  cross-signed by GlobalSign Root CA. Adding GTS Root R1 (`f013ecaf.0`), GTS Root R4
+  (`5acf816d.0`) and ISRG Root X1 (`6187b673.0`), with the SHA-256 values from the
+  [Uhale guide](si006-uhale.md), fixed it. A custom domain on Cloudflare served a Google
+  Trust Services certificate too, so it needs the same roots.
 - **WebView 106 features**, measured with `CSS.supports` and syntax checks in the kiosk:
 
   | Missing | Present |
@@ -217,6 +274,152 @@ Observations from the setup in the PF1007L guide (launcher, WebView 106, kiosk):
   Viewport 1280×800, `devicePixelRatio` 1.
 - **Time zone.** It shipped as `America/New_York`. `adb shell service call alarm 3 s16 <Area/City>`
   changes it.
+- **Two more units (2026-10-11, Linux host, FEL eMMC reads/writes of the boot partition).**
+  Both had byte-identical boot partitions (31028 sectors at LBA 172032), so one patched
+  image served both. Notes from bringing them to WebView 106 + kiosk-as-Home over network ADB:
+  - **Avoid `adb reboot` and `setprop sys.powerctl reboot`.** On both units shutdown hung
+    (other reports agree, though one unit rebooted cleanly):
+    ADB accepted the command, then the frame stopped answering shell commands (ping and
+    port 5555 still up) until it was unplugged. Power-cycle instead. On a hub,
+    `uhubctl -l <hub> -p <port> -a off`, wait 8 s, `-a on` worked cleanly and touched nothing else.
+  - **First boot after the WebView 106 swap froze a hub-powered unit** about 26 s in, right
+    after `Running dexopt ... webview.apk` and `insmod aic8800_fdrv.ko`. Booting once with
+    Wi-Fi off (`svc wifi disable` during the short ADB window, then power-cycle; the owner
+    set `wifi_on` to `0` in `settings_global.xml` directly, which is riskier) let dexopt finish. `svc wifi enable` afterwards, and
+    later boots with Wi-Fi on were fine. The wall-powered unit did not need this.
+  - **Clock stuck at 1969.** One unit had `settings get global auto_time` = `null`, so it never
+    took network time and the dashboard showed Wednesday, December 31.
+    `settings put global auto_time 1` fixed it. Check this before blaming the page.
+  - **Random MAC each boot.** Adding `MAC_ADDR=` to
+    `/system/vendor/modules/aic_userconfig_8800dc.txt` is read by the driver but ignored
+    (only txpwr and xtal settings are parsed), and a one-shot `ip link set wlan0 address` did
+    not stick. PR #6's looping `frame-fixmac.sh` is the approach to try for DHCP reservations.
+    Otherwise find frames by serial: scan port 5555, then `getprop ro.serialno`.
+  - Wi-Fi ADB (`persist.adb.tcp.port 5555`) survived every power cycle, but
+    `svc wifi disable` / `enable` killed the listener until the next boot.
 - **Speaker.** The A33 `audiocodec` drives a working speaker. The kiosk's
   `setMediaPlaybackRequiresUserGesture(false)` lets a page autoplay audio. No microphone
   feature is declared.
+
+## 9. Windows host (WSL2 + usbipd)
+
+This section runs sections 2 to 7 from Windows 11. The Linux tools (`sunxi-fel`, the U-Boot
+build, `boot-patch.py`) run in WSL2. USB devices reach WSL through
+[usbipd-win](https://github.com/dorssel/usbipd-win) (4.0 or later). Two PowerShell ports of the macOS
+scripts handle the steps where Windows owns the device:
+
+| Script | Port of | Why it runs on Windows |
+| --- | --- | --- |
+| `fel-card-windows.ps1` | `fel-card-macos.py` | The SD card reader belongs to Windows |
+| `emmc-windows.ps1` | `emmc-macos.py` | U-Boot's `ums` disk must stay with Windows (see below) |
+
+They keep the same checks and the same files in `backups/` and `diagnostics/`. `backup`,
+`verify` and `verify-original` all work in 1 GiB segments and resume after a dropout, like the
+macOS `-resume` modes. Disk reads bypass the Windows cache (`FILE_FLAG_NO_BUFFERING`), so the
+second read of each segment comes from the eMMC.
+
+**What was tested.** One unit (#6, Windows 11 Pro, WSL2 Ubuntu, usbipd-win 5.3) went through
+FEL over usbipd, a RAM-loaded U-Boot, Windows reading the `ums` disk, and a full backup with
+two matching passes. That unit used an earlier, writable U-Boot build (v2025.01, eMMC 4-bit at
+26 MHz), not this repository's read-only build. Both scripts were tested against disk images:
+backup, gzip readback, resume, the fingerprint, the `0xCC` filler check, verify against a
+plan, and card write and restore. Neither has run against a frame yet. The boot-partition
+write (section 6) has not been done from Windows.
+
+### Set up the host
+
+Clone the repository inside WSL (for example `~/photo-frame-dashboard`). PowerShell reaches
+it as `\\wsl.localhost\<distro>\home\<you>\photo-frame-dashboard`, and the scripts accept that
+path. In WSL, build `sunxi-fel` and check the stub as in section 2 of the
+[PF1007L guide](allwinner-a33-pf1007l.md#2-use-an-sd-card-for-stable-fel-if-adb-is-absent).
+Run `build-uboot.sh` (section 3) in WSL with Docker.
+
+In an Administrator PowerShell:
+
+```powershell
+usbipd policy add --effect Allow --operation AutoBind --hardware-id 1f3a:efe8   # FEL may go to WSL
+Get-StorageSetting | Select NewDiskPolicy        # note it, to restore later
+Set-StorageSetting -NewDiskPolicy OfflineAll     # new disks stay offline: nothing is mounted
+```
+
+`OfflineAll` matters. Without it, Windows mounts the frame's partitions as they appear and
+offers to format some of them (the MBR labels the ext4 `/data` partition as FAT32).
+`emmc-windows.ps1` refuses a disk that is online. Cancel any "format this disk" prompt.
+
+Both settings stay after a reboot. **Undo them when you are done:**
+
+```powershell
+Set-StorageSetting -NewDiskPolicy <the value you noted>   # usually OnlineAll or OfflineShared
+usbipd policy list                                        # find the 1f3a:efe8 policy's GUID
+usbipd policy remove --guid <guid>
+```
+
+### FEL card
+
+`fel-card-windows.ps1` has been tested on disk images only, not yet on a real card in a reader.
+
+Run these in an Administrator PowerShell from the repository root. `Get-Disk` before and after
+inserting the card identifies it (Number, Size).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\a33-uboot\fel-card-windows.ps1 backup  <n> <exact-bytes>
+# With the owner approving this card write:
+powershell -ExecutionPolicy Bypass -File scripts\a33-uboot\fel-card-windows.ps1 write   <n> <exact-bytes>
+# Later, to undo:
+powershell -ExecutionPolicy Bypass -File scripts\a33-uboot\fel-card-windows.ps1 restore <n> <exact-bytes>
+```
+
+It accepts USB and built-in SD readers, refuses a system or boot disk, and needs an MBR card
+whose first partition starts at sector 8192 or later.
+
+### FEL over usbipd
+
+Put the frame in FEL with the card (section 2). In PowerShell:
+
+```powershell
+usbipd list                                   # the frame shows as 1f3a:efe8
+usbipd attach --wsl --busid <busid>
+```
+
+Then, in WSL, `diagnostics/sunxi-tools/sunxi-fel version` must show `soc=00001667(A33)`. Every
+power cycle re-enumerates the frame, so attach again each time. On #6, FEL from the reset button
+alone, without the card, lasted a second or two: too short to attach.
+
+### Load U-Boot and back up
+
+From WSL, load U-Boot as in section 4. The frame drops off WSL and comes back as U-Boot's mass
+storage gadget (`1f3a:1010`), which Windows reads directly.
+
+**Never attach `1f3a:1010` to WSL.** On #6, the rebind reset the gadget and it did not come
+back until the frame was power-cycled into FEL again. Do not use `usbipd attach --auto-attach`
+on the frame's bus ID, because it would attach the gadget as well.
+
+`Get-Disk` lists U-Boot's LUNs as `Linux UMS disk 0` (SD card) and `Linux UMS disk 1` (eMMC).
+Identify the eMMC by size, and check that it shows `IsReadOnly` = `True` and `IsOffline` = `True`.
+If it is not read-only, the read-only build is not the one running: stop. **Never use
+`Set-Disk -IsReadOnly` to get past this check**; if `IsReadOnly` is `False`, stop and report it. Then:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\a33-uboot\emmc-windows.ps1 backup <n> <exact-bytes>
+```
+
+On #6 (4-bit, 26 MHz build) Windows read the disk at about 5.7 MB/s, about 45 minutes per pass
+over a 15.7 GB eMMC. The script reads each segment twice, so plan on about 90 minutes plus
+compression. If the disk drops, the script saves its progress. Power-cycle into FEL, attach,
+load U-Boot again, and rerun the same command. The disk number can change, so check `Get-Disk`
+again.
+
+### Patch, write and verify
+
+`boot-patch.py` (section 5) runs in WSL on the backup unchanged. For the guarded write
+(section 6), attach FEL and run the `sunxi-fel` command from WSL. When the eMMC comes back
+read-only, verify from PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\a33-uboot\emmc-windows.ps1 verify <n> <exact-bytes>
+# after restore-boot.scr instead:
+powershell -ExecutionPolicy Bypass -File scripts\a33-uboot\emmc-windows.ps1 verify-original <n> <exact-bytes>
+```
+
+After the patch the frame boots as `1f3a:1002`. Either attach it to WSL with `usbipd attach`
+and use `adb` there, or use the Windows platform tools directly.

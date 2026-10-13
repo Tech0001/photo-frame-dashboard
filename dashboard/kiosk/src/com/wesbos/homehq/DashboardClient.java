@@ -18,6 +18,7 @@ final class DashboardClient extends DashboardAssets {
   private final Handler handler = new Handler(Looper.getMainLooper());
   private final WebView web;
   private final View waiting;
+  private final Runnable updateWaiting;
   private final Runnable openSpotify;
   private final boolean householdSidebar;
   private Uri dashboardOrigin;
@@ -26,10 +27,11 @@ final class DashboardClient extends DashboardAssets {
   private boolean active;
   private final Runnable retry = this::retryLoad;
 
-  DashboardClient(AssetManager assets, WebView web, View waiting, Runnable openSpotify, boolean householdSidebar) {
+  DashboardClient(AssetManager assets, WebView web, View waiting, Runnable updateWaiting, Runnable openSpotify, boolean householdSidebar) {
     super(assets);
     this.web = web;
     this.waiting = waiting;
+    this.updateWaiting = updateWaiting;
     this.openSpotify = openSpotify;
     this.householdSidebar = householdSidebar;
   }
@@ -150,6 +152,7 @@ final class DashboardClient extends DashboardAssets {
     String scheme = url.getScheme();
     if (!("http".equals(scheme) || "https".equals(scheme)) || HOST.equals(url.getHost())) return;
     retryUrl = url.toString();
+    updateWaiting.run();
     waiting.setVisibility(View.VISIBLE);
     Log.i(MainActivity.TAG, "Dashboard unavailable; retrying in 5 seconds");
     if (active) scheduleRetry(RETRY_MS);
