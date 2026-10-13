@@ -506,14 +506,14 @@ function accountsHtml() {
     var info = help[a.id]; if (!info) return;
     var value = esc((CN.acctInput || {})[a.id] || '');
     h += '<div class="card" data-acct="' + esc(a.id) + '"><b>' + esc(a.name) + '</b> <span class="mute">· ' + (a.unofficial ? 'unofficial usage endpoint' : 'official API') + '</span>' +
-      '<p class="mute">Status: ' + (a.linked ? (a.expired ? '<span class="bad">login expired — update below</span>' : 'linked' + (a.expiresAt ? ', token valid until ' + esc(new Date(a.expiresAt).toLocaleString()) : '')) : 'not linked') + '</p>' +
+      '<p class="mute">Status: ' + (a.source === 'local' ? 'PC login sync — credentials stay on the PC. Entering credentials below switches back to a saved server login.' : a.linked ? (a.expired ? '<span class="bad">login expired — update below</span>' : 'linked' + (a.expiresAt ? ', token valid until ' + esc(new Date(a.expiresAt).toLocaleString()) : '')) : 'not linked') + '</p>' +
       '<p class="mute">' + esc(info.instructions) + '</p>' +
       (a.unofficial ? '<p class="mute">This uses an undocumented usage endpoint that may change. The login token can access your account; Unlink removes the saved copy.</p>' : '') +
       '<label>' + esc(info.label) + '</label>' +
       (a.id === 'openrouter' ? '<input type="password" data-acct-json autocomplete="new-password" style="width:100%" placeholder="' + (a.linked ? 'Key saved; enter a new key to replace it' : 'sk-or-…') + '" value="' + value + '">' :
         '<textarea class="secret-box" data-acct-json rows="3" style="width:100%" autocomplete="off" spellcheck="false" placeholder="' + (a.linked ? 'Login saved; paste fresh JSON to replace it' : 'Paste credentials JSON') + '">' + value + '</textarea>' +
         '<div class="row"><label class="mute account-file">Or choose a credentials file <input type="file" data-acct-file="' + esc(a.id) + '" accept=".json,application/json"></label></div>') +
-      '<div class="row"><button class="btn ghost" data-test-acct="' + esc(a.id) + '">Test</button>' + (a.linked ? '<button class="btn ghost" data-unlink-acct="' + esc(a.id) + '">Unlink</button>' : '') + '<span class="mute">Save first, then test.</span></div>' +
+      '<div class="row"><button class="btn ghost" data-test-acct="' + esc(a.id) + '">Test</button>' + (a.id !== 'openrouter' && a.source !== 'local' && CN.localAccountsTokenSet ? '<button class="btn ghost" data-use-local-acct="' + esc(a.id) + '">Use PC login</button>' : '') + (a.linked ? '<button class="btn ghost" data-unlink-acct="' + esc(a.id) + '">Unlink</button>' : '') + '<span class="mute">Save first, then test.</span></div>' +
       '<div class="mute" style="white-space:pre-wrap">' + esc((CN.acctResult || {})[a.id] || '') + '</div></div>';
   });
   return h;
@@ -535,7 +535,7 @@ function testAccount(id) {
   collectConnections(); CN.acctResult = CN.acctResult || {}; CN.acctResult[id] = 'Testing the saved login…'; renderConnections();
   api('POST', '/api/admin/test', { what: 'account', id: id })
     .then(function (r) {
-      CN.acctResult[id] = r.ok ? 'Works. Plan: ' + (r.plan || 'unknown') + '\n' + (r.credits ? 'Key today: $' + r.credits.daily.toFixed(2) + '\nKey this week: $' + r.credits.weekly.toFixed(2) + '\nKey this month: $' + r.credits.monthly.toFixed(2) : (r.meters.length ? r.meters.join('\n') : 'No usage windows returned.'))
+      CN.acctResult[id] = r.ok ? (r.message || 'Works. Plan: ' + (r.plan || 'unknown') + '\n' + (r.credits ? 'Key today: $' + r.credits.daily.toFixed(2) + '\nKey this week: $' + r.credits.weekly.toFixed(2) + '\nKey this month: $' + r.credits.monthly.toFixed(2) : (r.meters.length ? r.meters.join('\n') : 'No usage windows returned.')))
         : 'Problem: ' + r.error;
     })
     .catch(function (e) { CN.acctResult[id] = 'Problem: ' + e.message; }).then(renderConnections);
@@ -1142,6 +1142,10 @@ document.addEventListener('click', function (ev) {
   else if (d.delCal !== undefined) { CN.calendars.splice(+d.delCal, 1); renderConnections(); }
   else if (d.useLink !== undefined) { CN.calendars.push({ key: d.useLink, name: d.useLink, people: [], urlSet: true, newUrl: '', result: '' }); CN.unusedLinks = CN.unusedLinks.filter(function (k) { return k !== d.useLink; }); renderConnections(); }
   else if (d.testCal !== undefined) testCalendar(+d.testCal);
+  else if (d.useLocalAcct !== undefined) {
+    var localUpdate = {}; localUpdate[d.useLocalAcct] = { source: 'local' };
+    api('PUT', '/api/admin/connections', { accounts: localUpdate }).then(load).catch(function (e) { msg('Not changed: ' + e.message, true); });
+  }
   else if (d.testAcct !== undefined) testAccount(d.testAcct);
   else if (d.unlinkAcct !== undefined) unlinkAccount(d.unlinkAcct);
   else if (d.ct !== undefined) { CN_TAB = d.ct; renderConnections(); }

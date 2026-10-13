@@ -1,0 +1,11 @@
+[Unit]
+Description=Watch PC login rotation and frame usage refresh requests
+
+[Timer]
+OnStartupSec=20
+OnUnitInactiveSec=60
+RandomizedDelaySec=3
+Unit=frame-account-sync.service
+
+[Install]
+WantedBy=timers.target

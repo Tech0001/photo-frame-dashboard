@@ -32,7 +32,7 @@ test('visual map separates reported/pending/unknown and escapes source text',asy
   assert.match(html,/Live: 0 reported, 1 pending, 0 unknown/);
   assert.match(html,/Scope &lt;zero&gt;/); assert(!html.includes('Scope <zero>'));
   assert.match(html,/data-eg-open="work-C0"/); assert(!html.includes('data-eg-open="work-C0" open'));
-  assert.match(html,/scopes can overlap/);
+  assert.match(html,/not overall completion/);
 });
 test('Today and Yesterday use event timestamps rather than report or receipt time',async()=>{
   const now=new Date(2026,9,12,17), r=report(now);

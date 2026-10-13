@@ -52,6 +52,7 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
       homeassistant: Object.assign(homeassistant.defaults(), cfg.homeassistant, { tokenSet: !!secrets.homeassistant_token }),
       adminPasswordSet: !!secrets.admin_password,
       agentsTokenSet: !!secrets.agents_token,
+      localAccountsTokenSet: !!secrets.local_accounts_token,
       progressTokenSet: !!secrets.progress_token,
       photosDir: cfg.photosDir,
       files: { config: cfgFile, secrets: secFile }
@@ -133,6 +134,10 @@ module.exports = function create({ cfg, secrets, cfgFile, secFile, getPeopleIds 
         const p = accounts.providers[id], a = b.accounts[id] || {};
         if (!Object.hasOwn(accounts.providers, id)) throw bad('unknown account "' + id + '"');
         if (a.unlink) delete nsec.accounts[id];
+        else if (a.source === 'local') {
+          if (!['codex', 'claude'].includes(id) || !nsec.local_accounts_token) throw bad('Set up the PC account sync first.');
+          nsec.accounts[id] = { source: 'local' };
+        }
         else if (typeof a.authJson === 'string' && a.authJson.trim()) nsec.accounts[id] = p.parse(a.authJson);
       });
       if (!Object.keys(nsec.accounts).length) delete nsec.accounts;

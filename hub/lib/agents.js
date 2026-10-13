@@ -47,16 +47,16 @@ class AgentsStore {
     writeJsonAtomic(this.file, this.data);
   }
   /** Store a service the hub fetched itself. On failure the last good meters stay and the error is recorded. */
-  setService(svc, error) {
+  setService(svc, error, source = 'hub') {
     const prev = this.data.services[svc.id] || {};
     const c = cleanService(Object.assign({ days: [] }, svc));
     if (error) { c.meters = prev.meters || []; c.credits = prev.credits || null; c.plan = prev.plan || c.plan; c.error = str(error, 300); c.updated = prev.updated || null; c.errorAt = new Date().toISOString(); }
     else c.updated = new Date().toISOString();
-    this.data.services[c.id] = Object.assign(prev.days ? { days: prev.days } : {}, c, { source: 'hub' });
+    this.data.services[c.id] = Object.assign(prev.days ? { days: prev.days } : {}, c, { source });
     writeJsonAtomic(this.file, this.data);
   }
   removeLinkedService(id) {
-    if (this.data.services[id] && this.data.services[id].source === 'hub') {
+    if (this.data.services[id] && ['hub', 'pc-login'].includes(this.data.services[id].source)) {
       delete this.data.services[id];
       writeJsonAtomic(this.file, this.data);
     }

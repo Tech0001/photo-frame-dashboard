@@ -23,6 +23,7 @@ const { AgentsStore } = require('./lib/agents');
 const { ProgressStore, authorize: authorizeProgress } = require('./lib/progress');
 const makeConnections = require('./lib/connections');
 const accounts = require('./lib/accounts');
+const localAccounts = require('./lib/local-accounts');
 const homeassistant = require('./lib/homeassistant');
 const groceries = require('./lib/groceries');
 const tune = require('./lib/tune');
@@ -172,6 +173,11 @@ const routes = {
   },
 
   'GET /api/agents': async (req, res) => send(res, 200, agents.get()),
+  'GET /api/accounts/local': async (req, res) => send(res, 200, { providers: localAccounts.enabled(secrets), requestedAt: agents.get().requestedAt }),
+  'PUT /api/accounts/local': async (req, res) => {
+    localAccounts.authorize(req, secrets);
+    send(res, 200, localAccounts.publish(await readBody(req, 16384), secrets, agents));
+  },
   'GET /api/progress/evergreen': async (req, res) => send(res, 200, progress.get()),
   'PUT /api/progress/evergreen': async (req, res) => {
     try {
