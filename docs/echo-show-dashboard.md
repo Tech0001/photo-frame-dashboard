@@ -47,5 +47,28 @@ adb -s DEVICE shell settings put secure screensaver_enabled 0
 The locksettings command requires the existing credential if a PIN/password was
 set. This device had no PIN/password. Verified a screen-off/wake cycle returns to
 Home HQ with keyguard not showing. Double-tap wake remains enabled. Native Spotify
-was installed separately and its login is retained; the Music integration is not
-yet added to the dashboard.
+was installed separately and its login is retained. The sidebar shortcut is
+described below; an embedded player has not been implemented.
+
+## Household sidebar (kiosk 1.6)
+
+On the Echo, the opt-in household sidebar hides Homelab and Agents and adds a
+Spotify button. It opens the installed `com.spotify.music` app and keeps its
+existing login. Android Home returns to Home HQ. This is an app shortcut, not an
+embedded Spotify player or Web API integration. It requires no developer app.
+
+Enable the preference on a new display when launching the kiosk:
+
+```sh
+adb -s DEVICE shell am start -n com.wesbos.homehq/.MainActivity --ez household_sidebar true
+```
+
+It survives app restarts. To switch an existing instance back to the default
+sidebar, launch with the extra set to false, force-stop Home HQ and launch again.
+Only that display changes; the hub and other displays keep their navigation.
+The native link handles only `homehq://spotify`, only from the selected dashboard
+origin, and launches only the fixed Spotify package. No general Android command
+or JavaScript bridge is exposed. Subframe app-link requests are discarded.
+
+Verified on the Echo: button launches Spotify, Home returns to Home HQ, a cold
+app restart keeps the household sidebar, fullscreen fit and disabled lock screen.
