@@ -56,7 +56,7 @@ function cleanReport(input, now = Date.now()) {
 function cleanProgress(value, updatedAt, now) {
   if (value == null) return undefined;
   function numbers(row) {
-    if (!row || !Number.isInteger(row.completed) || !Number.isInteger(row.total) || row.total < 1 || row.total > 100000 || row.completed < 0 || row.completed > row.total) throw bad('Progress counts need completed and total integer steps.');
+    if (!row || !Number.isInteger(row.completed) || !Number.isInteger(row.total) || row.total < 1 || row.total > 100000 || row.completed < 0 || row.completed > row.total) throw bad('Progress counts need checked and total integer checklist entries.');
     return { completed: row.completed, total: row.total, basis: text(row.basis, 60, true) };
   }
   const out = numbers(value);
@@ -105,6 +105,8 @@ function cleanSections(sections, updatedAt, now) {
       const row = scope(item); row.id = id(item.id, itemsSeen);
       if (typeof item.checklistChecked !== 'boolean' || item.checklistChecked !== (item.status === 'completed')) throw bad('Completed checklist items must be checked; open items must not be completed.');
       row.checklistChecked = item.checklistChecked;
+      if (row.progress && (row.progress.completed === row.progress.total) !== row.checklistChecked) throw bad('A fully checked subtask checklist must agree with its completed acceptance status.');
+      if (row.progress && row.progress.total === 1 && row.progress.completed !== Number(row.checklistChecked)) throw bad('Leaf progress must match its checkbox.');
       row.acceptance = text(item.acceptance, 600);
       if (!Array.isArray(item.milestones) || item.milestones.length > 24) throw bad('Send at most 24 milestones per item.');
       const seen = new Set();
@@ -118,6 +120,11 @@ function cleanSections(sections, updatedAt, now) {
       });
       return row;
     });
+    if (out.progress) {
+      const checked = out.items.filter(item => item.checklistChecked).length;
+      const total = out.coverage === 'complete' ? out.items.length : out.totalItems || out.progress.total;
+      if (out.progress.total !== total || out.progress.completed < checked || out.progress.completed > checked + total - out.items.length) throw bad('Section progress must count checked subtasks, not their partial progress.');
+    }
     return out;
   });
 }

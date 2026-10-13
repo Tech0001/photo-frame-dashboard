@@ -113,42 +113,42 @@ reconciling. Missing dates remain unknown. Local evidence locators, seals,
 `evidenceRefs`, and source checklist paths stay local and are stripped by the
 publisher and hub. Do not put them inside approved display text.
 
-For incremental percentages and daily changes, add optional `progress` to each
+For checkbox percentages and daily changes, add optional `progress` to each
 section and each checklist item:
 
 ```json
 {
-  "completed": 65,
-  "total": 100,
-  "basis": "C3-steps-v1",
+  "completed": 6,
+  "total": 10,
+  "basis": "C0-checklist-v1",
   "history": [
-    {"completed": 55, "total": 100, "basis": "C3-steps-v1", "at": "2026-10-11T00:00:00-06:00"},
-    {"completed": 60, "total": 100, "basis": "C3-steps-v1", "at": "2026-10-12T00:00:00-06:00"}
+    {"completed": 4, "total": 10, "basis": "C0-checklist-v1", "at": "2026-10-11T00:00:00-06:00"},
+    {"completed": 5, "total": 10, "basis": "C0-checklist-v1", "at": "2026-10-12T00:00:00-06:00"}
   ]
 }
 ```
 
-This illustrative example displays 65%, +5 percentage points today and +5
-yesterday on October 12 in Denver. It is not actual Evergreen status.
-`completed` and `total` count fixed, non-overlapping verified progress steps
-already grounded in the plan. Do not invent a 100-point score or create extra
-work solely to fill the display. Keep stable step identities in the source.
-`total` is 1–100,000 and completed is 0–total (both integers). `basis` is a
-required stable workset/version label (60 characters). Retain up to 32 dated
-count snapshots in history, including day-start baselines in the intended frame
-timezone. Source times must not be newer than updatedAt. History points select
-only counts, basis and date; raw evidence stays local.
+Illustrative only: 6/10 checked = 60%, up 10 percentage points today and 10
+yesterday on October 12 in Denver. `completed` counts checked checklist entries;
+`total` counts all entries. No scores, weights, partial-work credit, stage credit,
+activity inference or milestone scoring. A C section counts its directly checked
+subtasks. A subtask with its own actual checklist counts that checklist. A leaf
+is checked or unchecked (1/1 or 0/1). Build/review/integration flags do not change
+these counts. Milestone reports are not automatically checklist entries.
 
-The frame computes percentage from these counts; acceptance status remains
-independent. A section can gain progress while every parent acceptance item is
-still open. The latest history point at or before local midnight establishes
-today's baseline; the previous day's baseline establishes yesterday's change.
-Changing the denominator or basis suppresses the comparison until a comparable
-baseline exists. Missing history shows a dash, never a fabricated zero or gain.
-These are percentage-point changes, not percentage growth or effort estimates.
-Ledger maintains the snapshots during reconciliation; publisher runs never
-invent baselines or advance progress. Without progress counts, a full checklist
-can still show its completed-item fraction, with no inferred daily delta.
+Counts are integers: total 1–100,000, completed 0–total. `basis` identifies the
+stable checklist revision (required, 60 characters). Section progress must match
+its supplied checked subtasks and known total; complete coverage allows exact
+validation. An item at 100% must agree with its checked/completed status. Ledger
+counts the authoritative checkboxes mechanically; it does not estimate progress.
+
+Retain up to 32 dated count snapshots, including day-start baselines in the frame
+timezone. History dates cannot exceed updatedAt. The latest snapshot at or before
+local midnight supplies the reported baseline; the preceding day's baseline
+supplies yesterday's comparison. Changing total or basis suppresses the comparison
+until matching history exists. Missing history shows a dash, never invented zero.
+Daily changes are percentage points in reported checkbox completion, not percentage
+growth or engineering effort. The publisher does not modify checkbox history.
 
 See [the synthetic recovery fixture](../../hub/test/fixtures/progress-recovery-v2.json)
 for the exact shape. It is for testing, not live project status. Ledger should

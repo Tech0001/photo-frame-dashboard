@@ -34,3 +34,15 @@ test('explicit progress counts, baselines and blocked states validate without cl
  const invalid=JSON.parse(JSON.stringify(r));change(invalid);assert.throws(()=>cleanReport(invalid,now),{userError:true});
  }
 });
+
+test('section counts are checkbox math and nested partial progress cannot raise parent completion',()=>{
+ const r=fixture(),base=r.sections[0].items[0];
+ const items=Array.from({length:4},(_,i)=>({...base,id:'C0.'+i,status:i<2?'completed':'underway',checklistChecked:i<2,milestones:[]}));
+ items[2].progress={completed:3,total:5,basis:'nested-checklist',history:[]};
+ r.sections=[{id:'C0',title:'Foundations',coverage:'complete',items,progress:{completed:2,total:4,basis:'checkboxes-v1',history:[]}}];
+ assert.equal(cleanReport(r,now).sections[0].progress.completed,2);
+ r.sections[0].progress.completed=3;assert.throws(()=>cleanReport(r,now),{userError:true});
+ r.sections[0].progress.completed=2;items[2].progress.completed=5;assert.throws(()=>cleanReport(r,now),{userError:true});
+ items[2].progress={completed:1,total:1,basis:'leaf',history:[]};assert.throws(()=>cleanReport(r,now),{userError:true});
+ items[2].progress.completed=0;assert.doesNotThrow(()=>cleanReport(r,now));
+});

@@ -74,11 +74,11 @@
     return '<span class="eg-card-change' + (numbers.today > 0 ? ' is-forward' : numbers.today < 0 ? ' is-backward' : '') + '">' + deltaText(numbers.today,'today') + '<small>' + deltaText(numbers.yesterday,'yesterday') + '</small></span>';
   }
   function subtask(item) {
-    var m = counts(item.milestones || []), numbers = progressNumbers(item.progress);
+    var m = counts(item.milestones || []), numbers = progressNumbers(item.progress || {completed:item.checklistChecked ? 1 : 0,total:1,basis:item.id,history:[]});
     var milestones = (item.milestones || []).length ? '<ul class="eg-submilestones">' + item.milestones.map(function (row) {
       return '<li><span class="eg-dot eg-status-' + row.status + '"></span><span>' + esc(row.title) + '</span><small>' + statusNames[row.status] + '</small></li>';
     }).join('') + '</ul>' : '';
-    return disclosure('subtask-' + item.id, '<span class="eg-dot eg-status-' + item.status + '"></span><span class="eg-subtask-title"><b>' + esc(item.id) + ' · ' + esc(item.title) + '</b>' + (item.milestones.length ? '<small>' + m.completed + '/' + item.milestones.length + ' milestones achieved</small>' : '') + '</span>' + (numbers.percent == null ? '' : '<span class="eg-subtask-progress"><b class="num">' + numbers.percent + '%</b>' + changeLine(numbers) + '</span>') + '<span class="eg-state eg-status-' + item.status + '">' + statusNames[item.status] + '</span>',
+    return disclosure('subtask-' + item.id, '<span class="eg-dot eg-status-' + item.status + '"></span><span class="eg-subtask-title"><b>' + esc(item.id) + ' · ' + esc(item.title) + '</b>' + (item.milestones.length ? '<small>' + m.completed + '/' + item.milestones.length + ' milestones achieved</small>' : '') + '</span>' + (numbers.percent == null ? '' : '<span class="eg-subtask-progress"><b class="num">' + numbers.percent + '%</b><span class="eg-section-bar"><i style="width:' + numbers.percent + '%"></i></span>' + changeLine(numbers) + '</span>') + '<span class="eg-state eg-status-' + item.status + '">' + statusNames[item.status] + '</span>',
       compactStages(item) + (item.owner ? '<p class="eg-owner">' + esc(item.owner) + '</p>' : '') + (item.next ? '<p class="eg-next"><b>Next</b> ' + esc(item.next) + '</p>' : '') + milestones, 'eg-subtask');
   }
   function sectionCards(r) {
@@ -95,14 +95,14 @@
     });
     (r.sections || []).forEach(function (section) { ensure(section.id, section.title.replace(/^C\d+\s*[-–:]\s*/, '')).section = section; });
     order.sort(function (a,b) { return parseInt(a.slice(1),10) - parseInt(b.slice(1),10); });
-    return '<section class="eg-board eg-card eg-sections-board"><header><h3>Project progress</h3><span class="eg-map-key">Tap a section for subtasks</span></header><p class="eg-map-note">Verified progress steps · pp = percentage points · tap for subtasks.</p><div class="eg-work-scroll" data-eg-scroll="sections"><div class="eg-section-grid">' + order.map(function (id) {
+    return '<section class="eg-board eg-card eg-sections-board"><header><h3>Project progress</h3><span class="eg-map-key">Tap a section for subtasks</span></header><p class="eg-map-note">Checked subtasks ÷ total · pp = percentage points.</p><div class="eg-work-scroll" data-eg-scroll="sections"><div class="eg-section-grid">' + order.map(function (id) {
       var card = byId[id], section = card.section, c = section ? counts(section.items) : null;
       var total = section ? (section.totalItems || (section.coverage === 'complete' ? section.items.length : null)) : null;
       var numbers = progressNumbers(section && section.progress);
       var percent = numbers.percent != null ? numbers.percent : total ? Math.round(c.completed / total * 100) : null;
       var summary = '<span class="eg-section-head"><b>' + esc(id) + '</b><strong class="num">' + (percent == null ? '—' : percent + '<small>%</small>') + '</strong></span><span class="eg-section-title">' + esc(card.title) + '</span>' +
         '<span class="eg-section-bar' + (percent == null ? ' is-unreported' : '') + '">' + (percent == null ? '' : '<i style="width:' + percent + '%"></i>') + '</span>' +
-        '<small class="eg-section-status">' + (section ? (section.progress ? section.progress.completed + '/' + section.progress.total + ' steps' : c.completed + '/' + (total || section.items.length) + ' done') + (!total && !section.progress ? ' · reported subset' : '') + (c.underway ? ' · ' + c.underway + ' underway' : '') + (c.blocked ? ' · ' + c.blocked + ' blocked' : '') : 'Progress not reported') + '</small>' + changeLine(numbers);
+        '<small class="eg-section-status">' + (section ? (section.progress ? section.progress.completed + '/' + section.progress.total + ' checked' : c.completed + '/' + (total || section.items.length) + ' done') + (!total && !section.progress ? ' · reported subset' : '') + (c.underway ? ' · ' + c.underway + ' underway' : '') + (c.blocked ? ' · ' + c.blocked + ' blocked' : '') : 'Progress not reported') + '</small>' + changeLine(numbers);
       var detail = section ? '<div class="eg-section-detail-head"><b>' + esc(id) + ' · Subtasks</b><small>' + (section.coverage === 'partial' ? 'Partial reporting' : 'Full checklist') + '</small></div>' + section.items.map(subtask).join('') : '<p class="eg-empty">Ledger has not supplied this section’s subtask states yet.</p>';
       if (!section) detail += card.legacy.map(function (row) { return '<div class="eg-legacy-scope"><b>' + esc(row.title) + '</b>' + compactStages(row) + '</div>'; }).join('');
       return disclosure('section-' + id, summary, detail, 'eg-section-card');

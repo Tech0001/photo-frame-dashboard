@@ -77,11 +77,18 @@ test('section percentages use completed checklist items, including unknowns in t
  assert.match(f.html(),/35<small>%/);assert.match(f.html(),/7\/20 done/);
 });
 
-test('verified step percentages and day changes remain separate from acceptance completion',async()=>{
+test('checkbox count history calculates daily percentage-point changes without stage scoring',async()=>{
  const now=new Date(2026,9,12,17),r=report(now),item=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/progress-recovery-v2.json'))).sections[0].items[0];
  const progress={completed:65,total:100,basis:'C3-v1',history:[{completed:55,total:100,basis:'C3-v1',at:new Date(2026,9,10,23).toISOString()},{completed:60,total:100,basis:'C3-v1',at:new Date(2026,9,11,23).toISOString()}]};
  item.progress=progress;r.sections=[{id:'C3',title:'Payments',coverage:'partial',items:[item],progress}];
  const f=await view(r,now),html=f.html();assert.match(html,/65<small>%/);assert.match(html,/65%/);assert.match(html,/\+5 pp today/);assert.match(html,/\+5 pp yesterday/);assert.match(html,/Underway/);
  r.sections[0].progress={...progress,total:120};assert.match(f.html(),/— today/);
  r.sections[0].progress={...progress,basis:'new-scope'};assert.match(f.html(),/— today/);
+});
+
+test('leaf subtasks show only zero or one hundred percent from their checkbox',async()=>{
+ const r=report();const base=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/progress-recovery-v2.json'))).sections[0].items[0];
+ r.sections=[{id:'C0',title:'Foundations',coverage:'complete',items:[{...base,id:'C0.1',checklistChecked:true,status:'completed',milestones:[]},{...base,id:'C0.2',checklistChecked:false,status:'underway',milestones:[]}]}];
+ const html=(await view(r)).html();assert.match(html,/50<small>%/);assert.match(html,/100%/);assert.match(html,/>0%/);
+ assert.match(html,/Checked subtasks ÷ total/);
 });
