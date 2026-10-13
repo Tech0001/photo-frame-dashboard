@@ -52,14 +52,30 @@ test('Claude request is read-only, uses Usagebar headers, and rejects expired lo
 test('OpenRouter reports key-scoped spending and distinguishes missing fields from zero', async () => {
   const c = internals.parseOpenRouter('sk-or-v1-test-only-key-for-fixtures');
   const r = await providers.openrouter.fetch(c, async (url, options) => {
-    assert.equal(url, 'https://openrouter.ai/api/v1/key'); assert.equal(options.headers.Authorization, 'Bearer ' + c.api_key);
+    assert.equal(options.headers.Authorization, 'Bearer ' + c.api_key);
+    if (url === 'https://openrouter.ai/api/v1/credits') return { ok: true, json: async () => ({ data: { total_credits: 100, total_usage: 74.5 } }) };
+    assert.equal(url, 'https://openrouter.ai/api/v1/key');
     return { ok: true, json: async () => ({ data: creditData }) };
   });
-  assert.deepEqual(r.credits, { daily: 1.25, weekly: 5, monthly: 12.5, total: 50, limit: null, remaining: null });
+  assert.deepEqual(r.credits, { daily: 1.25, weekly: 5, monthly: 12.5, total: 50, limit: null, remaining: null, accountRemaining: 25.5, accountError: '' });
   assert.equal(internals.openRouterUsage({ data: { ...creditData, limit: 5, limit_remaining: -0.25 } }).credits.remaining, -0.25);
   assert.throws(() => internals.openRouterUsage({ data: {} }));
   assert.throws(() => internals.openRouterUsage({ data: { ...creditData, usage_daily: -1 } }));
   assert.throws(() => internals.parseOpenRouter('not-a-key'));
+});
+test('OpenRouter balance handles zero, negative and unavailable without mislabeling key allowance', async () => {
+  const creds = { api_key: 'test-key' };
+  const read = async balance => providers.openrouter.fetch(creds, async url => url.endsWith('/key')
+    ? { ok: true, json: async () => ({ data: { ...creditData, limit: 5, limit_remaining: 2 } }) }
+    : balance);
+  const zero = await read({ ok: true, json: async () => ({ data: { total_credits: 10, total_usage: 10 } }) });
+  assert.equal(zero.credits.accountRemaining, 0); assert.equal(zero.credits.remaining, 2);
+  const negative = await read({ ok: true, json: async () => ({ data: { total_credits: 10, total_usage: 10.5 } }) });
+  assert.equal(negative.credits.accountRemaining, -.5);
+  for (const response of [{ ok: false, status: 403 }, { ok: true, json: async () => ({ data: {} }) }, { ok: true, json: async () => ({ data: { total_credits: '100', total_usage: 2 } }) }]) {
+    const r = await read(response);
+    assert.equal(r.credits.accountRemaining, null); assert.match(r.credits.accountError, /unavailable/); assert.equal(r.credits.daily, 1.25);
+  }
 });
 test('provider failures never expose a response body or credential in an error', async () => {
   for (const status of [401, 403, 429, 500]) {
@@ -67,6 +83,15 @@ test('provider failures never expose a response body or credential in an error',
   }
   await assert.rejects(providers.openrouter.fetch({}, async () => { throw Error('secret-test-key'); }), /Could not reach OpenRouter/);
 });
+test('stored OpenRouter credits retain the account balance separately from the key allowance', () => fixture(f => {
+  const store = new AgentsStore(f.dir);
+  store.setService({ id: 'openrouter', kind: 'credits', credits: { remaining: 2, accountRemaining: 25.5, accountError: '', privateField: 'discard' } });
+  let credits = new AgentsStore(f.dir).get().services[0].credits;
+  assert.equal(credits.accountRemaining, 25.5); assert.equal(credits.remaining, 2); assert(!('privateField' in credits));
+  store.setService({ id: 'openrouter', kind: 'credits', credits: { daily: 1.25, accountRemaining: null, accountError: 'Balance unavailable' } });
+  credits = new AgentsStore(f.dir).get().services[0].credits;
+  assert.equal(credits.accountRemaining, null); assert.equal(credits.daily, 1.25); assert.equal(credits.accountError, 'Balance unavailable');
+}));
 test('admin save is write-only, strips refresh tokens, preserves blank inputs and validates before writing', () => fixture((f) => {
   const service = connections({ ...f, getPeopleIds: () => [] });
   service.apply({ accounts: { claude: { authJson: claudeInput() }, openrouter: { authJson: 'sk-or-v1-test-only-key-for-fixtures' } } });

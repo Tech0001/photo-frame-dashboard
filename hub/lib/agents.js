@@ -20,8 +20,9 @@ function cleanService(s) {
   }).filter(Boolean);
   const meters = (Array.isArray(s.meters) ? s.meters : []).slice(0, 4).map((m) => ({ label: str(m.label, 40), used: Math.min(100, num(m.used)), win: num(m.win), leftMin: m.leftMin == null ? null : num(m.leftMin), resetAt: num(m.resetAt) || null }));
   const credits = s.kind === 'credits' && s.credits ? Object.fromEntries(
-    ['daily', 'weekly', 'monthly', 'total', 'limit', 'remaining'].map((key) => [key,
+    ['daily', 'weekly', 'monthly', 'total', 'limit', 'remaining', 'accountRemaining'].map((key) => [key,
       typeof s.credits[key] === 'number' && Number.isFinite(s.credits[key]) ? s.credits[key] : null])) : null;
+  if (credits) credits.accountError = str(s.credits.accountError, 180);
   return {
     id, kind: ['limits', 'credits'].includes(s.kind) ? s.kind : 'usage', unofficial: !!s.unofficial, meters, credits, error: str(s.error, 300), name: str(s.name, 40) || id, plan: str(s.plan, 40), color: /^#[0-9a-fA-F]{6}$/.test(s.color || '') ? s.color : '#888888',
     costNote: str(s.costNote, 200), days

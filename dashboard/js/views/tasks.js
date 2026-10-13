@@ -7,7 +7,7 @@
 
   function routine() { return V.routine ? D.routines.filter(function (r) { return r.id === V.routine; })[0] : App.currentRoutine(); }
   function listFor(who, r) {
-    return D.chores.filter(function (c) { return c.r === r.id && c.who === who; })
+    return D.chores.filter(function (c) { return App.choresInRoutine(c, r) && c.who === who; })
       .sort(function (a, b) { return (a.done - b.done) || ((b.overdue ? 1 : 0) - (a.overdue ? 1 : 0)); });
   }
 
@@ -16,6 +16,7 @@
     return '<button class="ch' + (c.done ? ' is-done' : '') + (pend ? ' is-checking' : '') + (c.overdue && !c.done ? ' is-overdue' : '') + '" data-ch="' + c.id + '">' +
       '<span class="ch-emoji">' + c.emoji + '<span class="ch-check"><svg viewBox="0 0 24 24" width="30" height="30"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span></span>' +
       '<span class="ch-text"><b>' + App.esc(c.title) + '</b>' +
+      (c.r === 'anytime' ? '<small class="ch-anytime">Anytime · all day</small>' : '') +
       (c.overdue && !c.done ? '<small class="ch-late">Overdue</small>' : c.stars ? '<small>' + App.icon('star', 14, 'i--fill') + c.stars + (c.doneBy ? ' · ' + App.person(c.doneBy).name : '') + '</small>' : (c.doneBy ? '<small>by ' + App.person(c.doneBy).name + '</small>' : '')) +
       '</span>' +
       '</button>';
@@ -42,7 +43,7 @@
       (kid ? '<span class="ch-stars">' + App.icon('star', 18, 'i--fill') + '<span class="num">' + D.stars[who] + '</span></span>' : '<span class="ch-sub">' + (who === 'any' ? 'Up for grabs' : (list.length ? done + ' of ' + list.length : 'Nothing')) + '</span>') + '</div>' +
       '<div class="ch-ring">' + App.ring(done, list.length || 1, 46) + '<span class="num">' + (all ? '✓' : list.length ? done + '/' + list.length : '–') + '</span></div>' +
       '</header>' +
-      '<div class="ch-list">' + (list.length ? list.map(function (c) { return row(c, p); }).join('') : '<div class="ch-none serif"><i>Nothing this ' + (r.id === 'evening' ? 'evening' : r.id === 'morning' ? 'morning' : 'afternoon') + '</i></div>') +
+      '<div class="ch-list">' + (list.length ? list.map(function (c) { return row(c, p); }).join('') : '<div class="ch-none serif"><i>' + (r.id === 'anytime' ? 'No anytime chores' : 'Nothing this ' + (r.id === 'evening' ? 'evening' : r.id === 'morning' ? 'morning' : 'afternoon')) + '</i></div>') +
       (all ? '<div class="ch-alldone serif">All done<i>!</i></div>' : '') + '</div>' +
       weekGrid(who) +
       '</section>';
@@ -50,7 +51,7 @@
 
   function render() {
     var r = routine(), auto = App.currentRoutine();
-    var inR = D.chores.filter(function (c) { return c.r === r.id; });
+    var inR = D.chores.filter(function (c) { return App.choresInRoutine(c, r); });
     var done = inR.filter(function (c) { return c.done; }).length;
     V.el.innerHTML = '<div class="tasks">' +
       '<header class="t-head">' +
@@ -76,7 +77,7 @@
       App.emit('data');
       var laneList = listFor(c.who, r);
       var laneDone = laneList.every(function (x) { return x.done; });
-      var allDone = D.chores.filter(function (x) { return x.r === r.id; }).every(function (x) { return x.done; });
+      var allDone = D.chores.filter(function (x) { return App.choresInRoutine(x, r); }).every(function (x) { return x.done; });
       if (allDone) {
         App.toast('<b>' + r.name + ' routine complete!</b> Everyone crushed it.', { icon: 'star', ms: 5000 });
         return;

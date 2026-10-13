@@ -77,9 +77,21 @@ function openRouterUsage(j) {
   } };
 }
 async function fetchOpenRouter(creds, fetcher = fetch) {
-  return openRouterUsage(await read('https://openrouter.ai/api/v1/key', {
-    Authorization: 'Bearer ' + creds.api_key, Accept: 'application/json'
-  }, 'OpenRouter', fetcher));
+  const headers = { Authorization: 'Bearer ' + creds.api_key, Accept: 'application/json' };
+  const result = openRouterUsage(await read('https://openrouter.ai/api/v1/key', headers, 'OpenRouter', fetcher));
+  result.credits.accountRemaining = null;
+  result.credits.accountError = '';
+  try {
+    const j = await read('https://openrouter.ai/api/v1/credits', headers, 'OpenRouter balance', fetcher);
+    const d = j && j.data;
+    if (!d || !finite(d.total_credits) || !finite(d.total_usage) || d.total_credits < 0 || d.total_usage < 0) throw new Error('OpenRouter returned an invalid account balance.');
+    result.credits.accountRemaining = d.total_credits - d.total_usage;
+  } catch {
+    // A unavailable account balance must not discard independently read key usage
+    // or display an old balance as fresh. Keep missing separate from a real zero.
+    result.credits.accountError = 'Account balance unavailable. Key usage is still shown.';
+  }
+  return result;
 }
 module.exports = {
   claude: { id: 'claude', name: 'Claude', label: 'Claude', defaultPlan: 'Claude', color: '#D97757', unofficial: true,

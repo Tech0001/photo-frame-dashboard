@@ -110,7 +110,8 @@ window.DATA = (function () {
   var routines = [
     { id: 'morning', name: 'Morning', range: '6 – 11 AM', from: 0, to: 11 },
     { id: 'after', name: 'Midday', range: '11 AM – 5 PM', from: 11, to: 17 },
-    { id: 'evening', name: 'Evening', range: '5 – 10 PM', from: 17, to: 24 }
+    { id: 'evening', name: 'Evening', range: '5 – 10 PM', from: 17, to: 24 },
+    { id: 'anytime', name: 'Anytime', range: 'All day', from: null, to: null }
   ];
   var cid = 0;
   function chore(r, who, title, emoji, stars, done, extra) {

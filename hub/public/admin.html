@@ -160,7 +160,7 @@ var TABS = [].concat.apply([], TAB_GROUPS.map(function (g) { return g[1]; }));
 var HASH = location.hash.slice(1);
 if (TABS.some(function (t) { return t[0] === HASH; })) TAB = HASH;   // /admin#connections opens that page
 var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-var ROUT = [['morning', 'Morning'], ['after', 'Midday'], ['evening', 'Evening']];
+var ROUT = [['morning', 'Morning'], ['after', 'Midday'], ['evening', 'Evening'], ['anytime', 'Anytime · all day']];
 var COLORS = ['black', 'purple', 'red', 'blue', 'green', 'yellow', 'pink', 'orange'];
 var HEX = { black: '#111111', purple: '#8957E5', red: '#E5252A', blue: '#2D5BFF', green: '#00A36C', yellow: '#FFB000', pink: '#E4007C', orange: '#FF6A13' };
 // Emoji this frame can actually draw (tested on the frame itself; newer ones show as empty boxes).
@@ -229,7 +229,7 @@ function barSoon() { clearTimeout(brTimer); brTimer = setTimeout(barRefresh, 150
 window.addEventListener('beforeunload', function (e) { if (dirtyNames().length) { e.preventDefault(); e.returnValue = ''; } });
 document.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveAll(); } });
 function renderChores() {
-  var h = '<p class="mute">Icon graphics are bundled with the dashboard so they display on older frames. Each chore appears on the day(s) ticked, in the routine you pick. Leave all days ticked for every day. Ticks reset every midnight.</p>';
+  var h = '<p class="mute">Each chore appears on the day(s) ticked, in the routine you pick. Choose Anytime for chores that stay visible all day. Leave all days ticked for every day. Ticks reset every midnight.</p>';
   D.people.concat([{ id: 'any', name: 'Anyone', color: 'black' }]).forEach(function (p) {
     h += '<h2><span class="dot" style="background:' + colorHex(p.color) + '"></span>' + esc(p.name) + '</h2>';
     D.chores.forEach(function (c, i) {
@@ -499,7 +499,7 @@ function accountsHtml() {
   var help = {
     codex: { label: 'Codex auth.json', instructions: 'Paste the auth.json from your Codex login. Only the access token and account ID are saved; update it when it expires.' },
     claude: { label: 'Claude credentials JSON', instructions: 'On the computer where Claude Code is signed in, use ~/.claude/.credentials.json. Paste or select that JSON file below. Only its access token, plan and expiry are saved. The original Claude login keeps managing its refresh token; update this copy when it expires.' },
-    openrouter: { label: 'OpenRouter API key', instructions: 'Paste the OpenRouter key whose usage you want to show. Daily, weekly and monthly spending apply to that key, not the whole account. The hub only reads usage; it does not make model requests.' }
+    openrouter: { label: 'OpenRouter API key', instructions: 'Paste the OpenRouter key whose usage you want to show. Account credits left are shared across keys; spending and the key allowance apply to this key. Account balance appears when the saved key can read it. The hub makes read-only usage and balance requests, never model requests.' }
   };
   var h = '<div class="card"><p class="mute">Linked accounts refresh on the server every five minutes. Credentials stay on the server and are never sent to the frame. Blank fields keep the saved connection.</p></div>';
   (CN.accounts || []).forEach(function (a) {

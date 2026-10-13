@@ -26,6 +26,7 @@ const accounts = require('./lib/accounts');
 const homeassistant = require('./lib/homeassistant');
 const groceries = require('./lib/groceries');
 const tune = require('./lib/tune');
+const displaySettings = require('./lib/display-settings');
 const backup = require('./lib/backup');
 
 const store = new Store(cfg.dataDir);
@@ -127,6 +128,12 @@ const str = (v, n) => String(v == null ? '' : v).slice(0, n || 200);
 
 const routes = {
   'GET /api/state': async (req, res) => send(res, 200, await buildState()),
+  'GET /api/display-settings': async (req, res) => send(res, 200, displaySettings.read(req, store)),
+  'PUT /api/display-settings': async (req, res) => {
+    displaySettings.authorize(req);
+    const b = await readBody(req);
+    send(res, 200, displaySettings.save(store, b.values));
+  },
 
   'GET /api/events': async (req, res, q) => {
     const { from, to } = windowFrom(q);
@@ -322,7 +329,7 @@ const routes = {
     const prev = new Map(store.state.chores.map((c) => [c.id, c]));
     const chores = b.chores.slice(0, 300).map((c) => ({
       id: str(c.id, 40) || ('c' + Math.random().toString(36).slice(2, 8)),
-      r: ['morning', 'after', 'evening'].includes(c.r) ? c.r : 'after', who: str(c.who, 40) || 'any', title: str(c.title, 80),
+      r: ['morning', 'after', 'evening', 'anytime'].includes(c.r) ? c.r : 'after', who: str(c.who, 40) || 'any', title: str(c.title, 80),
       emoji: str(c.emoji, 8) || '✅', stars: Math.max(0, Math.min(9, +c.stars || 0)),
       days: Array.isArray(c.days) && c.days.length && c.days.length < 7 ? c.days.map(Number).filter((n) => n >= 0 && n <= 6) : null,
       doneOn: prev.get(c.id) ? prev.get(c.id).doneOn : null
@@ -421,7 +428,7 @@ const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   // The thermostat's per-connection action token is same-origin only. Other
   // sites must not read it through the general LAN dashboard CORS policy.
-  if (p === '/api/home' || p.startsWith('/api/home/')) {
+  if (p === '/api/home' || p.startsWith('/api/home/') || p === '/api/display-settings') {
     res.removeHeader('Access-Control-Allow-Origin');
     res.removeHeader('Access-Control-Allow-Methods');
     res.removeHeader('Access-Control-Allow-Headers');

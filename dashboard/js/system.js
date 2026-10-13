@@ -133,6 +133,7 @@
       '</div>';
   }
   App.openDemo = function () {
+    App.closeSheet();
     var el = $('#demo');
     el.innerHTML = demoHTML();
     el.classList.add('is-open');
@@ -167,7 +168,8 @@
 
   App.on('ready', function () {
     $('#demo').addEventListener('click', demoClick);
-    App.hold($('#railClock'), 700, { done: App.openDemo });
+    App.hold($('#railClock'), 700, { done: App.openDemo, cancel: function () { App.openDisplaySettings(); } });
+    $('#railClock').addEventListener('click', function (e) { if (e.detail === 0) App.openDisplaySettings(); });
     document.addEventListener('keydown', function (e) {
       if (e.target.tagName === 'INPUT') return;
       var k = e.key.toLowerCase();

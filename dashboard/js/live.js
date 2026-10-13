@@ -51,17 +51,19 @@
         var u2 = Date.parse(sv.updated) || 0; if (u2 > latest) latest = u2;
         var dollars = function (v) { return typeof v === 'number' ? '$' + v.toFixed(2) : '—'; };
         var creditStats = sv.kind === 'credits' ? (sv.credits ? [
+          { label: 'Account credits left', value: dollars(sv.credits.accountRemaining), sub: typeof sv.credits.accountRemaining === 'number' ? 'USD · shared across your keys' : 'Balance unavailable' },
+          { label: 'Key allowance left', value: sv.credits.limit == null ? 'No cap' : dollars(sv.credits.remaining), sub: 'Key spending limit · USD' },
           { label: 'Key today', value: dollars(sv.credits.daily), sub: 'USD · current UTC day' },
           { label: 'Key this week', value: dollars(sv.credits.weekly), sub: 'USD · current UTC week' },
           { label: 'Key this month', value: dollars(sv.credits.monthly), sub: 'USD · current UTC month' },
-          { label: 'Key budget left', value: sv.credits.limit == null ? 'No cap' : dollars(sv.credits.remaining), sub: 'Key cap, not account balance' }
+          { label: 'Key total spent', value: dollars(sv.credits.total), sub: 'USD · lifetime of this key' }
         ] : []) : null;
         out.push({
           id: sv.id, name: sv.name, plan: sv.plan || '', color: sv.color, rgb: hexRgb(sv.color),
           status: sv.error ? 'degraded' : 'ok', incident: sv.error ? ('Could not refresh: ' + sv.error) : '',
           meters: (sv.meters || []).map(function (m) { return { label: m.label, win: m.win || 300, used: m.used, left: m.leftMin, resetAt: m.resetAt || (m.leftMin == null ? null : u2 + m.leftMin * 60000), unknownReset: m.leftMin == null && !m.resetAt }; }),
           tokens: 0, cost: 0, week: [0, 0, 0, 0, 0, 0, 0], live: true, limits: sv.kind === 'limits', credits: sv.kind === 'credits',
-          updated: u2, stats: creditStats, note: sv.kind === 'credits' ? 'Spending for this API key only.' : ''
+          updated: u2, stats: creditStats, note: sv.kind === 'credits' ? (sv.credits && sv.credits.accountError || 'Credits are shared account funds; spending is for this key only.') : ''
         });
         return;
       }
