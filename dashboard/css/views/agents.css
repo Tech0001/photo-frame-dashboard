@@ -188,45 +188,70 @@
 .eg-attention-item > summary > small { display:block; color:var(--mute); font-size:13px; margin-top:5px; }
 .eg-attention-item .eg-detail { padding:10px 0; }
 
-/* Reported checklist items and their incremental milestones, never effort %. */
-.eg-checklist-totals .eg-total { border-bottom:4px solid var(--line); }
-.eg-checklist-totals .eg-status-completed { border-color:var(--ok); }
-.eg-checklist-totals .eg-status-underway { border-color:var(--warning-emphasis); }
-.eg-checklist-totals .eg-status-unknown { border-bottom-style:dotted; border-color:var(--mute); }
-.eg-checklist-totals .eg-total > small { display:block; margin-top:4px; font-size:12px; }
-.eg-checklist-board > header select { max-width:58%; padding:6px 10px; font:inherit; font-size:16px; color:var(--ink); background:var(--paper-2); border:1px solid var(--line); border-radius:8px; }
-.eg-section-id { font-size:14px; font-weight:800; color:var(--ink-2); }
-.eg-checklist-item + .eg-checklist-item { margin-top:18px; padding-top:18px; border-top:1px solid var(--line); }
-.eg-checklist-item > header { display:flex; align-items:flex-start; gap:12px; justify-content:space-between; margin-bottom:10px; }
-.eg-checklist-item > header h4 { font-size:21px; line-height:1.15; margin-top:4px; }
-.eg-state { flex:none; font-size:12px; line-height:1.3; border-radius:7px; padding:6px 9px; background:var(--paper-2); color:var(--ink-2); max-width:170px; }
+/* Section checklist dashboard. */
+.eg-sections-board { padding:14px; }
+.eg-section-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; align-items:start; }
+.eg-section-card { background:var(--paper); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.eg-section-card > summary { padding:10px 12px; min-height:104px; }
+.eg-section-head { display:flex; justify-content:space-between; align-items:center; }
+.eg-section-head > b { font-size:19px; }
+.eg-section-head > strong { font-size:28px; line-height:1; }
+.eg-section-head small { font-size:14px; }
+.eg-section-title { display:block; font-size:15px; line-height:1.2; height:36px; margin:4px 0 7px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.eg-section-bar { display:block; height:5px; background:var(--line); border-radius:4px; overflow:hidden; }
+.eg-section-bar i { display:block; height:100%; background:var(--ok); }
+.eg-section-bar.is-unreported { background:repeating-linear-gradient(90deg,var(--line) 0 4px,var(--paper) 4px 8px); }
+.eg-section-status { display:block; font-size:11px; color:var(--ink-2); margin-top:6px; }
+.eg-section-card[open] { grid-column:1/-1; }
+.eg-section-card[open] > summary { min-height:0; display:grid; grid-template-columns:64px 1fr; gap:4px 14px; }
+.eg-section-card[open] .eg-section-head { grid-row:1/4; flex-direction:column; justify-content:center; gap:6px; }
+.eg-section-card[open] .eg-section-title { height:auto; font-size:19px; }
+.eg-section-detail-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:16px; }
+.eg-section-detail-head small { color:var(--mute); font-size:12px; }
+.eg-subtask + .eg-subtask { border-top:1px solid var(--line); }
+.eg-subtask > summary { display:flex; align-items:center; gap:10px; padding:10px 0; min-height:44px; }
+.eg-subtask-title { flex:1; min-width:0; font-size:16px; }
+.eg-subtask-title small { display:block; font-size:12px; color:var(--mute); margin-top:4px; }
+.eg-state { font-size:12px; border-radius:6px; padding:5px 8px; background:var(--paper-2); color:var(--ink-2); }
 .eg-state.eg-status-completed { color:var(--success-ink); background:var(--success-bg); }
 .eg-state.eg-status-underway { color:var(--warning-ink); background:var(--warning-bg); }
-.eg-item-evidence > summary { padding:7px 0; min-height:36px; font-size:14px; color:var(--mute); }
-.eg-item-evidence > summary::before { content:'▸ '; }
-.eg-item-evidence[open] > summary::before { content:'▾ '; }
-.eg-milestone-counts { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; font-size:14px; padding:10px 0; }
-.eg-milestone-counts > b { color:var(--success-ink); }
-.eg-milestone-counts > span { color:var(--mute); font-size:12px; }
-.eg-milestones { list-style:none; padding:0; margin:0; }
-.eg-milestones > li { position:relative; margin:0 0 5px; }
-.eg-milestone > summary { display:flex; gap:12px; align-items:center; padding:7px 10px; min-height:50px; border-radius:9px; background:var(--paper); }
-.eg-milestone > summary > span:last-child { min-width:0; flex:1; }
-.eg-milestone > summary b { display:block; font-size:16px; line-height:1.15; }
-.eg-milestone > summary small { display:block; font-size:11px; color:var(--mute); margin-top:4px; }
-.eg-milestone-icon { display:grid; place-items:center; width:28px; height:28px; border-radius:50%; flex:none; font-size:19px; font-weight:800; color:var(--mute); border:1px solid var(--line); }
-.eg-status-completed .eg-milestone-icon { background:var(--success-bg); color:var(--success-ink); border-color:var(--success-ink); }
-.eg-status-underway .eg-milestone-icon { background:var(--warning-bg); color:var(--warning-ink); border-color:var(--warning-emphasis); }
-.eg-status-unknown .eg-milestone-icon { border-style:dashed; }
-.eg-evidence { margin:12px 0 0; }
-.eg-evidence > div + div { margin-top:10px; }
-.eg-evidence dt { font-size:14px; font-weight:800; color:var(--ink-2); }
-.eg-evidence dd { margin:4px 0 0; font-size:15px; line-height:1.35; }
+.eg-state.eg-status-blocked { color:var(--alert); }
+.eg-dot { width:9px; height:9px; border:1px solid var(--mute); border-radius:50%; flex:none; }
+.eg-dot.eg-status-completed { border-color:var(--ok); background:var(--ok); }
+.eg-dot.eg-status-underway { border-color:var(--warning-emphasis); background:var(--warning-emphasis); }
+.eg-dot.eg-status-blocked { border-color:var(--alert); background:var(--alert); }
+.eg-dot.eg-status-unknown { border-style:dashed; }
+.eg-mini-stages { display:flex; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--mute); margin-top:5px; }
+.eg-mini-stages .is-reported { color:var(--success-ink); }
+.eg-submilestones { list-style:none; padding:0; margin:10px 0 0; }
+.eg-submilestones li { display:flex; align-items:center; gap:8px; font-size:14px; padding:6px 0; }
+.eg-submilestones li > span:nth-child(2) { flex:1; }
+.eg-submilestones small { color:var(--mute); font-size:11px; }
+.eg-legacy-scope { padding:10px 0; font-size:15px; }
+.eg-legacy-scope + .eg-legacy-scope { border-top:1px solid var(--line); }
 
-.eg-project-detail { margin-bottom:12px; background:var(--paper-2); border-radius:12px; }
-.eg-project-detail > summary { padding:12px; display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; cursor:pointer; }
-.eg-project-detail > summary b { font-size:18px; }
-.eg-project-detail > summary small { color:var(--mute); font-size:13px; }
-.eg-project-detail > .eg-detail { padding:0; }
-.eg-project-detail .eg-checklist-board { background:transparent; padding:12px; }
-.eg-project-detail .eg-work-scroll { overflow:visible; flex:none; }
+.eg-visual .eg-dashboard { grid-template-columns:minmax(0,2.3fr) minmax(0,1fr); }
+.eg-section-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.eg-section-card > summary { padding:9px 10px; min-height:110px; }
+.eg-section-title { font-size:13px; height:30px; line-height:1.15; margin:4px 0 5px; }
+.eg-section-status { font-size:10px; }
+.eg-card-change { display:flex; justify-content:space-between; flex-wrap:wrap; gap:2px 6px; font-size:12px; font-weight:800; margin-top:5px; color:var(--mute); }
+.eg-card-change small { font-size:10px; font-weight:500; color:var(--mute); }
+.eg-card-change.is-forward { color:var(--success-ink); }
+.eg-card-change.is-backward { color:var(--alert); }
+.eg-subtask-progress { min-width:145px; text-align:right; }
+.eg-subtask-progress > b { font-size:23px; }
+.eg-subtask-progress .eg-card-change { justify-content:flex-end; }
+/* Keep all fourteen C sections visible at the frame's 1280×800 size. */
+.agents--progress .ag-top { margin-bottom:10px; }
+.agents--progress .ag-top h1 { font-size:48px; }
+.agents--progress .ag-tabs { padding-bottom:8px; }
+.eg-section-card > summary { min-height:94px; padding:8px 10px; }
+.eg-section-head > strong { font-size:24px; }
+.eg-section-title { height:16px; white-space:nowrap; display:block; text-overflow:ellipsis; margin:4px 0 5px; }
+.eg-section-status { margin-top:4px; }
+.eg-card-change { margin-top:4px; }
+.eg-section-card[open] .eg-section-title { white-space:normal; }
+.eg-card-change { flex-wrap:nowrap; font-size:11px; gap:4px; }
+.eg-card-change small { font-size:9px; white-space:nowrap; }
+.eg-visual .eg-context > summary { min-height:56px; padding:10px 16px; }

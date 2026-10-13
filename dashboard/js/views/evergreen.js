@@ -1,7 +1,7 @@
 // Evergreen receives explicit project reports, never inferred lane progress.
 (function () {
   'use strict';
-  var data = null, error = '', busy = false, attempted = 0, selectedSection = '', esc = App.esc;
+  var data = null, error = '', busy = false, attempted = 0, esc = App.esc;
   var stages = [['built', 'Built'], ['reviewed', 'Reviewed'], ['integrated', 'Integrated'], ['live', 'Live']];
   function when(value) {
     var d = new Date(value);
@@ -28,25 +28,6 @@
   function disclosure(key, summary, content, cls) {
     return '<details class="eg-disclosure ' + (cls || '') + '" data-eg-open="' + esc(key) + '"><summary>' + summary + '</summary><div class="eg-detail">' + content + '</div></details>';
   }
-  function stageState(v) { return v === true ? 'Reported' : v === false ? 'Pending' : 'Unknown'; }
-  function totals(rows) {
-    return '<div class="eg-totals" aria-label="Reported delivery stages">' + stages.map(function (s) {
-      var yes = 0, pending = 0, unknown = 0;
-      rows.forEach(function (row) { var v = row.stages[s[0]]; if (v === true) yes++; else if (v === false) pending++; else unknown++; });
-      return '<section class="eg-total"><div><b>' + s[1] + '</b><span class="num">' + yes + '<small> / ' + rows.length + '</small></span></div>' +
-        '<div class="eg-total-bar" aria-label="' + s[1] + ': ' + yes + ' reported, ' + pending + ' pending, ' + unknown + ' unknown">' +
-        '<i class="is-reported" style="width:' + (rows.length ? yes / rows.length * 100 : 0) + '%"></i><i class="is-pending" style="width:' + (rows.length ? pending / rows.length * 100 : 0) + '%"></i><i class="is-unknown" style="width:' + (rows.length ? unknown / rows.length * 100 : 0) + '%"></i></div></section>';
-    }).join('') + '</div>';
-  }
-  function work(rows, sections, section) {
-    return '<section class="eg-board eg-card"><header><h3>Delivery map</h3><span class="eg-map-key">✓ reported · ○ pending · ? unknown</span></header><p class="eg-map-note">Fully reported scopes (may overlap), not overall completion. Tap for evidence.</p><div class="eg-work-scroll" data-eg-scroll="work">' + (section ? detailLink(sections, section) : '') + '<div class="eg-work-grid">' + (rows.length ? rows.map(function (row) {
-      var cells = stages.map(function (s) {
-        var v = row.stages[s[0]], state = stageState(v);
-        return '<span class="eg-cell' + (v === true ? ' is-reported' : v === false ? ' is-pending' : ' is-unknown') + '" title="' + s[1] + ': ' + state + '" aria-label="' + s[1] + ': ' + state + '">' + (v === true ? '✓' : v === false ? '○' : '?') + '<small>' + s[1] + '</small></span>';
-      }).join('');
-      return disclosure('work-' + row.id, '<b class="eg-tile-title">' + esc(row.title) + '</b><span class="eg-cells">' + cells + '</span>', '<h4>' + esc(row.title) + '</h4>' + note(row), 'eg-work-tile');
-    }).join('') : '<p class="eg-empty">No delivery stages reported yet.</p>') + '</div></div></section>';
-  }
   function attention(rows, title, empty, cls) {
     return disclosure(cls, '<b>' + title + '</b><span class="eg-count num">' + rows.length + '</span>', rows.length ? rows.map(function (row) {
       return disclosure(cls + '-' + row.id, '<b>' + esc(row.title) + '</b>' + (row.owner ? '<small>' + esc(row.owner) + '</small>' : ''), (row.detail ? '<p>' + esc(row.detail) + '</p>' : '') + (row.next ? '<p class="eg-next"><b>Next</b> ' + esc(row.next) + '</p>' : ''), 'eg-attention-item');
@@ -67,56 +48,74 @@
           return disclosure('recent-' + row.id, '<span class="eg-recent-meta"><span class="eg-stage is-reported">' + stage + '</span> ' + esc(clock) + '</span><b>' + esc(row.title) + '</b>', note(row), 'eg-recent-item');
         }).join('') : '<p class="eg-empty">No completions reported.</p>') + '</section>';
     }
-    return '<section class="eg-card eg-recent"><h3>Reported progress</h3>' + group(0, 'Today') + group(1, 'Yesterday') + (buckets[2].length ? group(2, 'Earlier') : '') + '</section>';
+    return '<section class="eg-card eg-recent"><h3>What changed</h3>' + group(0, 'Today') + group(1, 'Yesterday') + (buckets[2].length ? group(2, 'Earlier') : '') + '</section>';
   }
-  var statusNames = { completed: 'Completed', underway: 'Underway', pending: 'Pending', unknown: 'Unknown' };
+  var statusNames = { completed: 'Done', underway: 'Underway', blocked: 'Blocked', pending: 'Pending', unknown: 'Unknown' };
   function counts(rows) {
-    var out = { completed: 0, underway: 0, pending: 0, unknown: 0 };
+    var out = { completed: 0, underway: 0, blocked: 0, pending: 0, unknown: 0 };
     rows.forEach(function (r) { out[r.status]++; }); return out;
   }
-  function checklistTotals(section) {
-    var c = counts(section.items);
-    return '<div class="eg-totals eg-checklist-totals" aria-label="Reported checklist items">' + ['completed', 'underway', 'pending', 'unknown'].map(function (key) {
-      return '<section class="eg-total eg-status-' + key + '"><div><b>' + statusNames[key] + '</b><span class="num">' + c[key] + '</span></div><small>checklist ' + (c[key] === 1 ? 'item' : 'items') + '</small></section>';
-    }).join('') + '</div>';
+  function compactStages(row) {
+    return '<span class="eg-mini-stages">' + stages.map(function (s) {
+      var v = row.stages[s[0]];
+      return '<span class="' + (v === true ? 'is-reported' : '') + '">' + (v === true ? '✓ ' : v === false ? '○ ' : '? ') + s[1] + '</span>';
+    }).join('') + '</span>';
   }
-  function evidence(row) {
-    return '<div class="eg-stages">' + stages.map(function (s) {
-      return '<span class="eg-stage' + (row.stages[s[0]] === true ? ' is-reported' : '') + '">' + (row.stages[s[0]] === true ? '✓ ' : row.stages[s[0]] === false ? '○ ' : '? ') + s[1] + '</span>';
-    }).join('') + '</div>' + note(row) + (row.acceptance ? '<p><b>Acceptance:</b> ' + esc(row.acceptance) + '</p>' : '') +
-      (row.next ? '<p class="eg-next"><b>Next</b> ' + esc(row.next) + '</p>' : '') + '<dl class="eg-evidence">' + stages.filter(function (s) { return row.stageEvidence[s[0]]; }).map(function (s) {
-        return '<div><dt>' + s[1] + '</dt><dd>' + esc(row.stageEvidence[s[0]]) + '</dd></div>';
-      }).join('') + '</dl>';
+  function progressNumbers(progress) {
+    if (!progress) return { percent:null, today:null, yesterday:null };
+    var today = +App.dayStart(App.now()), yesterday = +App.addDays(new Date(today), -1);
+    function before(time) { return progress.history.filter(function (p) { return Date.parse(p.at) <= time; }).sort(function (a,b) { return Date.parse(b.at) - Date.parse(a.at); })[0]; }
+    function difference(a,b) { return a && b && a.basis === b.basis && a.total === b.total ? Math.round((a.completed - b.completed) / a.total * 1000) / 10 : null; }
+    var start = before(today), previous = before(yesterday);
+    return { percent:Math.round(progress.completed / progress.total * 100), today:Date.parse(data.report.updatedAt) >= today ? difference(progress,start) : null, yesterday:difference(start,previous) };
   }
-  function checklist(sections, section) {
-    return '<section class="eg-board eg-card eg-checklist-board"><header><h3>Checklist progress</h3>' + (sections.length > 1 ? '<select data-eg-section aria-label="Checklist section">' + sections.map(function (s) {
-      return '<option value="' + esc(s.id) + '"' + (s.id === section.id ? ' selected' : '') + '>' + esc(s.id + ' · ' + s.title) + '</option>';
-    }).join('') + '</select>' : '<span class="eg-section-id">' + esc(section.id) + '</span>') + '</header><p class="eg-map-note">' + esc(section.title) + ' · ' + (section.coverage === 'partial' ? 'Reported subset' : 'Full section reported') + '. Items and milestones count separately; no effort or time estimate.</p>' +
-      '<div class="eg-work-scroll" data-eg-scroll="checklist-' + esc(section.id) + '">' + section.items.map(function (item) {
-        var c = counts(item.milestones);
-        return '<article class="eg-checklist-item"><header><div><span class="eg-section-id">' + esc(item.id) + '</span><h4>' + esc(item.title) + '</h4></div><span class="eg-state eg-status-' + item.status + '">' + statusNames[item.status] + ' · checklist ' + (item.checklistChecked ? 'checked' : 'open') + '</span></header>' +
-          disclosure('item-' + item.id, '<b>Acceptance, owner & next step</b>', evidence(item), 'eg-item-evidence') +
-          '<div class="eg-milestone-counts"><b>' + c.completed + ' achieved milestones</b><span>' + c.underway + ' underway · ' + c.pending + ' pending · ' + c.unknown + ' unknown</span></div>' +
-          (item.milestones.length ? '<ol class="eg-milestones">' + item.milestones.map(function (m) {
-            var icon = m.status === 'completed' ? '✓' : m.status === 'underway' ? '↗' : m.status === 'pending' ? '○' : '?';
-            return '<li class="eg-status-' + m.status + '">' + disclosure('milestone-' + item.id + '-' + m.id, '<span class="eg-milestone-icon">' + icon + '</span><span><b>' + esc(m.title) + '</b><small>' + statusNames[m.status] + (m.at ? ' · ' + esc(when(m.at)) : '') + '</small></span>', evidence(m), 'eg-milestone') + '</li>';
-          }).join('') + '</ol>' : '<p class="eg-empty">No milestones reported for this item.</p>') + '</article>';
-      }).join('') + '</div></section>';
+  function deltaText(value, label) { return value == null ? '— ' + label : (value > 0 ? '+' : '') + value + ' pp ' + label; }
+  function changeLine(numbers) {
+    return '<span class="eg-card-change' + (numbers.today > 0 ? ' is-forward' : numbers.today < 0 ? ' is-backward' : '') + '">' + deltaText(numbers.today,'today') + '<small>' + deltaText(numbers.yesterday,'yesterday') + '</small></span>';
   }
-  function detailLink(sections, section) {
-    var items = section.items, achieved = 0;
-    items.forEach(function (item) { achieved += counts(item.milestones).completed; });
-    return disclosure('checklist-detail', '<b>Milestone detail · ' + esc(section.id) + '</b><small>' + achieved + ' achieved · ' + items.length + ' detailed ' + (items.length === 1 ? 'item' : 'items') + ' · tap to expand</small>', checklist(sections, section), 'eg-project-detail');
+  function subtask(item) {
+    var m = counts(item.milestones || []), numbers = progressNumbers(item.progress);
+    var milestones = (item.milestones || []).length ? '<ul class="eg-submilestones">' + item.milestones.map(function (row) {
+      return '<li><span class="eg-dot eg-status-' + row.status + '"></span><span>' + esc(row.title) + '</span><small>' + statusNames[row.status] + '</small></li>';
+    }).join('') + '</ul>' : '';
+    return disclosure('subtask-' + item.id, '<span class="eg-dot eg-status-' + item.status + '"></span><span class="eg-subtask-title"><b>' + esc(item.id) + ' · ' + esc(item.title) + '</b>' + (item.milestones.length ? '<small>' + m.completed + '/' + item.milestones.length + ' milestones achieved</small>' : '') + '</span>' + (numbers.percent == null ? '' : '<span class="eg-subtask-progress"><b class="num">' + numbers.percent + '%</b>' + changeLine(numbers) + '</span>') + '<span class="eg-state eg-status-' + item.status + '">' + statusNames[item.status] + '</span>',
+      compactStages(item) + (item.owner ? '<p class="eg-owner">' + esc(item.owner) + '</p>' : '') + (item.next ? '<p class="eg-next"><b>Next</b> ' + esc(item.next) + '</p>' : '') + milestones, 'eg-subtask');
+  }
+  function sectionCards(r) {
+    var byId = {}, order = [];
+    function ensure(id, title) {
+      if (!byId[id]) { byId[id] = { id:id, title:title, legacy:[] }; order.push(id); }
+      return byId[id];
+    }
+    r.work.forEach(function (row) {
+      var id = row.id.split('.')[0];
+      var card = ensure(id, row.title.replace(/^C\d+\s*[-–:]\s*/, ''));
+      if (row.id === id) card.title = row.title.replace(/^C\d+\s*[-–:]\s*/, '');
+      card.legacy.push(row);
+    });
+    (r.sections || []).forEach(function (section) { ensure(section.id, section.title.replace(/^C\d+\s*[-–:]\s*/, '')).section = section; });
+    order.sort(function (a,b) { return parseInt(a.slice(1),10) - parseInt(b.slice(1),10); });
+    return '<section class="eg-board eg-card eg-sections-board"><header><h3>Project progress</h3><span class="eg-map-key">Tap a section for subtasks</span></header><p class="eg-map-note">Verified progress steps · pp = percentage points · tap for subtasks.</p><div class="eg-work-scroll" data-eg-scroll="sections"><div class="eg-section-grid">' + order.map(function (id) {
+      var card = byId[id], section = card.section, c = section ? counts(section.items) : null;
+      var total = section ? (section.totalItems || (section.coverage === 'complete' ? section.items.length : null)) : null;
+      var numbers = progressNumbers(section && section.progress);
+      var percent = numbers.percent != null ? numbers.percent : total ? Math.round(c.completed / total * 100) : null;
+      var summary = '<span class="eg-section-head"><b>' + esc(id) + '</b><strong class="num">' + (percent == null ? '—' : percent + '<small>%</small>') + '</strong></span><span class="eg-section-title">' + esc(card.title) + '</span>' +
+        '<span class="eg-section-bar' + (percent == null ? ' is-unreported' : '') + '">' + (percent == null ? '' : '<i style="width:' + percent + '%"></i>') + '</span>' +
+        '<small class="eg-section-status">' + (section ? (section.progress ? section.progress.completed + '/' + section.progress.total + ' steps' : c.completed + '/' + (total || section.items.length) + ' done') + (!total && !section.progress ? ' · reported subset' : '') + (c.underway ? ' · ' + c.underway + ' underway' : '') + (c.blocked ? ' · ' + c.blocked + ' blocked' : '') : 'Progress not reported') + '</small>' + changeLine(numbers);
+      var detail = section ? '<div class="eg-section-detail-head"><b>' + esc(id) + ' · Subtasks</b><small>' + (section.coverage === 'partial' ? 'Partial reporting' : 'Full checklist') + '</small></div>' + section.items.map(subtask).join('') : '<p class="eg-empty">Ledger has not supplied this section’s subtask states yet.</p>';
+      if (!section) detail += card.legacy.map(function (row) { return '<div class="eg-legacy-scope"><b>' + esc(row.title) + '</b>' + compactStages(row) + '</div>'; }).join('');
+      return disclosure('section-' + id, summary, detail, 'eg-section-card');
+    }).join('') + '</div></div></section>';
   }
   function render() {
     if (!data || !data.report) return '<div class="ag-progress"><section class="eg-card eg-setup"><h2 class="serif">Evergreen</h2><p>' + (error ? 'The hub could not be reached. Try Refresh.' : busy ? 'Checking for Evergreen progress…' : 'Waiting for the first Evergreen report.') + '</p><p class="eg-empty">Ledger’s sync will bring the objective, recent progress, blockers and decisions here automatically.</p></section></div>';
     var r = data.report, warn = warnings();
-    var section = r.sections && (r.sections.filter(function (s) { return s.id === selectedSection; })[0] || r.sections[0]);
     // The first sentence is a compact excerpt, not a generated replacement claim.
     var brief = (r.objective.match(/^.*?[.!?](?:\s|$)/) || [r.objective])[0].trim();
     return '<div class="ag-progress eg-visual">' + (warn.length ? '<div class="eg-warning" role="status">' + esc(warn.join(' ')) + '</div>' : '') +
       disclosure('context', '<span class="eg-objective-label">Evergreen <small>Objective & next step</small></span><b class="eg-objective-brief">' + esc(brief) + '</b>', '<p>' + esc(r.objective) + '</p>' + (r.next ? '<p class="eg-next"><b>Next</b> ' + esc(r.next) + '</p>' : '') + '<p class="eg-source">' + esc(r.source) + ' · reconciled ' + esc(when(r.updatedAt)) + '</p>', 'eg-context') +
-      (r.work.length ? totals(r.work) : section ? checklistTotals(section) : totals(r.work)) + '<div class="eg-dashboard">' + (r.work.length ? work(r.work, r.sections, section) : section ? checklist(r.sections, section) : work(r.work)) + '<aside class="eg-sidebar" data-eg-scroll="sidebar">' + recent(r.recent) +
+      '<div class="eg-dashboard">' + sectionCards(r) + '<aside class="eg-sidebar" data-eg-scroll="sidebar">' + recent(r.recent) +
       attention(r.decisions, 'Needs you', 'No decisions requested in this report.', 'eg-decisions') +
       attention(r.blockers, 'Blockers & follow-up', 'No blockers reported.', 'eg-blockers') + '</aside></div></div>';
   }
@@ -132,7 +131,7 @@
     root.querySelectorAll('[data-eg-open]').forEach(function (e) { e.open = saved.open.indexOf(e.dataset.egOpen) > -1; });
     root.querySelectorAll('[data-eg-scroll]').forEach(function (e) { e.scrollTop = saved.scroll[e.dataset.egScroll] || 0; });
   }
-  App.evergreen = { active: false, refresh: refresh, render: render, selectSection: function (id) { selectedSection = id; }, capture: capture, restore: restore, stamp: function () {
+  App.evergreen = { active: false, refresh: refresh, render: render, capture: capture, restore: restore, stamp: function () {
     return data && data.report ? (warnings().length ? 'Report needs attention' : 'Reported ' + when(data.report.updatedAt)) : 'Awaiting progress feed';
   } };
   setInterval(function () { refresh(false); }, 60000);

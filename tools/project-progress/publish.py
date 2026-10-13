@@ -42,8 +42,18 @@ def selected(report):
             for row in out[key]:
                 row['stages'] = {stage: (row['stages'] or {}).get(stage) for stage in ('built', 'reviewed', 'integrated', 'live')}
     if report.get('schemaVersion') == 2 or report.get('sections') is not None:
+        def progress(row):
+            value = row.get('progress')
+            if value is None:
+                return None
+            if not isinstance(value, dict) or not isinstance(value.get('history'), list) or len(value['history']) > 32:
+                raise ValueError('Progress needs at most 32 dated history points.')
+            result = {key: value.get(key) for key in ('completed', 'total', 'basis')}
+            result['history'] = [{key: point.get(key) for key in ('completed', 'total', 'basis', 'at')} for point in value['history']]
+            return result
         def scope(row):
             value = {key: row.get(key) for key in ('id', 'title', 'status', 'owner', 'detail', 'next')}
+            value['progress'] = progress(row)
             value['stages'] = {stage: (row.get('stages') or {}).get(stage) for stage in ('built', 'reviewed', 'integrated', 'live')}
             value['stageEvidence'] = {stage: (row.get('stageEvidence') or {}).get(stage) for stage in ('built', 'reviewed', 'integrated', 'live')}
             return value
@@ -54,7 +64,8 @@ def selected(report):
         out['sections'] = []
         items_count, milestones_count = 0, 0
         for section in sections:
-            value = {key: section.get(key) for key in ('id', 'title', 'coverage')}
+            value = {key: section.get(key) for key in ('id', 'title', 'coverage', 'totalItems')}
+            value['progress'] = progress(section)
             items = section.get('items')
             if not isinstance(items, list) or not 1 <= len(items) <= 128:
                 raise ValueError('Send 1–128 items per section.')
