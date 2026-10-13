@@ -4,6 +4,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { readJson, writeJsonAtomic } = require('./util');
 const STAGES = ['built', 'reviewed', 'integrated', 'live'];
+const STATUSES = ['completed', 'underway', 'pending', 'unknown'];
 const bad = message => Object.assign(new Error(message), { userError: true });
 function text(value, limit, required = false) {
   if (value == null && !required) return '';
@@ -17,9 +18,12 @@ function date(value, now) {
   return new Date(value).toISOString();
 }
 function cleanReport(input, now = Date.now()) {
-  if (!input || input.schemaVersion !== 1 || input.project !== 'evergreen') throw bad('Use Evergreen progress schema version 1.');
+  if (!input || ![1, 2].includes(input.schemaVersion) || input.project !== 'evergreen') throw bad('Use Evergreen progress schema version 1 or 2.');
+  if (input.publishable === false || input.proposalVersion != null) throw bad('A progress proposal cannot be published as live status.');
+  if (input.schemaVersion === 2 && input.publishable !== true) throw bad('Version 2 requires publishable: true after source reconciliation.');
+  if (input.schemaVersion === 1 && input.sections != null) throw bad('Use version 2 for checklist sections.');
   const updatedAt = date(input.updatedAt, now);
-  const out = { schemaVersion: 1, project: 'evergreen', source: text(input.source, 80, true), updatedAt,
+  const out = { schemaVersion: input.schemaVersion, project: 'evergreen', source: text(input.source, 80, true), updatedAt,
     objective: text(input.objective, 300, true), next: text(input.next, 400) };
   for (const key of ['work', 'recent', 'blockers', 'decisions']) {
     if (!Array.isArray(input[key]) || input[key].length > 24) throw bad('Progress lists must contain at most 24 items.');
@@ -43,7 +47,55 @@ function cleanReport(input, now = Date.now()) {
       return row;
     });
   }
+  if (input.schemaVersion === 2) {
+    out.publishable = true;
+    out.sections = cleanSections(input.sections, updatedAt, now);
+  }
   return out;
+}
+function cleanSections(sections, updatedAt, now) {
+  if (!Array.isArray(sections) || !sections.length || sections.length > 16) throw bad('Send 1–16 reported checklist sections.');
+  const sectionsSeen = new Set(), itemsSeen = new Set();
+  let itemCount = 0, milestoneCount = 0;
+  function id(value, seen) {
+    if (typeof value !== 'string' || !/^[a-zA-Z0-9._-]{1,60}$/.test(value) || seen.has(value)) throw bad('Checklist IDs must be unique and stable.');
+    seen.add(value); return value;
+  }
+  function scope(row) {
+    if (!row || !STATUSES.includes(row.status)) throw bad('Checklist status must be completed, underway, pending or unknown.');
+    const out = { title: text(row.title, 180, true), status: row.status, owner: text(row.owner, 120), detail: text(row.detail, 500), next: text(row.next, 400), stages: {}, stageEvidence: {} };
+    for (const stage of STAGES) {
+      const value = row.stages?.[stage];
+      if (value != null && typeof value !== 'boolean') throw bad('Progress stages must be true, false or null.');
+      out.stages[stage] = value == null ? null : value;
+      out.stageEvidence[stage] = text(row.stageEvidence?.[stage], 400);
+    }
+    return out;
+  }
+  return sections.map(section => {
+    if (!section || !['partial', 'complete'].includes(section.coverage)) throw bad('Declare section coverage as partial or complete.');
+    if (!Array.isArray(section.items) || !section.items.length || section.items.length > 128) throw bad('Send 1–128 reported items per section.');
+    const out = { id: id(section.id, sectionsSeen), title: text(section.title, 180, true), coverage: section.coverage, items: [] };
+    out.items = section.items.map(item => {
+      if (++itemCount > 256) throw bad('Send at most 256 reported checklist items.');
+      const row = scope(item); row.id = id(item.id, itemsSeen);
+      if (typeof item.checklistChecked !== 'boolean' || item.checklistChecked !== (item.status === 'completed')) throw bad('Completed checklist items must be checked; open items must not be completed.');
+      row.checklistChecked = item.checklistChecked;
+      row.acceptance = text(item.acceptance, 600);
+      if (!Array.isArray(item.milestones) || item.milestones.length > 24) throw bad('Send at most 24 milestones per item.');
+      const seen = new Set();
+      row.milestones = item.milestones.map(m => {
+        if (++milestoneCount > 512) throw bad('Send at most 512 reported milestones.');
+        const milestone = scope(m); milestone.id = id(m.id, seen);
+        milestone.at = m.at == null ? null : date(m.at, now);
+        if (milestone.at && Date.parse(milestone.at) > Date.parse(updatedAt)) throw bad('Milestone achievement cannot be newer than reconciliation.');
+        if (milestone.at && m.status !== 'completed') throw bad('Only completed milestones may have achievement dates.');
+        return milestone;
+      });
+      return row;
+    });
+    return out;
+  });
 }
 function authorize(req, token) {
   if (!token) throw Object.assign(bad('Set an Evergreen progress token in server settings first.'), { httpStatus: 503 });
@@ -72,4 +124,4 @@ class ProgressStore {
       reportStale: this.clock() - Date.parse(this.data.report.updatedAt) > 24 * 3600000 };
   }
 }
-module.exports = { ProgressStore, cleanReport, authorize, STAGES };
+module.exports = { ProgressStore, cleanReport, authorize, STAGES, STATUSES };

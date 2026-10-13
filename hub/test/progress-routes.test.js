@@ -29,5 +29,17 @@ test('real progress endpoint and publisher enforce separate auth, strip private 
   const reading = await (await fetch(base + '/api/progress/evergreen')).json(); assert(reading.reportStale); assert.equal(reading.feedStale, false); assert.equal(reading.report.updatedAt, report.updatedAt); assert(!JSON.stringify(reading).includes('PRIVATE'));
   assert.equal((await publish({ ...report, objective: '' }, token)).status, 400);
   assert.deepEqual((await (await fetch(base + '/api/progress/evergreen')).json()).report, reading.report);
+  const finer = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/progress-recovery-v2.json')));
+  finer.updatedAt = new Date().toISOString();
+  finer.sections[0].items[0].localEvidence = ['/PRIVATE_PATH'];
+  fs.writeFileSync(reportFile, JSON.stringify(finer));
+  result = run(); assert.equal(result.status, 0, result.stderr);
+  const fineReading = await (await fetch(base + '/api/progress/evergreen')).json();
+  assert.equal(fineReading.report.schemaVersion, 2);
+  assert.equal(fineReading.report.sections[0].items[0].checklistChecked, false);
+  assert.equal(fineReading.report.sections[0].items[0].milestones.filter(m => m.status === 'completed').length, 4);
+  assert(!JSON.stringify(fineReading).includes('PRIVATE'));
+  assert.equal((await publish({ ...finer, publishable: false }, token)).status, 400);
+  assert.deepEqual((await (await fetch(base + '/api/progress/evergreen')).json()).report, fineReading.report);
   fs.chmodSync(tokenFile, 0o644); result = run(); assert.notEqual(result.status, 0); assert(!result.stderr.includes(token));
 });

@@ -63,3 +63,13 @@ test('disclosures and each panel scroll position survive report refresh',async()
   f.App.evergreen.restore({querySelectorAll:s=>s==='[data-eg-open]'?[work,other]:[scroll]},saved);
   assert.equal(work.open,true);assert.equal(other.open,false);assert.equal(scroll.scrollTop,160);
 });
+test('checklist view shows achieved milestones without completing their parent or inventing today dates',async()=>{
+ const r=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/progress-recovery-v2.json')));
+ const f=await view(r,new Date('2026-10-13T00:42:00Z')),html=f.html();
+ assert.match(html,/Checklist progress/);assert.match(html,/Reported subset/);assert.match(html,/4 achieved milestones/);
+ assert.match(html,/Underway · checklist open/);assert.match(html,/1 underway · 1 pending · 1 unknown/);
+ assert.match(html,/<h4>Today<\/h4><span class="eg-day-count">0 reported/);
+ assert(!html.includes('Built: 4 reported'));assert.match(html,/No completions reported/);
+ const second=JSON.parse(JSON.stringify(r.sections[0]));second.id='C13';second.title='Network checks';second.items[0].id='C13.1';r.sections.push(second);
+ f.App.evergreen.selectSection('C13');assert.match(f.html(),/Network checks/);
+});

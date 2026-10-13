@@ -157,6 +157,7 @@
       if (V.tab === 'usage' && App.live && window.liveRefreshAgents && Date.now() - (D.agentsUpdated || 0) > 300000) window.liveRefreshAgents(true);   // opening the tab with stale numbers asks for fresh ones
       if (!V.el) {
         V.el = el;
+        el.addEventListener('change', function (e) { if (e.target.matches('[data-eg-section]')) { App.evergreen.selectSection(e.target.value); render(); } });
         el.addEventListener('click', function (e) {
           var tab = e.target.closest('[data-ag-tab]');
           if (tab) { V.tab = tab.dataset.agTab; render(); if (V.tab === 'evergreen') App.evergreen.refresh(false); return; }

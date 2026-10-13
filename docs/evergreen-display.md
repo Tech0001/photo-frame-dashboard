@@ -20,3 +20,14 @@ warnings stay visible. An empty day says **No completions reported**, not that n
 work happened. The source must include the dated recent entries to display them;
 retain relevant recent days in Ledger's snapshot when reconciling new reports.
 The frame does not invent history or retain withdrawn source claims.
+
+With checklist sections in the existing feed, the overview counts individual
+checklist items as completed, underway, pending, or unknown. The section picker
+shows each reported section. Partial coverage is labelled **Reported subset**.
+Each open item shows achieved milestones separately, with a compact timeline;
+tap a milestone for its independent stage evidence, owner and next step. Four
+achieved milestones can coexist with an open acceptance item. These counts are
+checklist progress, not engineering effort or time remaining.
+
+The older scope display remains supported until Ledger supplies the finer
+report. The contract is in [Evergreen progress sync](../tools/project-progress/README.md#finer-checklist-detail-in-the-same-feed).

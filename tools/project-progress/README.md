@@ -39,11 +39,11 @@ before a token is configured. `GET` returns the selected report and hub receipt
 time. Reports replace the complete previous report. Older `updatedAt` values
 are rejected; validation failures preserve the last good report.
 
-Version 1 fields:
+Existing report fields (accepted with `schemaVersion: 1` or `2`):
 
 | Field | Meaning and limit |
 | --- | --- |
-| `schemaVersion`, `project` | Exactly `1`, `"evergreen"` |
+| `schemaVersion`, `project` | `1` or `2`, and `"evergreen"` |
 | `source` | Source/owner display label, required, 80 characters; no path |
 | `updatedAt` | ISO timestamp with timezone; source observation time |
 | `objective` | Required current objective, 300 characters |
@@ -69,6 +69,51 @@ it refreshes receipt time but never its source timestamp. Read failures retain
 the last report with a connection warning. The frame checks this local hub
 endpoint once a minute while Evergreen is visible; it does not poll Plane or
 agent systems itself.
+
+## Finer checklist detail in the same feed
+
+The same snapshot file, endpoint and timer accept checklist sections. This is an
+extension of the existing feed, not a second feed. Set `schemaVersion: 2` and
+`publishable: true` only in the reconciled live snapshot. A report containing
+`publishable: false` or `proposalVersion` is rejected. Keep proposals separate.
+
+Keep all existing envelope fields and arrays; `work` may be empty when sections
+supply the finer display. Add `sections`, with 1–16 entries:
+
+- Section: stable `id`, `title` (180 characters), `coverage` (`partial` or
+  `complete`), and `items`. Coverage describes whether all checklist items in
+  that section were reported, not whether the section is finished.
+- Item: stable `id` such as `C12.7`, `title`, `status`, `checklistChecked`,
+  `owner`, `detail`, `next`, `acceptance`, `stages`, `stageEvidence`, `milestones`.
+- Milestone: stable `id`, `title`, `status`, `owner`, `detail`, `next`, `stages`,
+  `stageEvidence`, and `at` (actual achievement timestamp or `null`).
+
+Statuses are exactly `completed`, `underway`, `pending`, or `unknown`.
+`checklistChecked` is required and must be true exactly when the parent item is
+completed. Achieved milestones never close their parent automatically. Stages
+remain independent boolean/null flags; `stageEvidence` has optional short text
+for each of `built`, `reviewed`, `integrated`, and `live`. Integration evidence
+should state its scope, for example offline composition versus landed code.
+
+Item/milestone text limits: title 180, owner 120, detail 500, next 400; item
+acceptance 600; each stage evidence string 400 characters. Maximum 128 items per
+section, 256 items total, 24 milestones per item, 512 milestones total, and a
+1 MiB request. Section IDs and item IDs are unique across their respective
+lists; milestone IDs are unique within the parent item.
+
+Do not invent achievement dates from reconciliation time. Only completed
+milestones may have a non-null `at`, no newer than `updatedAt`. Today/Yesterday
+still use the existing dated `recent` entries, so keep those entries when
+reconciling. Missing dates remain unknown. Local evidence locators, seals,
+`evidenceRefs`, and source checklist paths stay local and are stripped by the
+publisher and hub. Do not put them inside approved display text.
+
+See [the synthetic recovery fixture](../../hub/test/fixtures/progress-recovery-v2.json)
+for the exact shape. It is for testing, not live project status. Ledger should
+atomically extend `agent-Ledger/runtime/evergreen-status.json` after reconciling
+its evidence; the existing five-minute publisher then transports it unchanged
+except for field selection. The recovery proposal must not be copied into the
+live file merely to populate the screen.
 
 ## Automatic publisher setup
 

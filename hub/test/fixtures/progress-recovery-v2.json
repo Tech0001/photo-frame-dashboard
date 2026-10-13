@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 2,
+  "publishable": true,
+  "project": "evergreen",
+  "source": "Synthetic test fixture",
+  "updatedAt": "2026-10-13T00:41:31.000Z",
+  "objective": "Preview: checklist progress stays distinct from live acceptance.",
+  "next": "Review the remaining handoff.",
+  "work": [],
+  "recent": [],
+  "blockers": [],
+  "decisions": [],
+  "sections": [
+    {
+      "id": "C12",
+      "title": "Acceptance gate",
+      "coverage": "partial",
+      "items": [
+        {
+          "id": "C12.7",
+          "title": "Recovery acceptance",
+          "status": "underway",
+          "owner": "Example owner",
+          "detail": "Example named scope only.",
+          "next": "Follow the reported next step.",
+          "stages": {
+            "built": false,
+            "reviewed": false,
+            "integrated": false,
+            "live": false
+          },
+          "stageEvidence": {
+            "built": "Example evidence scoped to this milestone.",
+            "reviewed": "Example evidence scoped to this milestone.",
+            "integrated": "Example evidence scoped to this milestone.",
+            "live": "Example evidence scoped to this milestone."
+          },
+          "checklistChecked": false,
+          "acceptance": "Demonstrate the complete acceptance scope.",
+          "milestones": [
+            {
+              "id": "fixes",
+              "title": "Fixes built",
+              "status": "completed",
+              "owner": "Example owner",
+              "detail": "Example named scope only.",
+              "next": "Follow the reported next step.",
+              "stages": {
+                "built": true,
+                "reviewed": true,
+                "integrated": true,
+                "live": false
+              },
+              "stageEvidence": {
+                "built": "Example evidence scoped to this milestone.",
+                "reviewed": "Example evidence scoped to this milestone.",
+                "integrated": "Example evidence scoped to this milestone.",
+                "live": "Example evidence scoped to this milestone."
+              },
+              "at": null
+            },
+            {
+              "id": "launcher",
+              "title": "Launcher integrated",
+              "status": "completed",
+              "owner": "Example owner",
+              "detail": "Example named scope only.",
+              "next": "Follow the reported next step.",
+              "stages": {
+                "built": true,
+                "reviewed": true,
+                "integrated": true,
+                "live": false
+              },
+              "stageEvidence": {
+                "built": "Example evidence scoped to this milestone.",
+                "reviewed": "Example evidence scoped to this milestone.",
+                "integrated": "Example evidence scoped to this milestone.",
+                "live": "Example evidence scoped to this milestone."
+              },
+              "at": null
+            },
+            {
+              "id": "runtime",
+              "title": "Runtime prepared",
+              "status": "completed",
+              "owner": "Example owner",
+              "detail": "Example named scope only.",
+              "next": "Follow the reported next step.",
+              "stages": {
+                "built": true,
+                "reviewed": true,
+                "integrated": true,
+                "live": false
+              },
+              "stageEvidence": {
+                "built": "Example evidence scoped to this milestone.",
+                "reviewed": "Example evidence scoped to this milestone.",
+                "integrated": "Example evidence scoped to this milestone.",
+                "live": "Example evidence scoped to this milestone."
+              },
+              "at": null
+            },
+            {
+              "id": "inputs",
+              "title": "Saved inputs qualified",
+              "status": "completed",
+              "owner": "Example owner",
+              "detail": "Example named scope only.",
+              "next": "Follow the reported next step.",
+              "stages": {
+                "built": true,
+                "reviewed": true,
+                "integrated": true,
+                "live": false
+              },
+              "stageEvidence": {
+                "built": "Example evidence scoped to this milestone.",
+                "reviewed": "Example evidence scoped to this milestone.",
+                "integrated": "Example evidence scoped to this milestone.",
+                "live": "Example evidence scoped to this milestone."
+              },
+              "at": null
+            },
+            {
+              "id": "handoff",
+              "title": "Executable handoff",
+              "status": "underway",
+              "owner": "Example owner",
+              "detail": "Example named scope only.",
+              "next": "Follow the reported next step.",
+              "stages": {
+                "built": false,
+                "reviewed": false,
+                "integrated": false,
+                "live": false
+              },
+              "stageEvidence": {
+                "built": "Example evidence scoped to this milestone.",
+                "reviewed": "Example evidence scoped to this milestone.",
+                "integrated": "Example evidence scoped to this milestone.",
+                "live": "Example evidence scoped to this milestone."
+              },
+              "at": null
+            },
+            {
+              "id": "execution",
+              "title": "Recovery demonstrated",
+              "status": "pending",
+              "owner": "Example owner",
+              "detail": "Example named scope only.",
+              "next": "Follow the reported next step.",
+              "stages": {
+                "built": false,
+                "reviewed": false,
+                "integrated": false,
+                "live": false
+              },
+              "stageEvidence": {
+                "built": "Example evidence scoped to this milestone.",
+                "reviewed": "Example evidence scoped to this milestone.",
+                "integrated": "Example evidence scoped to this milestone.",
+                "live": "Example evidence scoped to this milestone."
+              },
+              "at": null
+            },
+            {
+              "id": "load",
+              "title": "Storage and load acceptance",
+              "status": "unknown",
+              "owner": "Example owner",
+              "detail": "Example named scope only.",
+              "next": "Follow the reported next step.",
+              "stages": {
+                "built": null,
+                "reviewed": null,
+                "integrated": null,
+                "live": null
+              },
+              "stageEvidence": {
+                "built": "Example evidence scoped to this milestone.",
+                "reviewed": "Example evidence scoped to this milestone.",
+                "integrated": "Example evidence scoped to this milestone.",
+                "live": "Example evidence scoped to this milestone."
+              },
+              "at": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
