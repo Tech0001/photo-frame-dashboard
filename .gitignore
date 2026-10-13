@@ -20,3 +20,7 @@ scripts/si006-webview-overlay/build/
 
 # Private per-frame records (docs/frame-records.md). No trailing slash, so a symlink is ignored too.
 /frames
+
+# Private project snapshots are external input, never repository content.
+**/evergreen-status.json
+**/evergreen-progress*.json
