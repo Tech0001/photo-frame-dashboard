@@ -103,7 +103,8 @@ public class MainActivity extends Activity {
     waiting.setVisibility(View.GONE);
     content.addView(waiting, new FrameLayout.LayoutParams(
         FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-    dashboard = new DashboardClient(getAssets(), web, waiting);
+    dashboard = new DashboardClient(getAssets(), web, waiting, this::openSpotify,
+        getSharedPreferences("kiosk", 0).getBoolean("household_sidebar", false));
     web.setWebViewClient(dashboard);
     setContentView(content);
 
@@ -148,6 +149,10 @@ public class MainActivity extends Activity {
             .putString("dashboard_url", intent.getDataString()).apply();
       }
     }
+    if (intent != null && intent.hasExtra("household_sidebar")) {
+      getSharedPreferences("kiosk", 0).edit()
+          .putBoolean("household_sidebar", intent.getBooleanExtra("household_sidebar", false)).apply();
+    }
     if (intent != null && intent.hasExtra("keep_usb")) {
       getSharedPreferences("kiosk", 0).edit()
           .putBoolean("keep_usb", intent.getBooleanExtra("keep_usb", false)).apply();
@@ -162,6 +167,14 @@ public class MainActivity extends Activity {
     } catch (IOException e) {
       return DEFAULT_URL;
     }
+  }
+
+  private void openSpotify() {
+    Intent launch = getPackageManager().getLaunchIntentForPackage("com.spotify.music");
+    if (launch != null) startActivity(launch);
+    else new AlertDialog.Builder(this).setTitle("Spotify")
+        .setMessage("Install Spotify on this display first.")
+        .setPositiveButton("OK", null).show();
   }
 
   private void openLauncher() {

@@ -18,18 +18,24 @@ final class DashboardClient extends DashboardAssets {
   private final Handler handler = new Handler(Looper.getMainLooper());
   private final WebView web;
   private final View waiting;
+  private final Runnable openSpotify;
+  private final boolean householdSidebar;
+  private Uri dashboardOrigin;
   private String retryUrl;
   private boolean failed;
   private boolean active;
   private final Runnable retry = this::retryLoad;
 
-  DashboardClient(AssetManager assets, WebView web, View waiting) {
+  DashboardClient(AssetManager assets, WebView web, View waiting, Runnable openSpotify, boolean householdSidebar) {
     super(assets);
     this.web = web;
     this.waiting = waiting;
+    this.openSpotify = openSpotify;
+    this.householdSidebar = householdSidebar;
   }
 
   void load(String url) {
+    dashboardOrigin = Uri.parse(url);
     cancelRetry();
     failed = false;
     waiting.setVisibility(View.GONE);
@@ -77,6 +83,37 @@ final class DashboardClient extends DashboardAssets {
     cancelRetry();
     waiting.setVisibility(View.GONE);
     Log.i(MainActivity.TAG, "Dashboard loaded");
+    if (householdSidebar && sameDashboardOrigin(url)) {
+      view.evaluateJavascript(HouseholdSidebar.SCRIPT, null);
+    }
+  }
+
+  private boolean sameDashboardOrigin(String url) {
+    if (dashboardOrigin == null || url == null) return false;
+    Uri uri = Uri.parse(url);
+    return dashboardOrigin.getScheme() != null && dashboardOrigin.getScheme().equals(uri.getScheme())
+        && dashboardOrigin.getHost() != null && dashboardOrigin.getHost().equals(uri.getHost())
+        && dashboardOrigin.getPort() == uri.getPort();
+  }
+
+  private boolean appLink(WebView view, Uri uri) {
+    if (!"homehq".equals(uri.getScheme())) return false;
+    // Only launch the fixed Spotify package from this display's selected dashboard.
+    if (householdSidebar && sameDashboardOrigin(view.getUrl()) && "spotify".equals(uri.getHost())
+        && (uri.getPath() == null || uri.getPath().isEmpty())
+        && uri.getQuery() == null && uri.getFragment() == null) openSpotify.run();
+    return true;
+  }
+
+  @Override
+  public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+    if ("homehq".equals(request.getUrl().getScheme()) && !request.isForMainFrame()) return true;
+    return appLink(view, request.getUrl());
+  }
+
+  @Override
+  public boolean shouldOverrideUrlLoading(WebView view, String url) {
+    return appLink(view, Uri.parse(url));
   }
 
   @Override
