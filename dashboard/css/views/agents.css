@@ -187,3 +187,38 @@
 .eg-attention-item > summary > b { display:block; font-size:17px; line-height:1.25; }
 .eg-attention-item > summary > small { display:block; color:var(--mute); font-size:13px; margin-top:5px; }
 .eg-attention-item .eg-detail { padding:10px 0; }
+
+/* Reported checklist items and their incremental milestones, never effort %. */
+.eg-checklist-totals .eg-total { border-bottom:4px solid var(--line); }
+.eg-checklist-totals .eg-status-completed { border-color:var(--ok); }
+.eg-checklist-totals .eg-status-underway { border-color:var(--warning-emphasis); }
+.eg-checklist-totals .eg-status-unknown { border-bottom-style:dotted; border-color:var(--mute); }
+.eg-checklist-totals .eg-total > small { display:block; margin-top:4px; font-size:12px; }
+.eg-checklist-board > header select { max-width:58%; padding:6px 10px; font:inherit; font-size:16px; color:var(--ink); background:var(--paper-2); border:1px solid var(--line); border-radius:8px; }
+.eg-section-id { font-size:14px; font-weight:800; color:var(--ink-2); }
+.eg-checklist-item + .eg-checklist-item { margin-top:18px; padding-top:18px; border-top:1px solid var(--line); }
+.eg-checklist-item > header { display:flex; align-items:flex-start; gap:12px; justify-content:space-between; margin-bottom:10px; }
+.eg-checklist-item > header h4 { font-size:21px; line-height:1.15; margin-top:4px; }
+.eg-state { flex:none; font-size:12px; line-height:1.3; border-radius:7px; padding:6px 9px; background:var(--paper-2); color:var(--ink-2); max-width:170px; }
+.eg-state.eg-status-completed { color:var(--success-ink); background:var(--success-bg); }
+.eg-state.eg-status-underway { color:var(--warning-ink); background:var(--warning-bg); }
+.eg-item-evidence > summary { padding:7px 0; min-height:36px; font-size:14px; color:var(--mute); }
+.eg-item-evidence > summary::before { content:'▸ '; }
+.eg-item-evidence[open] > summary::before { content:'▾ '; }
+.eg-milestone-counts { display:flex; flex-wrap:wrap; align-items:center; gap:8px 14px; font-size:14px; padding:10px 0; }
+.eg-milestone-counts > b { color:var(--success-ink); }
+.eg-milestone-counts > span { color:var(--mute); font-size:12px; }
+.eg-milestones { list-style:none; padding:0; margin:0; }
+.eg-milestones > li { position:relative; margin:0 0 5px; }
+.eg-milestone > summary { display:flex; gap:12px; align-items:center; padding:7px 10px; min-height:50px; border-radius:9px; background:var(--paper); }
+.eg-milestone > summary > span:last-child { min-width:0; flex:1; }
+.eg-milestone > summary b { display:block; font-size:16px; line-height:1.15; }
+.eg-milestone > summary small { display:block; font-size:11px; color:var(--mute); margin-top:4px; }
+.eg-milestone-icon { display:grid; place-items:center; width:28px; height:28px; border-radius:50%; flex:none; font-size:19px; font-weight:800; color:var(--mute); border:1px solid var(--line); }
+.eg-status-completed .eg-milestone-icon { background:var(--success-bg); color:var(--success-ink); border-color:var(--success-ink); }
+.eg-status-underway .eg-milestone-icon { background:var(--warning-bg); color:var(--warning-ink); border-color:var(--warning-emphasis); }
+.eg-status-unknown .eg-milestone-icon { border-style:dashed; }
+.eg-evidence { margin:12px 0 0; }
+.eg-evidence > div + div { margin-top:10px; }
+.eg-evidence dt { font-size:14px; font-weight:800; color:var(--ink-2); }
+.eg-evidence dd { margin:4px 0 0; font-size:15px; line-height:1.35; }

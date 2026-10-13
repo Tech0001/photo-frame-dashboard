@@ -1,7 +1,7 @@
 // Evergreen receives explicit project reports, never inferred lane progress.
 (function () {
   'use strict';
-  var data = null, error = '', busy = false, attempted = 0, esc = App.esc;
+  var data = null, error = '', busy = false, attempted = 0, selectedSection = '', esc = App.esc;
   var stages = [['built', 'Built'], ['reviewed', 'Reviewed'], ['integrated', 'Integrated'], ['live', 'Live']];
   function when(value) {
     var d = new Date(value);
@@ -69,14 +69,49 @@
     }
     return '<section class="eg-card eg-recent"><h3>Reported progress</h3>' + group(0, 'Today') + group(1, 'Yesterday') + (buckets[2].length ? group(2, 'Earlier') : '') + '</section>';
   }
+  var statusNames = { completed: 'Completed', underway: 'Underway', pending: 'Pending', unknown: 'Unknown' };
+  function counts(rows) {
+    var out = { completed: 0, underway: 0, pending: 0, unknown: 0 };
+    rows.forEach(function (r) { out[r.status]++; }); return out;
+  }
+  function checklistTotals(section) {
+    var c = counts(section.items);
+    return '<div class="eg-totals eg-checklist-totals" aria-label="Reported checklist items">' + ['completed', 'underway', 'pending', 'unknown'].map(function (key) {
+      return '<section class="eg-total eg-status-' + key + '"><div><b>' + statusNames[key] + '</b><span class="num">' + c[key] + '</span></div><small>checklist ' + (c[key] === 1 ? 'item' : 'items') + '</small></section>';
+    }).join('') + '</div>';
+  }
+  function evidence(row) {
+    return '<div class="eg-stages">' + stages.map(function (s) {
+      return '<span class="eg-stage' + (row.stages[s[0]] === true ? ' is-reported' : '') + '">' + (row.stages[s[0]] === true ? '✓ ' : row.stages[s[0]] === false ? '○ ' : '? ') + s[1] + '</span>';
+    }).join('') + '</div>' + note(row) + (row.acceptance ? '<p><b>Acceptance:</b> ' + esc(row.acceptance) + '</p>' : '') +
+      (row.next ? '<p class="eg-next"><b>Next</b> ' + esc(row.next) + '</p>' : '') + '<dl class="eg-evidence">' + stages.filter(function (s) { return row.stageEvidence[s[0]]; }).map(function (s) {
+        return '<div><dt>' + s[1] + '</dt><dd>' + esc(row.stageEvidence[s[0]]) + '</dd></div>';
+      }).join('') + '</dl>';
+  }
+  function checklist(sections, section) {
+    return '<section class="eg-board eg-card eg-checklist-board"><header><h3>Checklist progress</h3>' + (sections.length > 1 ? '<select data-eg-section aria-label="Checklist section">' + sections.map(function (s) {
+      return '<option value="' + esc(s.id) + '"' + (s.id === section.id ? ' selected' : '') + '>' + esc(s.id + ' · ' + s.title) + '</option>';
+    }).join('') + '</select>' : '<span class="eg-section-id">' + esc(section.id) + '</span>') + '</header><p class="eg-map-note">' + esc(section.title) + ' · ' + (section.coverage === 'partial' ? 'Reported subset' : 'Full section reported') + '. Items and milestones count separately; no effort or time estimate.</p>' +
+      '<div class="eg-work-scroll" data-eg-scroll="checklist-' + esc(section.id) + '">' + section.items.map(function (item) {
+        var c = counts(item.milestones);
+        return '<article class="eg-checklist-item"><header><div><span class="eg-section-id">' + esc(item.id) + '</span><h4>' + esc(item.title) + '</h4></div><span class="eg-state eg-status-' + item.status + '">' + statusNames[item.status] + ' · checklist ' + (item.checklistChecked ? 'checked' : 'open') + '</span></header>' +
+          disclosure('item-' + item.id, '<b>Acceptance, owner & next step</b>', evidence(item), 'eg-item-evidence') +
+          '<div class="eg-milestone-counts"><b>' + c.completed + ' achieved milestones</b><span>' + c.underway + ' underway · ' + c.pending + ' pending · ' + c.unknown + ' unknown</span></div>' +
+          (item.milestones.length ? '<ol class="eg-milestones">' + item.milestones.map(function (m) {
+            var icon = m.status === 'completed' ? '✓' : m.status === 'underway' ? '↗' : m.status === 'pending' ? '○' : '?';
+            return '<li class="eg-status-' + m.status + '">' + disclosure('milestone-' + item.id + '-' + m.id, '<span class="eg-milestone-icon">' + icon + '</span><span><b>' + esc(m.title) + '</b><small>' + statusNames[m.status] + (m.at ? ' · ' + esc(when(m.at)) : '') + '</small></span>', evidence(m), 'eg-milestone') + '</li>';
+          }).join('') + '</ol>' : '<p class="eg-empty">No milestones reported for this item.</p>') + '</article>';
+      }).join('') + '</div></section>';
+  }
   function render() {
     if (!data || !data.report) return '<div class="ag-progress"><section class="eg-card eg-setup"><h2 class="serif">Evergreen</h2><p>' + (error ? 'The hub could not be reached. Try Refresh.' : busy ? 'Checking for Evergreen progress…' : 'Waiting for the first Evergreen report.') + '</p><p class="eg-empty">The configured progress feed will bring the objective, recent progress, blockers and decisions here automatically.</p></section></div>';
     var r = data.report, warn = warnings();
+    var section = r.sections && (r.sections.filter(function (s) { return s.id === selectedSection; })[0] || r.sections[0]);
     // The first sentence is a compact excerpt, not a generated replacement claim.
     var brief = (r.objective.match(/^.*?[.!?](?:\s|$)/) || [r.objective])[0].trim();
     return '<div class="ag-progress eg-visual">' + (warn.length ? '<div class="eg-warning" role="status">' + esc(warn.join(' ')) + '</div>' : '') +
       disclosure('context', '<span class="eg-objective-label">Evergreen <small>Objective & next step</small></span><b class="eg-objective-brief">' + esc(brief) + '</b>', '<p>' + esc(r.objective) + '</p>' + (r.next ? '<p class="eg-next"><b>Next</b> ' + esc(r.next) + '</p>' : '') + '<p class="eg-source">' + esc(r.source) + ' · reconciled ' + esc(when(r.updatedAt)) + '</p>', 'eg-context') +
-      totals(r.work) + '<div class="eg-dashboard">' + work(r.work) + '<aside class="eg-sidebar" data-eg-scroll="sidebar">' + recent(r.recent) +
+      (section ? checklistTotals(section) : totals(r.work)) + '<div class="eg-dashboard">' + (section ? checklist(r.sections, section) : work(r.work)) + '<aside class="eg-sidebar" data-eg-scroll="sidebar">' + recent(r.recent) +
       attention(r.decisions, 'Needs you', 'No decisions requested in this report.', 'eg-decisions') +
       attention(r.blockers, 'Blockers & follow-up', 'No blockers reported.', 'eg-blockers') + '</aside></div></div>';
   }
@@ -92,7 +127,7 @@
     root.querySelectorAll('[data-eg-open]').forEach(function (e) { e.open = saved.open.indexOf(e.dataset.egOpen) > -1; });
     root.querySelectorAll('[data-eg-scroll]').forEach(function (e) { e.scrollTop = saved.scroll[e.dataset.egScroll] || 0; });
   }
-  App.evergreen = { active: false, refresh: refresh, render: render, capture: capture, restore: restore, stamp: function () {
+  App.evergreen = { active: false, refresh: refresh, render: render, selectSection: function (id) { selectedSection = id; }, capture: capture, restore: restore, stamp: function () {
     return data && data.report ? (warnings().length ? 'Report needs attention' : 'Reported ' + when(data.report.updatedAt)) : 'Awaiting progress feed';
   } };
   setInterval(function () { refresh(false); }, 60000);

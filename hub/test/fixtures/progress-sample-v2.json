@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 2,
+  "publishable": true,
+  "project": "evergreen",
+  "source": "Synthetic test fixture",
+  "updatedAt": "2026-10-13T00:41:31.000Z",
+  "objective": "Preview a sample checklist display.",
+  "next": "Review the example item.",
+  "work": [],
+  "recent": [],
+  "blockers": [],
+  "decisions": [],
+  "sections": [
+    {
+      "id": "S1",
+      "title": "Sample section",
+      "coverage": "partial",
+      "items": [
+        {
+          "id": "S1.1",
+          "title": "Example checklist item",
+          "status": "underway",
+          "owner": "Example owner",
+          "detail": "Example named scope only.",
+          "next": "Follow the reported next step.",
+          "stages": {
+            "built": false,
+            "reviewed": false,
+            "integrated": false,
+            "live": false
+          },
+          "stageEvidence": {
+            "built": "Example evidence scoped to this milestone.",
+            "reviewed": "Example evidence scoped to this milestone.",
+            "integrated": "Example evidence scoped to this milestone.",
+            "live": "Example evidence scoped to this milestone."
+          },
+          "checklistChecked": false,
+          "acceptance": "Complete the example checklist.",
+          "milestones": [
+            {
+              "id": "step-1",
+              "title": "Example step 1",
+              "status": "completed",
+              "owner": "Example owner",
+              "detail": "Example named scope only.",
+              "next": "Follow the reported next step.",
+              "stages": {
+                "built": true,
+                "reviewed": true,
+                "integrated": true,
+                "live": false
+              },
+              "stageEvidence": {
+                "built": "Example evidence scoped to this milestone.",
+                "reviewed": "Example evidence scoped to this milestone.",
+                "integrated": "Example evidence scoped to this milestone.",
+                "live": "Example evidence scoped to this milestone."
+              },
+              "at": null
+            },
+            {
+              "id": "step-2",
+              "title": "Example step 2",
+              "status": "completed",
+              "owner": "Example owner",
+              "detail": "Example named scope only.",
+              "next": "Follow the reported next step.",
+              "stages": {
+                "built": true,
+                "reviewed": true,
+                "integrated": true,
+                "live": false
+              },
+              "stageEvidence": {
+                "built": "Example evidence scoped to this milestone.",
+                "reviewed": "Example evidence scoped to this milestone.",
+                "integrated": "Example evidence scoped to this milestone.",
+                "live": "Example evidence scoped to this milestone."
+              },
+              "at": null
+            },
+            {
+              "id": "step-3",
+              "title": "Example step 3",
+              "status": "completed",
+              "owner": "Example owner",
+              "detail": "Example named scope only.",
+              "next": "Follow the reported next step.",
+              "stages": {
+                "built": true,
+                "reviewed": true,
+                "integrated": true,
+                "live": false
+              },
+              "stageEvidence": {
+                "built": "Example evidence scoped to this milestone.",
+                "reviewed": "Example evidence scoped to this milestone.",
+                "integrated": "Example evidence scoped to this milestone.",
+                "live": "Example evidence scoped to this milestone."
+              },
+              "at": null
+            },
+            {
+              "id": "step-4",
+              "title": "Example step 4",
+              "status": "underway",
+              "owner": "Example owner",
+              "detail": "Example named scope only.",
+              "next": "Follow the reported next step.",
+              "stages": {
+                "built": true,
+                "reviewed": true,
+                "integrated": true,
+                "live": false
+              },
+              "stageEvidence": {
+                "built": "Example evidence scoped to this milestone.",
+                "reviewed": "Example evidence scoped to this milestone.",
+                "integrated": "Example evidence scoped to this milestone.",
+                "live": "Example evidence scoped to this milestone."
+              },
+              "at": null
+            },
+            {
+              "id": "step-5",
+              "title": "Example step 5",
+              "status": "underway",
+              "owner": "Example owner",
+              "detail": "Example named scope only.",
+              "next": "Follow the reported next step.",
+              "stages": {
+                "built": false,
+                "reviewed": false,
+                "integrated": false,
+                "live": false
+              },
+              "stageEvidence": {
+                "built": "Example evidence scoped to this milestone.",
+                "reviewed": "Example evidence scoped to this milestone.",
+                "integrated": "Example evidence scoped to this milestone.",
+                "live": "Example evidence scoped to this milestone."
+              },
+              "at": null
+            },
+            {
+              "id": "step-6",
+              "title": "Example step 6",
+              "status": "pending",
+              "owner": "Example owner",
+              "detail": "Example named scope only.",
+              "next": "Follow the reported next step.",
+              "stages": {
+                "built": false,
+                "reviewed": false,
+                "integrated": false,
+                "live": false
+              },
+              "stageEvidence": {
+                "built": "Example evidence scoped to this milestone.",
+                "reviewed": "Example evidence scoped to this milestone.",
+                "integrated": "Example evidence scoped to this milestone.",
+                "live": "Example evidence scoped to this milestone."
+              },
+              "at": null
+            },
+            {
+              "id": "step-7",
+              "title": "Example step 7",
+              "status": "unknown",
+              "owner": "Example owner",
+              "detail": "Example named scope only.",
+              "next": "Follow the reported next step.",
+              "stages": {
+                "built": null,
+                "reviewed": null,
+                "integrated": null,
+                "live": null
+              },
+              "stageEvidence": {
+                "built": "Example evidence scoped to this milestone.",
+                "reviewed": "Example evidence scoped to this milestone.",
+                "integrated": "Example evidence scoped to this milestone.",
+                "live": "Example evidence scoped to this milestone."
+              },
+              "at": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

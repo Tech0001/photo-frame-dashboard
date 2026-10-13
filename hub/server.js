@@ -182,7 +182,7 @@ const routes = {
   'PUT /api/progress/evergreen': async (req, res) => {
     try {
       authorizeProgress(req, secrets.progress_token);
-      const data = progress.update(await readBody(req, 128 * 1024));
+      const data = progress.update(await readBody(req, 1024 * 1024));
       send(res, 200, { ok: true, updatedAt: data.report.updatedAt, receivedAt: data.receivedAt });
     } catch (e) { if (!e.userError) throw e; send(res, e.httpStatus || 400, { error: e.message }); }
   },
