@@ -45,13 +45,23 @@ Addresses stay in server settings; the frame receives only names and results.
   per the [RustDesk server documentation](https://rustdesk.com/docs/en/self-host/rustdesk-server-oss/install/)).
   This does not test UDP, an actual remote desktop session, or client credentials.
 
-The **Overview**, **Pi-hole** and **Gitea** buttons stay inside Homelab. Add API
+The **Overview**, **Pi-hole**, **Gitea** and **GitHub** buttons stay inside Homelab. Add API
 tokens in the same server Connections form to enable details. Tokens are
 write-only, stored in `secrets.json` as `homelab_pihole_token`,
 `homelab_pihole_password` (v6) and `homelab_gitea_token`, and never sent to the
-frame. Changing an address requires re-entering its credential; restoring
+frame. The optional GitHub token uses `homelab_github_token` in the same file.
+Changing an address requires re-entering its credential; restoring
 settings with a different address clears it. Blank fields preserve saved
 credentials; tick **Remove saved token/credentials** to unlink.
+
+- **GitHub:** enter an account name in Connections → Homelab. Public repository
+  counts, open pull requests/issues in that account's repositories and recent
+  public pushes work without a token. An optional token increases API limits;
+  this display still requests only public activity. GitHub is cached separately
+  for 15 minutes, including during manual Homelab refreshes. “Pushes in feed”
+  counts pushes among the latest 100 public events, not total commits or daily
+  contributions. GitHub's event feed can be delayed; unavailable counts stay
+  unknown. Recent pushes show the latest commit's subject when available.
 
 - **Pi-hole details** support the v5 PHP API (`admin/api.php`) and the v6 REST
   API. For v5, copy the token from **Settings → API / Web interface → Show API
