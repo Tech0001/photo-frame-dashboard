@@ -75,7 +75,9 @@ public class MainActivity extends Activity {
     WebSettings s = web.getSettings();
     s.setJavaScriptEnabled(true);
     s.setDomStorageEnabled(true);
-    s.setUseWideViewPort(true);
+    // The page fits its fixed stage itself. Use the real device viewport rather than
+    // a virtual wide viewport, which clips higher-density screens like the Echo Show.
+    s.setUseWideViewPort(false);
     s.setMediaPlaybackRequiresUserGesture(false);
     s.setAllowFileAccess(false);
     s.setAllowContentAccess(false);
