@@ -11,9 +11,9 @@ import palettes from './theme-palettes.json';
     if (App.$('#demo').classList.contains('is-open')) return;
     App.resetIdle();
     var values = settings.values, selected = values.theme || 'paper', saving = false;
-    App.sheet('<h2 class="serif">Display settings</h2><p class="ds-intro">Theme and idle timers</p><div class="ds-themes" role="group" aria-label="Color theme">' + palettes.map(function (p) {
+    App.sheet('<h2 class="serif">Display settings</h2><p class="ds-intro">Theme, screensaver and idle timers</p><div class="ds-themes" role="group" aria-label="Color theme">' + palettes.map(function (p) {
       return '<button type="button" data-display-theme="' + p.id + '" aria-pressed="' + (p.id === selected) + '" style="--sample-bg:' + p.colors.paper + ';--sample-card:' + p.colors.card + ';--sample-ink:' + p.colors.ink + ';--sample-accent:' + p.colors.accent + '"><span class="ds-sample"><i></i><b>10:24</b></span><span>' + esc(p.label) + '</span></button>';
-    }).join('') + '</div><div class="ds-timers"><label>Back to Today after<select data-display-home>' + options([15,30,60,120,300], values.homeSec) + '</select></label><label>Start slideshow after<select data-display-ambient>' + options([30,60,120,180,300,600,1800], values.ambientSec) + '</select></label></div><p class="ds-note">Night clock: 10 PM–6 AM. Photos keep the hollow white clock.</p><p class="ds-status" role="status"></p><div class="ds-actions"><button class="btn btn--ghost" data-close>Cancel</button><button class="btn btn--solid" data-display-save>Apply</button></div>', {
+    }).join('') + '</div><div class="ds-timers"><label>Screensaver style<select data-display-style><option value="classic"' + (values.ambientStyle !== 'art' ? ' selected' : '') + '>Classic photos</option><option value="art"' + (values.ambientStyle === 'art' ? ' selected' : '') + '>Art frame</option></select></label><label>Back to Today after<select data-display-home>' + options([15,30,60,120,300], values.homeSec) + '</select></label><label>Start slideshow after<select data-display-ambient>' + options([30,60,120,180,300,600,1800], values.ambientSec) + '</select></label></div><p class="ds-note">Night clock: 10 PM–6 AM. Classic photos keep the hollow clock; Art frame adds picture colors and a household notes panel.</p><p class="ds-status" role="status"></p><div class="ds-actions"><button class="btn btn--ghost" data-close>Cancel</button><button class="btn btn--solid" data-display-save>Apply</button></div>', {
       cls: 'sheet--display-settings',
       onClose: App.resetIdle,
       onMount: function (root, close) {
@@ -24,7 +24,7 @@ import palettes from './theme-palettes.json';
             root.querySelectorAll('[data-display-theme]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.displayTheme === selected)); });
           }
           if (!e.target.closest('[data-display-save]') || saving) return;
-          var next = { theme: selected, homeSec: +root.querySelector('[data-display-home]').value, ambientSec: +root.querySelector('[data-display-ambient]').value };
+          var next = { theme: selected, ambientStyle: root.querySelector('[data-display-style]').value, homeSec: +root.querySelector('[data-display-home]').value, ambientSec: +root.querySelector('[data-display-ambient]').value };
           var status = root.querySelector('.ds-status');
           if (next.homeSec >= next.ambientSec) { status.textContent = 'Return to Today before starting the slideshow. Choose a longer slideshow timer.'; return; }
           saving = true; status.textContent = 'Saving…';
@@ -53,7 +53,7 @@ import palettes from './theme-palettes.json';
   }
   App.openDisplaySettings = function () {
     if (opening) return;
-    if (!App.live) { show({ values: { theme: App.tune('theme', 'paper'), homeSec: App.idle.home, ambientSec: App.idle.ambient } }); return; }
+    if (!App.live) { show({ values: { theme: App.tune('theme', 'paper'), ambientStyle: App.tune('ambientStyle', 'classic'), homeSec: App.idle.home, ambientSec: App.idle.ambient } }); return; }
     opening = true;
     var ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, 8000);
     fetch('/api/display-settings', { cache: 'no-store', signal: ctl.signal }).then(function (r) {

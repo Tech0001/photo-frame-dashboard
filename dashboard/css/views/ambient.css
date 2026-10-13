@@ -24,6 +24,41 @@
 .amb-who { display: flex; gap: 8px; }
 .amb-who .avatar--away { background: rgba(0, 0, 0, .3); }
 
+/* Optional art frame: the picture is the focus, with a quiet pigment-colored rail. */
+.ambient.is-art { --art-background: rgb(25,26,23); --art-ink: rgb(238,238,237); --art-muted: rgb(172,173,170); --art-accent: rgb(164,166,159); --art-note: rgb(233,233,231); background: var(--art-background); color: var(--art-ink); }
+.is-art .amb-stage { right: 360px; }
+.is-art .amb-scrim { right: 360px; height: 25%; background: linear-gradient(0deg,rgba(0,0,0,.6),rgba(0,0,0,0)); }
+.is-art .amb-info { inset: 0; display: block; transform: none !important; pointer-events: none; }
+.art-main { position: absolute; right: 0; top: 0; bottom: 0; width: 360px; padding: 44px 34px 28px; display: flex; flex-direction: column; background: var(--art-background); transition: background-color 1.5s; pointer-events: auto; }
+.art-clock { position: relative; margin: 8px 0 32px; }
+.art-clock > span { display: block; font-size: 210px; line-height: .82; letter-spacing: -.05em; }
+.art-hour { color: var(--art-muted); }
+.art-minute { margin-top: 10px; }
+.art-clock small { position: absolute; right: 8px; bottom: 6px; font-size: 14px; letter-spacing: .12em; color: var(--art-muted); }
+.art-date { font-size: 15px; letter-spacing: .13em; text-transform: uppercase; color: var(--art-muted); }
+.art-weather { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 24px; font-size: 24px; }
+.art-weather span { flex-basis: 100%; font-size: 20px; line-height: 1.35; color: var(--art-muted); }
+.art-actions { margin-top: auto; display: flex; flex-wrap: wrap; gap: 10px 18px; padding-top: 24px; }
+.art-actions button { min-height: 44px; font-size: 16px; color: var(--art-muted); }
+.art-actions [data-art-notes] { flex-basis: 100%; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--art-accent); padding: 14px 0; font-size: 21px; color: var(--art-ink); }
+.art-caption { position: absolute; left: 28px; bottom: 30px; right: 394px; text-shadow: 0 1px 8px rgba(0,0,0,.5); }
+.art-caption strong { display: block; font-size: 30px; line-height: 1.15; }
+.art-caption span { display: block; margin-top: 7px; font-size: 16px; color: rgba(255,255,255,.8); }
+.art-notes { position: absolute; right: 18px; top: 18px; bottom: 18px; width: 422px; background: var(--art-note); color: rgb(35,39,33); padding: 42px 26px 22px; border-radius: 38px 38px 74px 20px; box-shadow: -12px 0 50px rgba(0,0,0,.22); overflow: auto; pointer-events: auto; animation: art-notes-in .3s ease-out; }
+.art-close { position: absolute; top: 14px; right: 18px; display: grid; place-items: center; width: 44px; height: 44px; }
+.art-eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .14em; opacity: .6; }
+.art-notes h2 { font-size: 46px; margin: 4px 0 26px; }
+.art-note-list { display: flex; flex-direction: column; gap: 18px; }
+.art-note { display: block; width: 100%; padding: 23px 22px; background: rgba(255,255,255,.6); border-radius: 12px 38px 20px 32px; }
+.art-note--shopping { border-radius: 30px 12px 36px 16px; background: rgba(183,166,122,.2); }
+.art-note--chores { border-radius: 14px 30px 12px 40px; background: rgba(110,136,108,.16); }
+.art-note-label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; opacity: .65; }
+.art-note strong { display: block; margin-top: 12px; font-size: 25px; line-height: 1.2; overflow-wrap: anywhere; }
+.art-note small { display: block; margin-top: 10px; font-size: 16px; line-height: 1.4; opacity: .7; overflow-wrap: anywhere; }
+.art-notes-hint { margin-top: 20px; font-size: 13px; opacity: .6; }
+@keyframes art-notes-in { from { transform: translateX(35px); } to { transform: translateX(0); } }
+@media (prefers-reduced-motion: reduce) { .art-notes { animation: none; } .art-main { transition: none; } }
+
 /* Night (dim red clock) — kept above a minimum readable brightness */
 .night { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 66; background: #000; display: none; place-items: center; cursor: pointer; }
 .stage[data-mode="night"] .night { display: grid; }

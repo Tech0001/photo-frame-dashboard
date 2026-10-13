@@ -133,6 +133,7 @@
       node.classList.add('is-in');
       node.style.opacity = '';
       old.forEach(function (o) { o.remove(); });
+      if (self.o.onShown) self.o.onShown(slide, node);
     }
     if (first && !first.complete) { first.addEventListener('load', show); first.addEventListener('error', show); setTimeout(show, 2500); }
     else show();
