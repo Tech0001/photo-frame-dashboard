@@ -39,7 +39,7 @@
     }).join('') + '</div>';
   }
   function work(rows) {
-    return '<section class="eg-board eg-card"><header><h3>Delivery map</h3><span class="eg-map-key">✓ reported · ○ pending · ? unknown</span></header><p class="eg-map-note">Each tile is a reported scope; scopes can overlap. Tap for evidence.</p><div class="eg-work-scroll" data-eg-scroll="work"><div class="eg-work-grid">' + (rows.length ? rows.map(function (row) {
+    return '<section class="eg-board eg-card"><header><h3>Delivery map</h3><span class="eg-map-key">✓ reported · ○ pending · ? unknown</span></header><p class="eg-map-note">Fully reported scopes (may overlap), not overall completion. Tap for evidence.</p><div class="eg-work-scroll" data-eg-scroll="work"><div class="eg-work-grid">' + (rows.length ? rows.map(function (row) {
       var cells = stages.map(function (s) {
         var v = row.stages[s[0]], state = stageState(v);
         return '<span class="eg-cell' + (v === true ? ' is-reported' : v === false ? ' is-pending' : ' is-unknown') + '" title="' + s[1] + ': ' + state + '" aria-label="' + s[1] + ': ' + state + '">' + (v === true ? '✓' : v === false ? '○' : '?') + '<small>' + s[1] + '</small></span>';

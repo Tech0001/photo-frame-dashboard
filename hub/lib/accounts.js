@@ -63,7 +63,7 @@ async function fetchCodex(creds) {
   if (exp && exp < Date.now()) throw new Error('The saved login token has expired. Paste a fresh auth.json (run "codex login" again).');
   const headers = { Authorization: 'Bearer ' + creds.access_token, Accept: 'application/json', 'User-Agent': 'codex-cli' };
   if (creds.account_id) headers['ChatGPT-Account-Id'] = creds.account_id;
-  const res = await fetch('https://chatgpt.com/backend-api/wham/usage', { headers, signal: AbortSignal.timeout(15000) });
+  const res = await fetch('https://chatgpt.com/backend-api/wham/usage', { headers, redirect: 'error', signal: AbortSignal.timeout(15000) });
   if (res.status === 401 || res.status === 403) throw new Error('ChatGPT rejected the login token (expired or revoked). Paste a fresh auth.json.');
   if (!res.ok) throw new Error('ChatGPT answered HTTP ' + res.status);
   const j = await res.json();
@@ -90,8 +90,8 @@ const providers = {
 function status(secrets) {
   const acc = secrets.accounts || {};
   return Object.values(providers).map((p) => {
-    const c = acc[p.id], exp = c ? p.expiry(c) : null;
-    return { id: p.id, name: p.label, unofficial: p.unofficial, linked: !!c, expiresAt: exp, expired: !!(exp && exp < Date.now()) };
+    const c = acc[p.id], local = !!(c && c.source === 'local'), exp = c && !local ? p.expiry(c) : null;
+    return { id: p.id, name: p.label, unofficial: p.unofficial, linked: !!c, source: local ? 'local' : 'saved', expiresAt: exp, expired: !!(exp && exp < Date.now()) };
   });
 }
 
@@ -108,7 +108,7 @@ async function refreshAll(secrets, agents, force) {
     lastRun = Date.now();
     for (const p of Object.values(providers)) {
       const c = secrets.accounts && secrets.accounts[p.id];
-      if (!c) continue;
+      if (!c || c.source === 'local') continue;
       try {
         const r = await p.fetch(c);
         if (!secrets.accounts || secrets.accounts[p.id] !== c) continue; // changed/unlinked while fetching
@@ -126,6 +126,7 @@ async function test(secrets, id) {
   const p = providers[id], c = secrets.accounts && secrets.accounts[id];
   if (!Object.hasOwn(providers, id)) throw bad('unknown account');
   if (!c) throw bad('Link the account first (and save), then test');
+  if (c.source === 'local') return { ok: true, plan: 'PC login sync', meters: [], message: 'Credentials are read on the PC. Check Agents → Usage after its next sync.' };
   try {
     const r = await p.fetch(c);
     return { ok: true, plan: r.plan, meters: r.meters.map((m) => m.label + ' ' + m.used + '%'), credits: r.credits, shape: r.shape };
