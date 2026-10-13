@@ -92,3 +92,9 @@ test('leaf subtasks show only zero or one hundred percent from their checkbox',a
  const html=(await view(r)).html();assert.match(html,/50<small>%/);assert.match(html,/100%/);assert.match(html,/>0%/);
  assert.match(html,/Checked subtasks ÷ total/);
 });
+
+test('rounding never shows one hundred percent for an unchecked checklist',async()=>{
+ const r=report(),base=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/progress-sample-v2.json'))).sections[0].items[0];
+ r.sections=[{id:'S1',title:'Acceptance',coverage:'partial',items:[{...base,progress:{completed:249,total:250,basis:'checkboxes',history:[]}}],progress:{completed:249,total:250,basis:'section-checklist',history:[]}}];
+ const html=(await view(r)).html();assert.match(html,/99<small>%/);assert.match(html,/99%/);assert(!html.includes('100%'));
+});

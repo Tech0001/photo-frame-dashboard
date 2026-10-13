@@ -67,7 +67,7 @@
     function before(time) { return progress.history.filter(function (p) { return Date.parse(p.at) <= time; }).sort(function (a,b) { return Date.parse(b.at) - Date.parse(a.at); })[0]; }
     function difference(a,b) { return a && b && a.basis === b.basis && a.total === b.total ? Math.round((a.completed - b.completed) / a.total * 1000) / 10 : null; }
     var start = before(today), previous = before(yesterday);
-    return { percent:Math.round(progress.completed / progress.total * 100), today:Date.parse(data.report.updatedAt) >= today ? difference(progress,start) : null, yesterday:difference(start,previous) };
+    return { percent:(progress.completed === progress.total ? 100 : Math.min(99, Math.round(progress.completed / progress.total * 100))), today:Date.parse(data.report.updatedAt) >= today ? difference(progress,start) : null, yesterday:difference(start,previous) };
   }
   function deltaText(value, label) { return value == null ? '— ' + label : (value > 0 ? '+' : '') + value + ' pp ' + label; }
   function changeLine(numbers) {
