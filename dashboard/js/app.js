@@ -238,7 +238,7 @@
   // ------------------------------------------------------------ sheets (modal cards)
   App.sheet = function (html, opts) {
     opts = opts || {};
-    var layer = $('#sheetLayer');
+    var layer = $('#sheetLayer'), openedAt=Date.now();
     layer.innerHTML = '<div class="sheet-scrim"></div><div class="sheet ' + (opts.cls || '') + '">' +
       '<button class="sheet-x" data-close aria-label="Close">' + App.icon('x', 28) + '</button>' + html + '</div>';
     layer.classList.add('is-open');
@@ -249,7 +249,8 @@
       layer.innerHTML = '';
     }
     App.closeSheet = close;
-    layer.querySelector('.sheet-scrim').addEventListener('click', close);
+    // The release of a touch that opened the panel can land on its new scrim.
+    layer.querySelector('.sheet-scrim').addEventListener('click', function(){if(Date.now()-openedAt>=350)close();});
     App.$$('[data-close]', layer).forEach(function (b) { b.addEventListener('click', close); });
     if (opts.onMount) opts.onMount(layer.querySelector('.sheet'), close);
     return close;
