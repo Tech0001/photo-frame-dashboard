@@ -21,10 +21,10 @@
     }).join('');
     var backupState = stale && b.configured ? 'unknown' : b.state;
     var backupTitle = stale && b.configured ? 'Last known backup' : b.state === 'ok' ? 'Backed up' : b.state === 'overdue' ? 'Backup overdue' : b.state === 'error' ? 'Backup needs attention' : b.configured ? 'Backup status unknown' : 'Connect Time Machine';
-    return '<div class="lab-overview"><span class="lab-overview-title">' + summary + '</span><span>' + (active.length ? count + ' of ' + active.length + ' checks passed' : 'Set up in server Connections → Homelab') + '</span></div>' +
+    return '<div class="lab-overview"><span class="lab-overview-title">' + summary + '</span><span>' + (active.length ? count + ' of ' + active.length + ' checks passed' : 'Set up in Hub → Connections → Homelab') + '</span></div>' +
       '<section class="nas-card lab-services" aria-label="Services">' + rows + '</section>' +
       '<section class="nas-card lab-backup"><div class="lab-backup-heading"><div><div class="label">Time Machine · ' + esc(b.label || 'VM backup') + '</div><h2 class="serif lab-' + esc(backupState) + '">' + backupTitle + '</h2></div><div class="lab-last"><span class="label">Last successful backup</span><strong>' + esc(dateTime(b.lastSuccess)) + '</strong></div></div>' +
-      '<div class="lab-backup-detail"><span>' + esc(b.detail || 'Add the backup status file in server settings') + '</span>' +
+      '<div class="lab-backup-detail"><span>' + esc(b.detail || 'Add the backup status file in Hub settings') + '</span>' +
       (b.snapshots != null ? '<span><b class="num">' + b.snapshots + '</b> snapshots</span>' : '') +
       (b.repoBytes != null ? '<span><b class="num">' + bytes(b.repoBytes) + '</b> stored</span>' : '') +
       (b.durationSeconds != null ? '<span>Last run <b class="num">' + upfmt(b.durationSeconds) + '</b></span>' : '') + '</div></section>' +
@@ -34,7 +34,7 @@
     return '<div class="lab-metric"><span class="label">' + esc(label) + '</span><strong class="num">' + esc(value == null ? '–' : value) + '</strong><span>' + esc(hint || '') + '</span></div>';
   }
   function count(value) { return value == null ? null : value.toLocaleString(); }
-  function detailMessage(d) { return '<section class="nas-card"><h2 class="serif lab-detail-title">Connect ' + (V.tab === 'github' ? 'GitHub' : V.tab === 'gitea' ? 'Gitea' : 'Pi-hole') + '</h2><p>' + esc(d && d.detail || 'Add an API token in server Connections → Homelab') + '</p></section>'; }
+  function detailMessage(d) { return '<section class="nas-card"><h2 class="serif lab-detail-title">Connect ' + (V.tab === 'github' ? 'GitHub' : V.tab === 'gitea' ? 'Gitea' : 'Pi-hole') + '</h2><p>' + esc(d && d.detail || 'Add an API token in Hub → Connections → Homelab') + '</p></section>'; }
   function giteaBody(d) {
     var github = V.tab === 'github';
     if (!d || d.state === 'off' || !d.login) return detailMessage(d);
@@ -56,7 +56,7 @@
     return (d.state !== 'ok' ? '<div class="nas-banner">' + esc(d.detail) + '</div>' : '') +
       '<div class="lab-details"><section class="nas-card lab-pi-summary"><h2 class="serif lab-detail-title">Pi-hole</h2><p class="lab-blocking ' + (d.blocking === true ? 'lab-ok' : d.blocking === false ? 'lab-warning' : 'lab-unknown') + '">' + (d.blocking === true ? 'Blocking enabled' : d.blocking === false ? 'Blocking disabled' : 'Blocking status unknown') + '</p><div class="lab-metrics">' +
       metric('DNS queries', count(d.queries), d.period || 'Today') + metric('Blocked', d.blockedPercent == null ? null : d.blockedPercent.toFixed(1) + '%', d.blocked == null ? '' : count(d.blocked) + (d.period ? ' queries · ' + d.period.toLowerCase() : ' queries today')) + metric('Active clients', count(d.clients), d.period || 'Today') + metric('Blocked domains', count(d.domains), 'In blocklists') + '</div>' +
-      (m.state === 'ok' ? '<div class="lab-gravity"><span class="label">Host uptime</span><strong>' + esc(upfmt(m.uptimeSeconds)) + '</strong><span>Last boot · ' + esc(dateTime(m.bootedAt)) + '</span></div><p class="lab-footnote">' + esc(m.os) + '</p>' : '<p class="lab-footnote">' + esc(m.configured ? 'Management connection unavailable; uptime unknown.' : 'Connect management in server settings for uptime and last boot.') + '</p>') + '</section>' +
+      (m.state === 'ok' ? '<div class="lab-gravity"><span class="label">Host uptime</span><strong>' + esc(upfmt(m.uptimeSeconds)) + '</strong><span>Last boot · ' + esc(dateTime(m.bootedAt)) + '</span></div><p class="lab-footnote">' + esc(m.os) + '</p>' : '<p class="lab-footnote">' + esc(m.configured ? 'Management connection unavailable; uptime unknown.' : 'Connect management in Hub settings for uptime and last boot.') + '</p>') + '</section>' +
       '<section class="nas-card lab-pi-updates"><h2 class="serif lab-detail-title">Updates</h2>' + versions + '<div class="lab-gravity"><span class="label">Blocklists last refreshed</span><strong>' + esc(dateTime(d.gravityUpdated)) + '</strong></div>' +
       (m.updateReason ? '<p class="lab-update-note">' + esc(m.updateReason) + '</p>' : '') + '<p class="lab-footnote">Last software update through the hub: ' + esc(dateTime(m.softwareUpdatedAt)) + '. Blocklist refresh is separate.</p></section></div>';
   }
@@ -65,13 +65,13 @@
   }
   function render() {
     if (!V.el) return;
-    var d = V.data, legacy = false;
+    var d = V.data;
     var at = d && d.updated ? Date.parse(d.updated) : 0;
     var stale = !!V.error || (!!at && Date.now() - at > POLL_MS + 15000);
     var stamp = stale ? 'Connection lost · last known status' : at ? 'Checked ' + App.fmt.time(new Date(at)) : 'Loading…';
     var scroll = V.el.querySelector('.nas'), top = scroll ? scroll.scrollTop : 0;
-    V.el.innerHTML = '<div class="nas' + (legacy ? '' : ' nas-services') + '">' +
-      '<header class="nas-top"><div><div class="label">' + (legacy ? 'Proxmox · ProxMenux' : 'Services & backups') + (d && d.sample ? ' · sample data' : '') + '</div><h1 class="serif">Homelab</h1></div>' +
+    V.el.innerHTML = '<div class="nas' + ' nas-services' + '">' +
+      '<header class="nas-top"><div><div class="label">' + 'Services & backups' + (d && d.sample ? ' · sample data' : '') + '</div><h1 class="serif">Homelab</h1></div>' +
       '<div class="nas-sync"><span class="label">' + stamp + '</span><button class="icon-btn" data-refresh aria-label="Refresh">' + App.icon('undo', 26) + '</button></div></header>' +
       (stale ? '<div class="nas-banner">Current status unavailable. Check the hub connection.</div>' : '') +
       (tabs() + (d ? '<div class="lab-content' + (stale ? ' lab-stale' : '') + '">' + (V.tab === 'github' ? giteaBody(d.github) : V.tab === 'gitea' ? giteaBody(d.gitea) : V.tab === 'pihole' ? piholeBody(d.pihole) : servicesBody(d, stale)) + '</div>' : '<section class="nas-card nas-msg"><p>' + (V.error ? esc(V.error) : 'Checking services…') + '</p></section>')) + '</div>';
