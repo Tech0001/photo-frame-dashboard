@@ -1,0 +1,69 @@
+/* Sakura Mochi surface treatment, inspired by the installed Omarchy theme.
+   Static gradients and SVG avoid a costly live blur on the Android 6 frame. */
+.stage[data-theme="sakura-mochi"] {
+  background-color: #0B0D11;
+  background-image: linear-gradient(110deg,rgba(11,13,17,.3),rgba(11,13,17,.78)), url('/theme-assets/sakura-mochi.svg'), radial-gradient(ellipse at 90% 0%,rgba(242,56,136,.14),rgba(11,13,17,0) 64%), radial-gradient(ellipse at 5% 95%,rgba(90,161,93,.14),rgba(11,13,17,0) 60%);
+  background-size: cover, 1280px 800px, cover, cover;
+  box-shadow: inset 0 0 0 1px rgba(90,161,93,.35);
+}
+.stage[data-theme="sakura-mochi"] .rail {
+  background: linear-gradient(180deg,rgba(11,13,17,.97),rgba(21,24,25,.94));
+  border-right: 1px solid rgba(111,148,133,.45);
+}
+.stage[data-theme="sakura-mochi"] .rail-item {
+  margin: 2px 6px; border-radius: 16px; height: 68px;
+}
+.stage[data-theme="sakura-mochi"] .rail-item.is-active {
+  background: linear-gradient(135deg,rgba(242,56,136,.22),rgba(111,148,133,.09));
+  color: #FFF1F6;
+  box-shadow: inset 0 -2px 0 #F23888, inset 0 0 0 1px rgba(240,183,202,.2), 0 0 16px rgba(242,56,136,.08);
+}
+.stage[data-theme="sakura-mochi"] .h-clock,
+.stage[data-theme="sakura-mochi"] .h-weather,
+.stage[data-theme="sakura-mochi"] .h-presence { border-bottom: 1px solid rgba(111,148,133,.65); }
+.stage[data-theme="sakura-mochi"] .h-time { text-shadow: 0 0 26px rgba(242,56,136,.09); }
+.stage[data-theme="sakura-mochi"] .card,
+.stage[data-theme="sakura-mochi"] .nas-card,
+.stage[data-theme="sakura-mochi"] .ag-card,
+.stage[data-theme="sakura-mochi"] .ch-lane,
+.stage[data-theme="sakura-mochi"] .ha-overview,
+.stage[data-theme="sakura-mochi"] .ha-device-list,
+.stage[data-theme="sakura-mochi"] .ha-other > dl,
+.stage[data-theme="sakura-mochi"] .sheet {
+  background: var(--panel-surface) padding-box, var(--panel-edge) border-box;
+  border: 1px solid transparent;
+  border-radius: var(--panel-radius);
+  box-shadow: var(--panel-shadow);
+}
+.stage[data-theme="sakura-mochi"] .h-hero {
+  border-radius: 30px 18px 34px 18px;
+  border: 1px solid rgba(240,183,202,.25);
+  box-shadow: var(--panel-shadow);
+}
+.stage[data-theme="sakura-mochi"] .h-hero--empty {
+  background: linear-gradient(120deg,rgba(242,56,136,.11),rgba(90,161,93,.08)), var(--panel-surface);
+  color: var(--ink);
+}
+.stage[data-theme="sakura-mochi"] .h-hero--empty .label--light { color: var(--mute); opacity: 1; }
+.stage[data-theme="sakura-mochi"] .h-photo { border-radius: 28px 14px 30px 14px; box-shadow: var(--panel-shadow); }
+.stage[data-theme="sakura-mochi"] .h-lane { border-top-width: 2px; }
+.stage[data-theme="sakura-mochi"] .h-ev { border-radius: 16px 10px 20px 10px; }
+.stage[data-theme="sakura-mochi"] .seg { border-radius: 18px; background: rgba(111,148,133,.09); box-shadow: inset 0 0 0 1px rgba(111,148,133,.22); }
+.stage[data-theme="sakura-mochi"] .seg button { border-radius: 14px; }
+.stage[data-theme="sakura-mochi"] .seg button.is-on { background: rgba(242,56,136,.18); color: #FFF1F6; box-shadow: inset 0 -2px 0 #F23888; }
+.stage[data-theme="sakura-mochi"] .s-tile,
+.stage[data-theme="sakura-mochi"] .s-ac-row,
+.stage[data-theme="sakura-mochi"] .mo-cell {
+  background: var(--panel-surface);
+  border-radius: 18px 10px 22px 10px;
+  box-shadow: inset 0 0 0 1px rgba(111,148,133,.24);
+}
+.stage[data-theme="sakura-mochi"] .s-tile.is-on { background: linear-gradient(135deg,rgba(242,56,136,.23),rgba(90,161,93,.12)); color: #FFF1F6; box-shadow: inset 0 -2px 0 rgba(242,56,136,.7); }
+.stage[data-theme="sakura-mochi"] .s-input-wrap { background: rgba(111,148,133,.07); border-radius: 18px; box-shadow: inset 0 0 0 1px rgba(111,148,133,.4); }
+.stage[data-theme="sakura-mochi"] .s-cat-h { border-bottom-color: rgba(111,148,133,.55); }
+.stage[data-theme="sakura-mochi"] .btn--solid { background: linear-gradient(125deg,#F23888,#FF6AA7); color: #0B0D11; border-radius: 16px; box-shadow: 0 4px 16px rgba(242,56,136,.12); }
+.stage[data-theme="sakura-mochi"] .btn--ghost { border-radius: 16px; }
+.stage[data-theme="sakura-mochi"] button:focus-visible,
+.stage[data-theme="sakura-mochi"] input:focus-visible,
+.stage[data-theme="sakura-mochi"] select:focus-visible { outline: 2px solid #8BF0A1; outline-offset: 3px; }
+
