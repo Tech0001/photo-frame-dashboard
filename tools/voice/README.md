@@ -2,7 +2,10 @@
 
 The Voice button offers tap-to-talk and typed questions. The kiosk records up to
 30 seconds only after a tap, stops on demand or when leaving the app, and deletes
-its temporary recording. Hub forwards it to an authenticated local worker.
+the recording after processing. Capture uses bounded, mono PCM WAV in memory,
+with a fresh AudioRecord session for each question. This avoids AAC recorder
+timestamp failures on the Echo’s Android build. Hub forwards it to an
+authenticated local worker.
 
 The worker supports either an installed Nemotron speech runtime/model or a local
 faster-whisper model. Piper supplies the spoken voice. General conversation uses

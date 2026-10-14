@@ -4,6 +4,8 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.media.MediaRecorder;
+import android.media.AudioRecord;
+import android.media.AudioFormat;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
@@ -20,9 +22,13 @@ final class VoiceCapture {
   private final Activity activity;
   private final WebView web;
   private final Handler handler = new Handler(Looper.getMainLooper());
-  private MediaRecorder recorder;
-  private File recording;
-  private long startedAt;
+  private Capture capture;
+  private static final int RATE=16000, MAX_BYTES=RATE*2*30;
+  private static final class Capture {
+    final AudioRecord recorder;
+    volatile boolean stopped, discard;
+    Capture(AudioRecord recorder){this.recorder=recorder;}
+  }
   private String endpoint;
   private String history;
   private String origin;
@@ -44,7 +50,7 @@ final class VoiceCapture {
     JSONObject o=new JSONObject();try{o.put("phase",phase);if(error!=null)o.put("error",error);}catch(Exception ignored){}return o;
   }
   void start(String dashboardUrl,String displayId,String conversation) {
-    if(recorder!=null||sending)return;
+    if(capture!=null||sending){emit(message("error","Wait for the previous recording to finish."));return;}
     origin=dashboardUrl;canceled=false;
     if(activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){
       activity.requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},71);
@@ -53,48 +59,73 @@ final class VoiceCapture {
     Uri u=Uri.parse(dashboardUrl);
     endpoint=u.buildUpon().path("/api/voice/").clearQuery().fragment(null).appendQueryParameter("display",displayId).build().toString();
     history=conversation;
+    AudioRecord recorder=null;
     try {
-      recording=File.createTempFile("hub-voice-",".m4a",activity.getCacheDir());
-      recorder=new MediaRecorder();recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-      recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-      recorder.setAudioSamplingRate(16000);recorder.setAudioChannels(1);recorder.setAudioEncodingBitRate(64000);
-      recorder.setOutputFile(recording.getAbsolutePath());recorder.setMaxDuration(30000);
-      recorder.setOnInfoListener((r,what,extra)->{if(what==MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED)stop();});
-      recorder.setOnErrorListener((r,what,extra)->{
-        if(r!=recorder)return;
-        Log.w("HubVoice","Recorder failed: "+what+"/"+extra);
-        release();delete();emit(message("error","Android lost microphone capture. Close Voice and try again."));
-      });
-      recorder.prepare();recorder.start();startedAt=SystemClock.elapsedRealtime();emit(message("recording",null));
-    } catch(Exception e){release();delete();emit(message("error","Could not start the microphone. Check permission and try again."));}
-  }
-  void stop(){
-    if(recorder==null)return;
-    long duration=SystemClock.elapsedRealtime()-startedAt;
-    try{recorder.stop();}catch(Exception e){
-      Log.w("HubVoice","Recorder stop failed after "+duration+" ms",e);
-      release();delete();
-      emit(message("error",duration<1000?"The recording was too short. Speak for a moment, then tap Stop.":"Android captured no microphone audio. Close Voice and try again; if it continues, restart the Echo."));return;
+      int minimum=AudioRecord.getMinBufferSize(RATE,AudioFormat.CHANNEL_IN_MONO,AudioFormat.ENCODING_PCM_16BIT);
+      if(minimum<=0)throw new IOException("Unsupported microphone format");
+      recorder=new AudioRecord(MediaRecorder.AudioSource.MIC,RATE,AudioFormat.CHANNEL_IN_MONO,AudioFormat.ENCODING_PCM_16BIT,Math.max(minimum*2,8192));
+      if(recorder.getState()!=AudioRecord.STATE_INITIALIZED)throw new IOException("Microphone unavailable");
+      recorder.startRecording();
+      if(recorder.getRecordingState()!=AudioRecord.RECORDSTATE_RECORDING)throw new IOException("Microphone did not start");
+      final Capture session=new Capture(recorder);capture=session;
+      emit(message("recording",null));
+      new Thread(()->collect(session),"HubVoiceCapture").start();
+    } catch(Exception e){
+      if(recorder!=null)recorder.release();
+      Log.w("HubVoice","Microphone start failed",e);
+      emit(message("error","Could not start the microphone. Check permission and try again."));
     }
-    release();sending=true;emit(message("processing",null));
-    final File audio=recording;recording=null;
+  }
+  private void collect(Capture session){
+    ByteArrayOutputStream pcm=new ByteArrayOutputStream();
+    String failure=null;
+    long started=SystemClock.elapsedRealtime(),lastData=started;
+    try{
+      byte[] buffer=new byte[2048];
+      while(!session.stopped&&pcm.size()<MAX_BYTES&&SystemClock.elapsedRealtime()-started<30000){
+        int n=session.recorder.read(buffer,0,Math.min(buffer.length,MAX_BYTES-pcm.size()),AudioRecord.READ_NON_BLOCKING);
+        if(n<0)throw new IOException("Microphone read failed: "+n);
+        if(n>0){pcm.write(buffer,0,n);lastData=SystemClock.elapsedRealtime();}
+        else if(SystemClock.elapsedRealtime()-lastData>2000)throw new IOException("Microphone stopped providing samples");
+        else Thread.sleep(10);
+      }
+      if(pcm.size()<RATE/5)failure="The recording was too short. Speak for a moment, then tap Stop.";
+    }catch(Exception e){Log.w("HubVoice","PCM capture failed",e);failure="Android lost microphone capture. Close Voice and try again.";}
+    finally{
+      try{session.recorder.stop();}catch(Exception ignored){}
+      session.recorder.release();
+    }
+    Log.i("HubVoice","PCM capture: "+pcm.size()+" bytes in "+(SystemClock.elapsedRealtime()-started)+" ms");
+    final String error=failure;
+    final byte[] bytes=error==null&&!session.discard?PcmWave.wrap(pcm.toByteArray(),RATE):null;
+    handler.post(()->{
+      if(capture!=session)return;
+      capture=null;
+      if(session.discard||canceled)return;
+      if(error!=null){emit(message("error",error));return;}
+      sending=true;emit(message("processing",null));
+      upload(bytes);
+    });
+  }
+  void stop(){if(capture!=null)capture.stopped=true;}
+  private void upload(final byte[] bytes){
     new Thread(()->{
       try{
         String statusUrl=endpoint.replace("/api/voice/","/api/voice/status");
         JSONObject status=new JSONObject(request(statusUrl,null,null));
         if(!status.optBoolean("ready"))throw new IOException("Voice PC unavailable");
-        byte[] bytes=read(new FileInputStream(audio),5*1024*1024);
+        if(canceled)return;
         JSONObject answer=new JSONObject(request(endpoint.replace("/api/voice/","/api/voice/audio"),bytes,status.getString("token")));
         answer.put("phase","reply");emit(answer);
       }catch(Exception e){emit(message("error","Could not process the recording. Check that the voice PC is connected, then try again."));}
-      finally{audio.delete();handler.post(()->sending=false);}
+      finally{handler.post(()->sending=false);}
     },"HubVoiceUpload").start();
   }
   private String request(String address,byte[] body,String token) throws Exception {
     HttpURLConnection c=(HttpURLConnection)new URL(address).openConnection();
     c.setConnectTimeout(10000);c.setReadTimeout(180000);c.setInstanceFollowRedirects(false);
     try {
-      if(body!=null){c.setRequestMethod("POST");c.setDoOutput(true);c.setRequestProperty("Content-Type","audio/mp4");c.setRequestProperty("X-Voice-Token",token);if(history!=null&&!history.isEmpty()&&history.length()<7000)c.setRequestProperty("X-Voice-History",history);c.setFixedLengthStreamingMode(body.length);try(OutputStream out=c.getOutputStream()){out.write(body);}}
+      if(body!=null){c.setRequestMethod("POST");c.setDoOutput(true);c.setRequestProperty("Content-Type","audio/wav");c.setRequestProperty("X-Voice-Token",token);if(history!=null&&!history.isEmpty()&&history.length()<7000)c.setRequestProperty("X-Voice-History",history);c.setFixedLengthStreamingMode(body.length);try(OutputStream out=c.getOutputStream()){out.write(body);}}
       int code=c.getResponseCode();if(code!=200)throw new IOException("Voice HTTP "+code);
       return new String(read(c.getInputStream(),8*1024*1024),"UTF-8");
     } finally{c.disconnect();}
@@ -104,7 +135,5 @@ final class VoiceCapture {
       byte[] b=new byte[8192];int n;while((n=in.read(b))!=-1){if(out.size()+n>limit)throw new IOException("Voice response too large");out.write(b,0,n);}return out.toByteArray();
     }
   }
-  void cancel(){canceled=true;release();delete();}
-  private void release(){if(recorder!=null){recorder.release();recorder=null;}}
-  private void delete(){if(recording!=null){recording.delete();recording=null;}}
+  void cancel(){canceled=true;if(capture!=null){capture.discard=true;capture.stopped=true;}}
 }
