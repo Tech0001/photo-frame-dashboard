@@ -94,3 +94,10 @@ test('photo serving ignores symlinks, resizes valid photos, and rejects forged I
   const resized = await library.sized(images[0].id,320), meta = await sharp(resized.file).metadata();assert.equal(meta.width,320);
   await assert.rejects(()=>library.upload(Buffer.from('not-image'),'invalid.png'),/Unsupported image/);
 });
+test('iCal feeds expand recurring events, respect exclusions and reuse the cached document',async()=>{
+ const {createCalendar}=require('../lib/calendar');let reads=0;
+ const ics='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:weekly-test\r\nDTSTART:20261015T090000Z\r\nDTEND:20261015T100000Z\r\nRRULE:FREQ=WEEKLY;COUNT=3\r\nEXDATE:20261022T090000Z\r\nSUMMARY:Weekly appointment\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n';
+ const reader=createCalendar(async()=>{reads++;return new Response(ics,{status:200});});
+ const input={cfg:{calendars:[{name:'Calendar',secret:'feed',people:['adult']}]},secrets:{ical:{feed:'https://calendar.example/private-feed'}},state:{events:[]},from:new Date('2026-10-01'),to:new Date('2026-11-01')};
+ const data=await reader(input);assert.equal(data.events.length,2);assert.equal(data.events[0].start,'2026-10-15T09:00:00.000Z');assert.deepEqual(data.events[0].people,['adult']);assert(!JSON.stringify(data).includes('private-feed'));await reader(input);assert.equal(reads,1);
+});
