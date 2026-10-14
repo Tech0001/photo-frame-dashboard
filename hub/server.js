@@ -21,7 +21,7 @@ function createHub(options = {}) {
   tune.setLive(tune.resolve(tune.fromState(store.state.settings)));
   const route = (method,url,handler,opts = {}) => routes.set(method + ' ' + url,{handler,...opts});
   const saveFiles = () => { writeJsonAtomic(cfgFile,cfg); writeJsonAtomic(secFile,secrets); };
-  function configView() { return { timezone:cfg.timezone,weather:cfg.weather,photosDir:cfg.photosDir,calendars:(cfg.calendars || []).map(c => ({name:c.name,secret:c.secret,people:c.people || [],configured:!!secrets.ical?.[c.secret]})),adminPasswordSet:!!secrets.admin_password,...Object.fromEntries([...settings].map(([key,plugin]) => [key,plugin.view()])) }; }
+  function configView() { return { timezone:cfg.timezone,weather:cfg.weather,photosDir:cfg.photosDir,calendars:(cfg.calendars || []).map(c => ({name:c.name,secret:c.secret,people:c.people || [],configured:!!secrets.ical?.[c.secret]})),adminPasswordSet:!!secrets.admin_password,_integrationForms:Object.fromEntries([...settings].map(([key,plugin]) => [key,{fields:plugin.fields || [],actions:plugin.actions || []}])),...Object.fromEntries([...settings].map(([key,plugin]) => [key,plugin.view()])) }; }
   const ctx = { cfg,secrets,cfgFile,secFile,store,photos,route,send,readBody,problem,saveFiles,tune,addState:fn => extensions.push(fn),settings:(key,value) => settings.set(key,value),onClose:fn => tasks.push(fn) };
   const plugins = options.plugins || (fs.existsSync(path.join(ROOT,'integrations')) ? fs.readdirSync(path.join(ROOT,'integrations')) : []).filter(name => name.endsWith('.js')).map(name => require(path.join(ROOT,'integrations',name)));
   for (const plugin of plugins) plugin.install(ctx);
