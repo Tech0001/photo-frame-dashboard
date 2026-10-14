@@ -5,6 +5,7 @@ import './app.js';
 import './live.js';
 import './agent-data.js';
 import './themes.js';
+import './display-settings.js';
 import './system.js';
 import './slideshow.js';
 import './weather-details.js';

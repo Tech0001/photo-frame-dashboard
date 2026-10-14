@@ -1,0 +1,18 @@
+/* Clock tap: household display settings, independent of the demo drawer. */
+.sheet--display-settings { width:860px; max-height:calc(100% - 40px); overflow:auto; padding:28px; }
+.sheet--display-settings h2 { font-size:42px; line-height:1; padding-right:48px; }
+.ds-intro { color:var(--mute); font-size:18px; margin:10px 0 18px; }
+.ds-themes { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.ds-themes > button { background:var(--paper); border:2px solid var(--line); border-radius:12px; overflow:hidden; }
+.ds-themes > button[aria-pressed="true"] { border-color:var(--accent,var(--ink)); box-shadow:0 0 0 1px var(--accent,var(--ink)); }
+.ds-sample { display:flex; align-items:center; gap:14px; background:var(--sample-bg); color:var(--sample-ink); padding:12px; }
+.ds-sample i { display:block; flex:none; width:7px; height:32px; border-radius:4px; background:var(--sample-accent); }
+.ds-sample b { display:block; background:var(--sample-card); padding:5px 12px; border-radius:6px; font-size:25px; }
+.ds-themes > button > span:last-child { display:block; padding:9px 12px; font-size:18px; font-weight:700; }
+.ds-timers { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:22px; }
+
+.ds-timers label { display:flex; flex-direction:column; gap:8px; font-size:19px; }
+.ds-timers select { min-height:52px; border:1px solid var(--line); border-radius:10px; font:inherit; background:var(--paper-2); color:var(--ink); padding:8px 12px; }
+.ds-note { font-size:15px; color:var(--mute); margin-top:18px; }
+.ds-status { font-size:17px; min-height:24px; margin-top:12px; color:var(--warning-emphasis,#B45F00); }
+.ds-actions { display:flex; justify-content:flex-end; gap:12px; margin-top:12px; }
