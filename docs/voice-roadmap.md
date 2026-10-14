@@ -8,7 +8,10 @@
   Detection stays on the display; only a detected question goes through the
   existing local voice worker. On-device file tests recognized two positive
   clips and rejected four negative clips, averaging 53–56 ms per 80 ms frame.
-  The microphone listener is running; real-voice room testing is still needed.
+  The user confirmed real-voice wake and reply work on the Echo.
+- [x] Add a wake acknowledgment sound, reactive blue listening waves, and
+  automatic submission after three seconds of quiet. Keep controls for cancel
+  and early submission, and a preview that never records.
 - [ ] Connect spoken requests to a coding assistant with the live display
   tools. The current local Bonsai conversation is separate from the active
   coding-assistant chat; that routing is not connected yet.

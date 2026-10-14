@@ -62,13 +62,14 @@ public class MainActivity extends Activity {
       new AlertDialog.Builder(MainActivity.this)
           .setTitle("Home HQ")
           .setItems(new String[] {"Open launcher", "Android settings", "Wi-Fi settings", "Reload dashboard",
-              wake!=null&&wake.isEnabled()?"Pause Hey Orbis wake word":"Enable Hey Orbis wake word"},
+              wake!=null&&wake.isEnabled()?"Pause Hey Orbis wake word":"Enable Hey Orbis wake word", "Preview wake sound and waves"},
               (dialog, which) -> {
                 if (which == 0) openLauncher();
                 else if (which == 1) startActivity(new Intent(Settings.ACTION_SETTINGS));
                 else if (which == 2) openWifiSettings();
                 else if(which==3) dashboard.reload();
-                else if(wake!=null) wake.setEnabled(!wake.isEnabled());
+                else if(which==4&&wake!=null) wake.setEnabled(!wake.isEnabled());
+                else if(wake!=null)wake.previewFeedback();
               })
           .setNegativeButton("Back to dashboard", null).show();
     }
@@ -166,6 +167,7 @@ public class MainActivity extends Activity {
     saveOptions(intent);
     applyDebugFlag(intent);
     if(wake!=null&&intent.hasExtra("wake_word"))wake.setEnabled(intent.getBooleanExtra("wake_word",false));
+    if(wake!=null&&intent.getBooleanExtra("debug",false)&&intent.getBooleanExtra("wake_preview",false))wake.previewFeedback();
     String url = requestedUrl(intent);
     if (url != null) dashboard.load(url);
     else if (intent.getBooleanExtra("reset_url", false)) dashboard.load(defaultUrl());

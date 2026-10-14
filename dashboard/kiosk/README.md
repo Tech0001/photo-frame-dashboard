@@ -9,8 +9,10 @@ Hold two fingers still on the dashboard for 1.5 seconds to open the native contr
 - **Reload dashboard** reloads the current URL.
 - **Enable/Pause Hey Orbis wake word** controls optional on-device listening.
   It is off by default. When enabled, say “Hey Orbis” followed by a question;
-  the kiosk sends it to the existing local voice worker after you pause.
+  a short sound and blue waves acknowledge detection. The kiosk sends the
+  question to the existing local voice worker after three seconds of quiet.
   Tapping the listening badge pauses it too. See [voice setup](../../tools/voice/README.md).
+- **Preview wake sound and waves** previews the feedback without recording.
 - **Back to dashboard** dismisses the controls.
 
 ## Dashboard URL

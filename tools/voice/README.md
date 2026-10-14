@@ -17,20 +17,27 @@ It resumes after a normal app launch, provided the dashboard is ready and
 microphone permission remains granted. The dashboard URL must select a display
 profile using `?display=...`.
 
-Say **Hey Orbis**, then your question. Detection uses openWakeWord's shared
+Say **Hey Orbis**. A short locally generated “donk” and blue listening waves
+confirm detection. Then ask your question. Detection uses openWakeWord's shared
 features and protoLabsAI's classifier on the display CPU. Only the subsequent
 question, with a short pre-roll to avoid clipping its first word, goes to Hub.
 Standby audio stays in bounded memory on the display and is never uploaded or
-saved. A question sends after about 1.6 seconds of quiet, or at the 30-second
+saved. The waves respond to microphone level and show a countdown during quiet.
+A question sends after three seconds of quiet (rounded up to the next 80 ms
+audio frame), or at the 30-second
 limit. No question times out after six seconds. **Send now** and **Close** remain
-available. Spoken replies temporarily use an app-private WAV, deleted after
+available on the wave overlay. The short wake cue is excluded from speech
+qualification so it does not itself cause an empty question to be sent. Audio
+is retained during the cue to avoid clipping an immediate question.
+Spoken replies temporarily use an app-private WAV, deleted after
 playback/cancel; conversation history is a short in-memory list.
 
 Listening stops when leaving the kiosk, and wake recognition pauses during
 audio playback to avoid recognizing the assistant's own reply. This initial
 version does not support interrupting speech or waking over music. It resumes
 after playback. A native voice panel keeps this working with an existing Hub
-deployment without requiring a server/frontend update.
+deployment without requiring a server/frontend update. **Preview wake sound and
+waves** in the two-finger controls demonstrates the cue without recording.
 
 Build assets are pinned and checksum-verified by
 `dashboard/kiosk/prepare-wakeword.py`; downloads are ignored by Git. Attribution
