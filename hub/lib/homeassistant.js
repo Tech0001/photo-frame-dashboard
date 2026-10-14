@@ -30,7 +30,7 @@ function cleanToken(value) {
 }
 function connection(cfg, secrets) {
   const h = cleanSettings(cfg.homeassistant), token = secrets.homeassistant_token;
-  if (!h.url || !token) throw bad('Connect Home Assistant in Frame admin → Connections → Home Assistant.');
+  if (!h.url || !token) throw bad('Connect Home Assistant in Hub → Connections → Home Assistant.');
   return { h, token };
 }
 async function request(c, endpoint, fetcher = fetch, image = false, payload) {
