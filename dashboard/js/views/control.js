@@ -333,6 +333,7 @@
 
   App.register('control', {
     show: function (el) {
+      if (App.live && App.homeView) { App.homeView.show(el); return; }
       if (!V.el) {
         V.el = el;
         el.innerHTML = '<div class="hc">' +
@@ -345,7 +346,7 @@
       paint();
       camTimer();
     },
-    resume: function () { camTimer(); },
+    resume: function () { if (App.live && App.homeView) App.homeView.resume(); else camTimer(); },
     hide: function () { clearInterval(V.camTimer); }
   });
 })();
