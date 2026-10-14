@@ -5,6 +5,7 @@ const fsp = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { load } = require('./lib/config');
+const {Displays}=require('./lib/displays');
 const { Store, cleanRecords } = require('./lib/store');
 const tune = require('./lib/tune');
 const { Photos } = require('./lib/photos');
@@ -32,21 +33,29 @@ function createHub(options = {}) {
   const currentTune = () => tune.resolve(tune.fromState(store.state.settings));
   const display = () => Object.fromEntries(['homeSec','ambientSec','theme'].filter(key => currentTune()[key] !== undefined).map(key => [key,currentTune()[key]]));
   function persistTune(input) { const values = tune.clean(input,currentTune()), parts = tune.split(values); store.update(s => { s.settings.display = {...s.settings.display,...parts.display}; s.settings.tune = {...s.settings.tune,...parts.tune}; }); tune.setLive(values); return values; }
-  async function state() {
+  const displays=new Displays(store,tune,currentTune);
+  async function state({req,url} = {}) {
+    const displayId=url?.searchParams.get('display')||'';displays.touch(displayId,req?.socket.remoteAddress);
     const [calendar,images,weather] = await Promise.all([getEvents({cfg,secrets,state:store.state,...range(new URLSearchParams())}),photos.scan(),getWeather(cfg)]);
     const extra = Object.assign({},...await Promise.all(extensions.map(fn => fn())));
-    return {rev:store.state.rev,now:new Date().toISOString(),people:store.peopleOut(),chores:store.choresToday(),groceries:store.state.groceries,stores:store.state.stores,categories:store.state.categories,commonItems:store.state.commonItems,events:calendar.events,feeds:calendar.feeds,photos:images,weather,weatherConfigured:!!cfg.weather,stars:store.state.stars || {},week:{},display:store.state.settings.display,tune:currentTune(),...extra};
+    return {rev:store.state.rev,now:new Date().toISOString(),people:store.peopleOut(),chores:store.choresToday(),groceries:store.state.groceries,stores:store.state.stores,categories:store.state.categories,commonItems:store.state.commonItems,events:calendar.events,feeds:calendar.feeds,photos:images,weather,weatherConfigured:!!cfg.weather,stars:store.state.stars || {},week:{},display:displays.settings(displayId),tune:displays.settings(displayId),displayProfile:displays.profile(displayId),...extra};
   }
   route('GET','/api/state',state);
   route('GET','/api/events',({url}) => getEvents({cfg,secrets,state:store.state,...range(url.searchParams)}));
   route('GET','/api/photos',() => photos.scan(true).then(images => ({photos:images,skippedHeic:photos.skipped})));
   for (const endpoint of ['/api/health','/api/status']) route('GET',endpoint,() => ({ok:true,rev:store.state.rev,uptimeSec:Math.floor((Date.now() - started)/1000),tz:cfg.timezone,calendars:cfg.calendars.length}));
-  route('GET','/api/display-settings',({req}) => { sameOrigin(req); return {token:displayToken,values:display()}; });
-  route('PUT','/api/display-settings',({req,body}) => {
-    if (!equalSecret(req.headers['x-display-token'],displayToken)) throw problem('Reopen display settings',403);
+  route('GET','/api/display-settings',({req,url}) => { sameOrigin(req);const key=url.searchParams.get('display')||'';return {token:displays.token(key,displayToken),values:key?displays.settings(key):display(),profile:displays.profile(key)}; });
+  route('PUT','/api/display-settings',({req,url,body}) => {
+    const key=url.searchParams.get('display')||'';
+    if (!equalSecret(req.headers['x-display-token'],displays.token(key,displayToken))) throw problem('Reopen display settings',403);
     const allowed = Object.keys(display()); if (!body.values || Object.keys(body.values).some(key => !allowed.includes(key))) throw problem('Only display settings can be changed here');
-    persistTune(body.values); return {ok:true,values:display()};
+    if(key){const profile=displays.profile(key);if(!profile)throw problem('Display not registered',404);displays.saveProfile(profile.id,{...displays.profiles()[profile.id],values:body.values});}else persistTune(body.values); return {ok:true,values:key?displays.settings(key):display()};
   });
+  route('POST','/api/displays/register',({req,body})=>displays.register(body,req.socket.remoteAddress));
+  route('GET','/api/admin/displays',()=>displays.view(),{admin:true});
+  route('PUT','/api/admin/display-profile',({body})=>displays.saveProfile(body.id,body),{admin:true});
+  route('PUT','/api/admin/display-assignment',({body})=>displays.assign(body.id,body),{admin:true});
+  route('POST','/api/admin/display-swap',({body})=>displays.swap(body.first,body.second),{admin:true});
   route('POST','/api/chores/toggle',({body}) => { if (!store.toggleChore(body.id,!!body.done)) throw problem('Unknown chore',404); return {ok:true,rev:store.state.rev}; });
   route('PUT','/api/groceries',({body}) => {
     const items = cleanRecords(body.items,'groceries');

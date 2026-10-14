@@ -2,6 +2,7 @@
 import './icons.js';
 import './data.js';
 import './app.js';
+import './display-profile.js';
 import './live.js';
 import './system.js';
 import './slideshow.js';

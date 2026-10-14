@@ -6,12 +6,14 @@
   function replace(target, items) { target.splice.apply(target,[0,target.length].concat(items || [])); }
   function snapshot() { return { chores:Object.fromEntries(D.chores.map(function(c){return [c.id,!!c.done];})), groceries:JSON.stringify(D.groceries), base:D.groceries.map(function(g){return g.id;}) }; }
   async function request(url,method,body) {
+    if(url==='/api/state'&&window.DashboardDisplay)url=DashboardDisplay.url(url);
     var control = typeof AbortController === 'function' ? new AbortController() : null;
     var timeout = control ? setTimeout(function(){control.abort();},8000) : null;
     try { var response = await fetch(url,{method:method || 'GET',cache:'no-store',signal:control ? control.signal : undefined,headers:body ? {'Content-Type':'application/json'} : {},body:body ? JSON.stringify(body) : undefined}); if (!response.ok) throw Error('Hub request failed'); return await response.json(); }
     finally { if (timeout) clearTimeout(timeout); }
   }
   function apply(state) {
+    if(window.DashboardDisplay)DashboardDisplay.apply(state.displayProfile);
     if (!state || !Array.isArray(state.people) || !Array.isArray(state.events) || !Array.isArray(state.photos)) throw Error('Invalid hub data');
     replace(D.people,state.people); replace(D.ALL,state.people.map(function(p){return p.id;}));
     replace(D.events,state.events.map(function(e){return Object.assign({},e,{start:new Date(e.start),end:new Date(e.end),people:e.people && e.people.length ? e.people:D.ALL.slice()});}));
@@ -52,6 +54,7 @@
   }
   window.liveBoot = async function () {
     try {
+      if(window.DashboardDisplay)await DashboardDisplay.register();
       apply(await request('/api/state')); window.HUB.live = true;
       document.addEventListener('pointerdown',function(){lastTouch = Date.now();},true);
       App.on('data',function(){ if (baseline) dirty = snapshot().groceries !== baseline.groceries || D.chores.some(function(c){return baseline.chores[c.id] !== !!c.done;}); });
