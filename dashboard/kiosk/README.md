@@ -7,6 +7,10 @@ Hold two fingers still on the dashboard for 1.5 seconds to open the native contr
 - **Android settings** opens the device's Settings app.
 - **Wi-Fi settings** opens Android's Wi-Fi list directly.
 - **Reload dashboard** reloads the current URL.
+- **Enable/Pause Hey Orbis wake word** controls optional on-device listening.
+  It is off by default. When enabled, say “Hey Orbis” followed by a question;
+  the kiosk sends it to the existing local voice worker after you pause.
+  Tapping the listening badge pauses it too. See [voice setup](../../tools/voice/README.md).
 - **Back to dashboard** dismisses the controls.
 
 ## Dashboard URL
@@ -126,3 +130,8 @@ adb install -r kiosk/build/homehq.apk
 
 The kiosk loads the existing hosted dashboard over the frame's Wi-Fi. A USB
 connection is only needed for installation or diagnostics, not normal use.
+
+The build also needs Python 3, `unzip`, and internet access once to fetch the
+pinned ONNX Runtime Android AAR and wake models. Subsequent builds use the
+checksum-verified `kiosk/wake-deps/` cache. ARM32 and ARM64 libraries are included.
+The listener itself performs no online initialization or license check.

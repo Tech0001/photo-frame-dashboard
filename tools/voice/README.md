@@ -1,11 +1,44 @@
 # Local Echo voice for Hub
 
 The Voice button offers tap-to-talk and typed questions. The kiosk records up to
-30 seconds only after a tap, stops on demand or when leaving the app, and deletes
-the recording after processing. Capture uses bounded, mono PCM WAV in memory,
+30 seconds after a tap or an explicitly enabled wake-word detection, stops on
+demand or when leaving the app, and discards the recording after processing.
+Capture uses bounded, mono PCM WAV in memory,
 with a fresh AudioRecord session for each question. This avoids AAC recorder
 timestamp failures on the Echo’s Android build. Hub forwards it to an
 authenticated local worker.
+
+## Optional hands-free listening
+
+The kiosk's two-finger controls include **Enable Hey Orbis wake word** and
+**Pause Hey Orbis wake word**. It is off by default and saved per device. An
+enabled listener displays a small badge, which can also be tapped to pause.
+It resumes after a normal app launch, provided the dashboard is ready and
+microphone permission remains granted. The dashboard URL must select a display
+profile using `?display=...`.
+
+Say **Hey Orbis**, then your question. Detection uses openWakeWord's shared
+features and protoLabsAI's classifier on the display CPU. Only the subsequent
+question, with a short pre-roll to avoid clipping its first word, goes to Hub.
+Standby audio stays in bounded memory on the display and is never uploaded or
+saved. A question sends after about 1.6 seconds of quiet, or at the 30-second
+limit. No question times out after six seconds. **Send now** and **Close** remain
+available. Spoken replies temporarily use an app-private WAV, deleted after
+playback/cancel; conversation history is a short in-memory list.
+
+Listening stops when leaving the kiosk, and wake recognition pauses during
+audio playback to avoid recognizing the assistant's own reply. This initial
+version does not support interrupting speech or waking over music. It resumes
+after playback. A native voice panel keeps this working with an existing Hub
+deployment without requiring a server/frontend update.
+
+Build assets are pinned and checksum-verified by
+`dashboard/kiosk/prepare-wakeword.py`; downloads are ignored by Git. Attribution
+and licenses are bundled in the APK. See
+[the voice work list](../../docs/voice-roadmap.md) for the planned **Homie** model
+and coding-assistant connection. “Hey Orbis” is the temporary wake phrase;
+the assistant is still Homie, and this feature does not connect to the active
+Codex conversation.
 
 The worker supports either an installed Nemotron speech runtime/model or a local
 faster-whisper model. Piper supplies the spoken voice. General conversation uses

@@ -17,8 +17,9 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import org.json.JSONObject;
 
-/** Records only after a tap, stops at 30 seconds, and deletes its temporary file. */
+/** Bounded tap capture and upload of questions captured by the optional wake-word listener. */
 final class VoiceCapture {
+  interface Listener { void accept(JSONObject event); }
   private final Activity activity;
   private final WebView web;
   private final Handler handler = new Handler(Looper.getMainLooper());
@@ -34,11 +35,16 @@ final class VoiceCapture {
   private String origin;
   private volatile boolean canceled;
   private boolean sending;
+  private int generation;
+  private Listener listener;
   VoiceCapture(Activity activity, WebView web) { this.activity=activity;this.web=web; }
   private void emit(JSONObject value) {
+    final int request=generation;
+    final Listener target=listener;
     handler.post(() -> {
-      if(canceled || activity.isFinishing() || !sameOrigin(web.getUrl())) return;
-      web.evaluateJavascript("window.HubVoice&&HubVoice.nativeEvent("+value.toString()+")", null);
+      if(request!=generation || canceled || activity.isFinishing() || !sameOrigin(web.getUrl())) return;
+      if(target!=null) target.accept(value);
+      else web.evaluateJavascript("window.HubVoice&&HubVoice.nativeEvent("+value.toString()+")", null);
     });
   }
   private boolean sameOrigin(String url) {
@@ -50,7 +56,10 @@ final class VoiceCapture {
     JSONObject o=new JSONObject();try{o.put("phase",phase);if(error!=null)o.put("error",error);}catch(Exception ignored){}return o;
   }
   void start(String dashboardUrl,String displayId,String conversation) {
-    if(capture!=null||sending){emit(message("error","Wait for the previous recording to finish."));return;}
+    if(capture!=null||sending){
+      web.evaluateJavascript("window.HubVoice&&HubVoice.nativeEvent("+message("error","Wait for the previous recording to finish.")+")",null);return;
+    }
+    generation++;listener=null;
     origin=dashboardUrl;canceled=false;
     if(activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){
       activity.requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},71);
@@ -108,6 +117,17 @@ final class VoiceCapture {
     });
   }
   void stop(){if(capture!=null)capture.stopped=true;}
+  boolean isBusy(){return capture!=null||sending;}
+  void submit(String dashboardUrl,String displayId,byte[] pcm,String conversation,Listener target) {
+    if(isBusy()) {target.accept(message("error","Wait for the previous question to finish."));return;}
+    generation++;listener=target;origin=dashboardUrl;canceled=false;history=conversation;
+    endpoint=Uri.parse(dashboardUrl).buildUpon().path("/api/voice/").clearQuery().fragment(null)
+        .appendQueryParameter("display",displayId).build().toString();
+    try {
+      byte[] bytes=PcmWave.wrap(pcm,RATE);
+      sending=true;emit(message("processing",null));upload(bytes);
+    } catch(Exception e) { sending=false;emit(message("error","Could not prepare the recording.")); }
+  }
   private void upload(final byte[] bytes){
     new Thread(()->{
       try{
@@ -135,5 +155,5 @@ final class VoiceCapture {
       byte[] b=new byte[8192];int n;while((n=in.read(b))!=-1){if(out.size()+n>limit)throw new IOException("Voice response too large");out.write(b,0,n);}return out.toByteArray();
     }
   }
-  void cancel(){canceled=true;if(capture!=null){capture.discard=true;capture.stopped=true;}}
+  void cancel(){canceled=true;generation++;listener=null;if(capture!=null){capture.discard=true;capture.stopped=true;}}
 }

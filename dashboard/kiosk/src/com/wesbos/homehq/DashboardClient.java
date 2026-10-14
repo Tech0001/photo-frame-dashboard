@@ -27,6 +27,7 @@ final class DashboardClient extends DashboardAssets {
   private String retryUrl;
   private boolean failed;
   private boolean active;
+  private boolean pageReady;
   private final Runnable retry = this::retryLoad;
 
   DashboardClient(AssetManager assets, WebView web, View waiting, Runnable updateWaiting, Runnable openSpotify, VoiceAction voiceAction, boolean householdSidebar) {
@@ -72,6 +73,8 @@ final class DashboardClient extends DashboardAssets {
 
   @Override
   public void onPageStarted(WebView view, String url, Bitmap favicon) {
+    pageReady=false;
+    voiceAction.accept(Uri.parse("homehq://voice/page-started"));
     Log.i(MainActivity.TAG, "Dashboard navigation started");
     // WebView 106 can report an HTTP error before this callback for the same load.
     // An explicit load/retry clears failed first; preserve a newly reported error.
@@ -85,6 +88,7 @@ final class DashboardClient extends DashboardAssets {
   public void onPageFinished(WebView view, String url) {
     // WebView also calls this after displaying its built-in error page.
     if (failed) return;
+    pageReady=true;
     cancelRetry();
     waiting.setVisibility(View.GONE);
     Log.i(MainActivity.TAG, "Dashboard loaded");
@@ -101,6 +105,8 @@ if(sameDashboardOrigin(url)) view.evaluateJavascript("window.HomeHQNative=true;w
         && dashboardOrigin.getHost() != null && dashboardOrigin.getHost().equals(uri.getHost())
         && dashboardOrigin.getPort() == uri.getPort();
   }
+
+  String readyUrl(){return pageReady&&!failed&&sameDashboardOrigin(web.getUrl())?web.getUrl():null;}
 
   private boolean appLink(WebView view, Uri uri) {
     if (!"homehq".equals(uri.getScheme())) return false;

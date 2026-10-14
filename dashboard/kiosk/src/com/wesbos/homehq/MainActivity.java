@@ -46,6 +46,7 @@ public class MainActivity extends Activity {
   private WebView web;
   private DashboardClient dashboard;
   private VoiceCapture voice;
+  private WakeWordController wake;
   private TextView waitingMessage;
   private final Handler handler = new Handler(Looper.getMainLooper());
   private final int[] exitIds = new int[2];
@@ -60,12 +61,14 @@ public class MainActivity extends Activity {
       Log.i(TAG, "Two-finger hold: opening controls");
       new AlertDialog.Builder(MainActivity.this)
           .setTitle("Home HQ")
-          .setItems(new String[] {"Open launcher", "Android settings", "Wi-Fi settings", "Reload dashboard"},
+          .setItems(new String[] {"Open launcher", "Android settings", "Wi-Fi settings", "Reload dashboard",
+              wake!=null&&wake.isEnabled()?"Pause Hey Orbis wake word":"Enable Hey Orbis wake word"},
               (dialog, which) -> {
                 if (which == 0) openLauncher();
                 else if (which == 1) startActivity(new Intent(Settings.ACTION_SETTINGS));
                 else if (which == 2) openWifiSettings();
-                else dashboard.reload();
+                else if(which==3) dashboard.reload();
+                else if(wake!=null) wake.setEnabled(!wake.isEnabled());
               })
           .setNegativeButton("Back to dashboard", null).show();
     }
@@ -126,6 +129,8 @@ public class MainActivity extends Activity {
     dashboard = new DashboardClient(getAssets(), web, waiting, this::showOffline, this::openSpotify, this::voiceAction,
         getSharedPreferences("kiosk", 0).getBoolean("household_sidebar", false));
     web.setWebViewClient(dashboard);
+    wake=new WakeWordController(this,content,voice,()->dashboard.readyUrl(),
+        tab->web.evaluateJavascript("window.App&&App.go("+org.json.JSONObject.quote(tab)+")",null));
     setContentView(content);
 
     String url = requestedUrl(getIntent());
@@ -139,12 +144,14 @@ public class MainActivity extends Activity {
       NavigationService.setDashboardVisible(true);
       dashboard.resume();
     }
+    if(wake!=null)wake.resume();
   }
 
   @Override
   protected void onPause() {
     cancelExit();
     if (voice != null) voice.cancel();
+    if (wake != null) wake.pause();
     if (dashboard != null) {
       NavigationService.setDashboardVisible(false);
       dashboard.pause();
@@ -158,6 +165,7 @@ public class MainActivity extends Activity {
     setIntent(intent);
     saveOptions(intent);
     applyDebugFlag(intent);
+    if(wake!=null&&intent.hasExtra("wake_word"))wake.setEnabled(intent.getBooleanExtra("wake_word",false));
     String url = requestedUrl(intent);
     if (url != null) dashboard.load(url);
     else if (intent.getBooleanExtra("reset_url", false)) dashboard.load(defaultUrl());
@@ -185,6 +193,8 @@ public class MainActivity extends Activity {
       getSharedPreferences("kiosk", 0).edit()
           .putBoolean("keep_usb", intent.getBooleanExtra("keep_usb", false)).apply();
     }
+    if(intent!=null&&intent.hasExtra("wake_word"))
+      getSharedPreferences("kiosk",0).edit().putBoolean("wake_word",intent.getBooleanExtra("wake_word",false)).apply();
   }
 
   private String defaultUrl() {
@@ -219,9 +229,13 @@ public class MainActivity extends Activity {
   private void voiceAction(Uri command) {
     if("/start".equals(command.getPath())) {
       String id=command.getQueryParameter("display");
-      if(id!=null&&id.matches("[a-zA-Z0-9_-]{1,80}"))voice.start(web.getUrl(),id,command.getQueryParameter("history"));
+      if(id!=null&&id.matches("[a-zA-Z0-9_-]{1,80}")) {
+        Runnable start=()->voice.start(web.getUrl(),id,command.getQueryParameter("history"));
+        if(wake!=null)wake.stopForManual(start);else start.run();
+      }
     } else if("/stop".equals(command.getPath())) voice.stop();
     else if("/cancel".equals(command.getPath())) voice.cancel();
+    else if("/page-started".equals(command.getPath())) {voice.cancel();if(wake!=null)wake.pageChanged();}
   }
 
   private void openSpotify() {
@@ -305,6 +319,7 @@ public class MainActivity extends Activity {
   @Override
   protected void onDestroy() {
     handler.removeCallbacksAndMessages(null);
+    if(wake!=null)wake.destroy();
     if (dashboard != null) dashboard.destroy();
     if (web != null) web.destroy();
     super.onDestroy();
