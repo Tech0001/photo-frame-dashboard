@@ -8,21 +8,31 @@ import urllib.request, urllib.parse
 LIMIT=5*1024*1024
 LOCK=threading.Lock()
 
+def speech_attempt(run_on,device,fallback=None):
+    attempt=run_on(device)
+    error=attempt.stderr.decode('utf-8',errors='replace').lower()
+    if attempt.returncode and fallback and device!='cpu' and any(word in error for word in ('out of device memory','device memory allocation','failed to allocate backend buffer')):
+        device=fallback
+        attempt=run_on(device)
+    attempt.check_returncode()
+    return device
+
 def chat(config,text,history,context):
     endpoint=config.get('chatUrl','http://127.0.0.1:1234/v1/chat/completions')
     u=urllib.parse.urlsplit(endpoint)
     if u.hostname not in ('localhost','127.0.0.1','::1') or u.scheme!='http':
         raise ValueError('The language model must be a local HTTP endpoint.')
     opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    models_url=urllib.parse.urlunsplit((u.scheme,u.netloc,'/v1/models','',''))
-    try:
-        with opener.open(models_url,timeout=5) as r:models=json.loads(r.read(256*1024))
-    except OSError:
-        if not config.get('serverCommand'):raise
-        subprocess.run(config['serverCommand'],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=30)
-        with opener.open(models_url,timeout=5) as r:models=json.loads(r.read(256*1024))
-    if not any(m.get('id')==config['chatModel'] for m in models.get('data',[])) and config.get('loadCommand'):
-        subprocess.run(config['loadCommand'],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=150)
+    if config.get('serverCommand') or config.get('loadCommand'):
+        models_url=urllib.parse.urlunsplit((u.scheme,u.netloc,'/v1/models','',''))
+        try:
+            with opener.open(models_url,timeout=5) as r:models=json.loads(r.read(256*1024))
+        except OSError:
+            if not config.get('serverCommand'):raise
+            subprocess.run(config['serverCommand'],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=30)
+            with opener.open(models_url,timeout=5) as r:models=json.loads(r.read(256*1024))
+        if not any(m.get('id')==config['chatModel'] for m in models.get('data',[])) and config.get('loadCommand'):
+            subprocess.run(config['loadCommand'],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=150)
     messages=[{'role':'system','content':'You are Hub, a conversational assistant on a household display. Answer briefly in plain spoken English, usually two sentences. Do not use Markdown. You cannot run commands or change devices. Never claim to be the user\'s existing Codex session. Facts supplied by the household dashboard: '+context[:3000]}]
     messages.extend(history)
     messages.append({'role':'user','content':text})
@@ -43,6 +53,7 @@ class Worker:
         from piper import PiperVoice
         self.config=config
         self.asr=None
+        self.last_speech_device=None
         if config.get('speechEngine')!='nemotron':
             from faster_whisper import WhisperModel
             self.asr=WhisperModel(config['speechModel'],device=config.get('device','cpu'),compute_type=config.get('computeType','int8'),cpu_threads=4,local_files_only=True)
@@ -72,7 +83,11 @@ class Worker:
                 with wave.open(str(source),'wb') as w:
                     w.setnchannels(1);w.setsampwidth(2);w.setframerate(16000);w.writeframes((audio*32768).astype(np.int16).tobytes())
                 binary=self.config['speechBinary'];env=dict(os.environ,LD_LIBRARY_PATH=str(Path(binary).parent))
-                subprocess.run([binary,'transcribe',str(source),'--model',self.config['speechModel'],'--device',self.config.get('device','cpu'),'--language',self.config.get('language','en'),'--stream','--format','json','--output',str(destination),'--no-batching'],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,env=env,timeout=55)
+                device=self.config.get('device','cpu')
+                def run_on(target):
+                    return subprocess.run([binary,'transcribe',str(source),'--model',self.config['speechModel'],'--device',target,'--language',self.config.get('language','en'),'--stream','--format','json','--output',str(destination),'--no-batching'],stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,env=env,timeout=55)
+                device=speech_attempt(run_on,device,self.config.get('speechFallbackDevice'))
+                self.last_speech_device=device
                 result=json.loads(destination.read_text());text=result.get('text') or ' '.join(str(w.get('word',w.get('text',''))) for w in result.get('words',[]))
             if not text.strip():raise ValueError('No speech was heard. Try again.')
             return text.strip()[:1000]
@@ -93,7 +108,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if not self.authorized():return self.reply(401,{'error':'Authentication required'})
         if self.path!='/health':return self.reply(404,{'error':'Not found'})
-        self.reply(200,{'ok':True,'speechReady':True,'voiceReady':True,'local':True})
+        self.reply(200,{'ok':True,'speechReady':True,'voiceReady':True,'local':True,'speechDevice':self.server.worker.config.get('device','cpu'),'lastSpeechDevice':self.server.worker.last_speech_device})
     def do_POST(self):
         if not self.authorized():return self.reply(401,{'error':'Authentication required'})
         if not LOCK.acquire(blocking=False):return self.reply(429,{'error':'Voice is busy. Try again shortly.'})
