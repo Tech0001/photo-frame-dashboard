@@ -12,6 +12,8 @@
 - [x] Add a wake acknowledgment sound, reactive blue listening waves, and
   automatic submission after three seconds of quiet. Keep controls for cancel
   and early submission, and a preview that never records.
+- [x] Replace listening waves with warm pulsing dots while preparing a reply,
+  with an explicit microphone-off label.
 - [ ] Connect spoken requests to a coding assistant with the live display
   tools. The current local Bonsai conversation is separate from the active
   coding-assistant chat; that routing is not connected yet.
