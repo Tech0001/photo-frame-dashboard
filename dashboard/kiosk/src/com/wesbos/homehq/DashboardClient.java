@@ -88,7 +88,7 @@ final class DashboardClient extends DashboardAssets {
     cancelRetry();
     waiting.setVisibility(View.GONE);
     Log.i(MainActivity.TAG, "Dashboard loaded");
-    if(sameDashboardOrigin(url)) view.evaluateJavascript("window.HubVoice&&HubVoice.nativeReady()",null);
+if(sameDashboardOrigin(url)) view.evaluateJavascript("window.HomeHQNative=true;window.HubVoice&&HubVoice.nativeReady()",null);
     if (householdSidebar && sameDashboardOrigin(url)) {
       view.evaluateJavascript(HouseholdSidebar.SCRIPT, null);
     }
