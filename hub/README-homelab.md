@@ -1,6 +1,6 @@
 # Homelab integration
 
-Based on `pr/our-hub`. Retains our Pi-hole v5/v6, Gitea and GitHub activity,
+Based on `pr/hub`. Retains our Pi-hole v5/v6, Gitea and GitHub activity,
 Plane/RustDesk availability and Omarchy Time Machine backup panels. Proxmox is
 not required and there is no inherited ProxMenux implementation.
 
