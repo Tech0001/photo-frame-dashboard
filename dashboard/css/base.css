@@ -45,6 +45,7 @@ ul { margin: 0; padding: 0; list-style: none; }
   margin: -400px 0 0 -640px;
   transform-origin: 50% 50%;
   background: var(--paper);
+  color: var(--ink);
   overflow: hidden;
   display: grid;
   grid-template-columns: 76px 1fr;
@@ -65,7 +66,7 @@ ul { margin: 0; padding: 0; list-style: none; }
   color: var(--ink-2);
   position: relative;
 }
-.rail-item.is-active { background: var(--ink); color: var(--paper); }
+.rail-item.is-active { background: var(--accent); color: var(--accent-ink); }
 .rail-item:active { background: var(--paper-2); }
 .rail-item.is-active:active { background: var(--ink-2); }
 .rail-clock { margin-top: auto; padding: 10px 0; text-align: center; line-height: 1; position: relative; overflow: hidden; }
@@ -309,3 +310,5 @@ button.card:active, .h-hero:active, .h-photo:active { transform: scale(.985); }
 }
 .diag b { color: #fff; }
 .diag u { text-decoration: none; color: #aaa; }
+
+.stage[data-theme-dark="true"] [style*="--c:#111111"] { --c:var(--ink) !important; --c-rgb:var(--ink-rgb) !important; --c-ink:var(--paper) !important; }

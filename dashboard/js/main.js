@@ -4,6 +4,7 @@ import './data.js';
 import './app.js';
 import './live.js';
 import './agent-data.js';
+import './themes.js';
 import './system.js';
 import './slideshow.js';
 import './weather-details.js';

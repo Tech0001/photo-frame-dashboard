@@ -129,6 +129,7 @@
       ['normal', 'empty', 'busy'].map(function (m) {
         return '<button data-cal="' + m + '" class="' + (App.calMode === m ? 'is-on' : '') + '">' + { normal: 'Normal day', empty: 'Empty day', busy: 'Overloaded' }[m] + '</button>';
       }).join('') + '</div></div>' +
+      (App.themeControls ? App.themeControls() : '') +
       '<p class="demo-note">Keyboard: <b>D</b> demo · <b>A</b> ambient · <b>N</b> night · <b>1–7</b> views</p>' +
       '</div>';
   }
@@ -142,6 +143,7 @@
   function demoClick(e) {
     var b = e.target.closest('button');
     if (!b) { if (e.target === $('#demo')) closeDemo(); return; }
+    if (b.dataset.themeChoice && App.chooseTheme) { App.chooseTheme(b.dataset.themeChoice); App.openDemo(); return; }
     if (b.hasAttribute('data-demo-close')) return closeDemo();
     if (b.dataset.time) {
       if (b.dataset.time === 'real') App.setTime(null);
