@@ -120,6 +120,7 @@ function createHub(options = {}) {
     } catch (error) { if (!res.headersSent) send(res,error.status || (error.userError ? 400:500),{error:error.status || error.userError ? error.message:'Hub request failed'}); else res.destroy(); }
   });
   server.on('close',() => tasks.forEach(fn => fn()));
+  ctx.getState=state;
   return {server,ctx,state};
 }
 if (require.main === module) {

@@ -1,7 +1,7 @@
 'use strict';
 const crypto = require('node:crypto');
 const {problem} = require('./util');
-const TABS = ['home','calendar','tasks','shopping','photos','control','nas','agents','spotify'];
+const TABS = ['home','calendar','tasks','shopping','photos','control','nas','agents','spotify','voice'];
 const DISPLAY_KEYS = ['homeSec','ambientSec','theme'];
 const id = value => { if(typeof value !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(value) || ['__proto__','constructor','prototype'].includes(value))throw problem('Invalid display or profile ID');return value; };
 class Displays {
@@ -18,7 +18,7 @@ class Displays {
       if(Object.keys(this.devices()).length>=50)throw problem('Too many displays');
       this.store.update(s=>{
         s.settings.profiles ||= {};
-        for(const [key,name,tabs] of [['household','Household',TABS.filter(t=>!['nas','agents','spotify'].includes(t))],['personal','Personal',TABS]]) {
+        for(const [key,name,tabs] of [['household','Household',TABS.filter(t=>!['nas','agents','spotify','voice'].includes(t))],['personal','Personal',TABS]]) {
           if(!s.settings.profiles[key])s.settings.profiles[key]={name,tabs,values:Object.fromEntries(DISPLAY_KEYS.filter(k=>this.defaults()[k]!=null).map(k=>[k,this.defaults()[k]]))};
         }
         s.settings.displays ||= {};s.settings.displays[key]={name:String(input.name|| (kind==='echo'?'Echo Show':kind==='frame'?'Picture frame':'Browser')).slice(0,80),kind,capabilities,profile:kind==='frame'?'household':'personal'};

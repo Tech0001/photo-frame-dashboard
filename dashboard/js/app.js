@@ -295,7 +295,8 @@
   var idleSec = 0;
   function onIdleTick() {
     idleSec++;
-    var blocked = $('#takeover').classList.contains('is-open');
+    var settings=$('#sheetLayer');
+    var blocked = $('#takeover').classList.contains('is-open') || (settings.classList.contains('is-open') && !!settings.querySelector('.sheet--voice,.sheet--display-settings'));
     if (App.mode === 'nightdash' && idleSec >= 20) { App.setMode('night'); return; }
     if (App.mode !== 'day' || blocked) return;
     if (idleSec === App.idle.home && App.current !== 'home') { App.closeSheet(); App.go('home'); }

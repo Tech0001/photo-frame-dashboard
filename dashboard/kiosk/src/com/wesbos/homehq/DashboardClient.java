@@ -14,6 +14,7 @@ import android.webkit.WebView;
 
 /** Keeps the kiosk recovering if Home starts before Wi-Fi or the hub is available. */
 final class DashboardClient extends DashboardAssets {
+  interface VoiceAction { void accept(Uri command); }
   private static final long RETRY_MS = 5000;
   private final Handler handler = new Handler(Looper.getMainLooper());
   private final WebView web;
@@ -21,18 +22,20 @@ final class DashboardClient extends DashboardAssets {
   private final Runnable updateWaiting;
   private final Runnable openSpotify;
   private final boolean householdSidebar;
+  private final VoiceAction voiceAction;
   private Uri dashboardOrigin;
   private String retryUrl;
   private boolean failed;
   private boolean active;
   private final Runnable retry = this::retryLoad;
 
-  DashboardClient(AssetManager assets, WebView web, View waiting, Runnable updateWaiting, Runnable openSpotify, boolean householdSidebar) {
+  DashboardClient(AssetManager assets, WebView web, View waiting, Runnable updateWaiting, Runnable openSpotify, VoiceAction voiceAction, boolean householdSidebar) {
     super(assets);
     this.web = web;
     this.waiting = waiting;
     this.updateWaiting = updateWaiting;
     this.openSpotify = openSpotify;
+    this.voiceAction = voiceAction;
     this.householdSidebar = householdSidebar;
   }
 
@@ -85,6 +88,7 @@ final class DashboardClient extends DashboardAssets {
     cancelRetry();
     waiting.setVisibility(View.GONE);
     Log.i(MainActivity.TAG, "Dashboard loaded");
+    if(sameDashboardOrigin(url)) view.evaluateJavascript("window.HubVoice&&HubVoice.nativeReady()",null);
     if (householdSidebar && sameDashboardOrigin(url)) {
       view.evaluateJavascript(HouseholdSidebar.SCRIPT, null);
     }
@@ -104,6 +108,7 @@ final class DashboardClient extends DashboardAssets {
     if (sameDashboardOrigin(view.getUrl()) && "spotify".equals(uri.getHost())
         && (uri.getPath() == null || uri.getPath().isEmpty())
         && uri.getQuery() == null && uri.getFragment() == null) openSpotify.run();
+    if(sameDashboardOrigin(view.getUrl()) && "voice".equals(uri.getHost())) voiceAction.accept(uri);
     return true;
   }
 

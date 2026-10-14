@@ -12,7 +12,7 @@
     display.profile=profile;
     if(!window.App||!profile)return;
     var rail=document.getElementById('rail');
-    [['spotify','Spotify','music']].forEach(function(item){
+    [['spotify','Spotify','music'],['voice','Voice','mic']].forEach(function(item){
       if(rail.querySelector('[data-profile-tab="'+item[0]+'"]'))return;
       var b=document.createElement('button');b.className='rail-item';b.dataset.profileTab=item[0];b.innerHTML=App.icon(item[2],26)+'<span>'+item[1]+'</span>';
       b.onclick=function(){App.resetIdle();if(item[0]==='spotify'){if(display.kind==='echo')location.href='homehq://spotify';else App.toast('Spotify needs to be installed on this display.');}else if(App.openVoice)App.openVoice();};

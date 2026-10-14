@@ -45,6 +45,7 @@ public class MainActivity extends Activity {
 
   private WebView web;
   private DashboardClient dashboard;
+  private VoiceCapture voice;
   private TextView waitingMessage;
   private final Handler handler = new Handler(Looper.getMainLooper());
   private final int[] exitIds = new int[2];
@@ -121,7 +122,8 @@ public class MainActivity extends Activity {
     waiting.setVisibility(View.GONE);
     content.addView(waiting, new FrameLayout.LayoutParams(
         FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-    dashboard = new DashboardClient(getAssets(), web, waiting, this::showOffline, this::openSpotify,
+    voice = new VoiceCapture(this,web);
+    dashboard = new DashboardClient(getAssets(), web, waiting, this::showOffline, this::openSpotify, this::voiceAction,
         getSharedPreferences("kiosk", 0).getBoolean("household_sidebar", false));
     web.setWebViewClient(dashboard);
     setContentView(content);
@@ -142,6 +144,7 @@ public class MainActivity extends Activity {
   @Override
   protected void onPause() {
     cancelExit();
+    if (voice != null) voice.cancel();
     if (dashboard != null) {
       NavigationService.setDashboardVisible(false);
       dashboard.pause();
@@ -211,6 +214,14 @@ public class MainActivity extends Activity {
     startActivity(canonical);
     finish();
     return true;
+  }
+
+  private void voiceAction(Uri command) {
+    if("/start".equals(command.getPath())) {
+      String id=command.getQueryParameter("display");
+      if(id!=null&&id.matches("[a-zA-Z0-9_-]{1,80}"))voice.start(web.getUrl(),id,command.getQueryParameter("history"));
+    } else if("/stop".equals(command.getPath())) voice.stop();
+    else if("/cancel".equals(command.getPath())) voice.cancel();
   }
 
   private void openSpotify() {

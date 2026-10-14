@@ -4,6 +4,7 @@ import './data.js';
 import './app.js';
 import './display-profile.js';
 import './live.js';
+import './voice.js';
 import './system.js';
 import './slideshow.js';
 import './views/home.js';
