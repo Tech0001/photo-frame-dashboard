@@ -20,3 +20,11 @@ scripts/si006-webview-overlay/build/
 
 # Private per-frame records (docs/frame-records.md). No trailing slash, so a symlink is ignored too.
 /frames
+
+# Local hub state, credentials and generated assets.
+/hub/config/config.json
+/hub/config/secrets.json
+/hub/data/
+/hub/cache/
+/hub/photos/
+/hub/node_modules/

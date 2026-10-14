@@ -128,6 +128,7 @@
     for (var i = 0; i < D.routines.length; i++) if (h >= D.routines[i].from && h < D.routines[i].to) return D.routines[i];
     return D.routines[2];
   };
+  App.choresInRoutine = function (chore, routine) { return chore.r === routine.id || chore.r === 'anytime'; };
   App.weatherNow = function () {
     var W = D.weather, h = App.now().getHours();
     var rainAt = -1;
@@ -143,7 +144,7 @@
       advice = soccer ? 'Pack a rain jacket for soccer' : 'Grab a rain jacket';
     } else {
       summary = W.t[h] < 12 ? 'Clear and cool' : 'Dry all day';
-      advice = W.t[h] < 12 ? 'Jacket weather' : 'Light layers';
+      advice = (W.units === 'F' ? (W.t[h] - 32) * 5 / 9 : W.t[h]) < 12 ? 'Jacket weather' : 'Light layers';
     }
     var labels = { sun: 'Sunny', moon: 'Clear', partly: 'Partly cloudy', cloud: 'Overcast', rain: 'Rain' };
     return { temp: W.t[h], cond: W.c[h], label: labels[W.c[h]], hi: W.hi, lo: W.lo, summary: summary, advice: advice, hour: h };
@@ -326,8 +327,9 @@
   }
 
   // ------------------------------------------------------------ boot
-  App.start = function () {
-    App.setTime(15, 18); // demo default: a busy weekday afternoon
+  function begin(live) {
+    App.live = !!live;
+    App.setTime(live ? null : 15, 18); // demo default: a busy weekday afternoon
     fit();
     window.addEventListener('resize', fit);
     // Switch tabs the instant a finger lands (pointerdown), not on release. Keyboard "clicks"
@@ -349,5 +351,6 @@
     refreshStale(1500);
     setTimeout(function () { App.toast('Tip: press and hold the <b>clock</b> in the sidebar for demo controls', { ms: 6000, icon: 'bolt' }); }, 1200);
   };
+  App.start = function () { window.liveBoot().then(begin, function () { begin(false); }); };
   document.addEventListener('DOMContentLoaded', function () { App.start(); });
 })();

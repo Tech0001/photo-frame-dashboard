@@ -10,6 +10,7 @@
   }
 
   function weather() {
+    if (App.live && !D.weatherLive) return '<div class="h-wx-meta"><b>' + (D.weatherConfigured ? 'Weather unavailable' : 'Weather not set up') + '</b><span>Use the hub’s weather settings.</span></div>';
     var w = App.weatherNow();
     var hours = App.hourly(7);
     var tmin = Math.min.apply(null, hours.map(function (h) { return h.t; }));
@@ -99,7 +100,7 @@
     var r = App.currentRoutine();
     var who = D.people.map(function (p) { return p.id; }).concat(['any']);
     return '<div class="label">Chores · ' + r.name + '</div><div class="h-rings">' + who.map(function (id) {
-      var list = D.chores.filter(function (c) { return c.r === r.id && c.who === id; });
+      var list = D.chores.filter(function (c) { return App.choresInRoutine(c, r) && c.who === id; });
       if (!list.length) return '';
       var done = list.filter(function (c) { return c.done; }).length;
       var p = App.person(id);
@@ -119,6 +120,7 @@
   }
 
   function status() {
+    if (App.live) return App.homeView ? App.homeView.summary() : '<div class="label">Home</div><div class="h-st-row">Connect a Home integration in Hub.</div>';
     var lights = D.devices.filter(function (d) { return d.type === 'light' && d.on; }).length;
     var unlocked = D.devices.filter(function (d) { return d.type === 'lock' && !d.locked; });
     var garage = D.devices.filter(function (d) { return d.type === 'garage'; })[0];

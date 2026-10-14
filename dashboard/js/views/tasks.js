@@ -3,11 +3,11 @@
   'use strict';
   var D = window.DATA;
   var V = { el: null, routine: null, pending: {} };
-  var LANES = ['alex', 'jordan', 'maya', 'otto', 'any'];
+  function lanes() { return D.people.map(function (p) { return p.id; }).concat('any'); }
 
   function routine() { return V.routine ? D.routines.filter(function (r) { return r.id === V.routine; })[0] : App.currentRoutine(); }
   function listFor(who, r) {
-    return D.chores.filter(function (c) { return c.r === r.id && c.who === who; })
+    return D.chores.filter(function (c) { return App.choresInRoutine(c, r) && c.who === who; })
       .sort(function (a, b) { return (a.done - b.done) || ((b.overdue ? 1 : 0) - (a.overdue ? 1 : 0)); });
   }
 
@@ -50,7 +50,7 @@
 
   function render() {
     var r = routine(), auto = App.currentRoutine();
-    var inR = D.chores.filter(function (c) { return c.r === r.id; });
+    var inR = D.chores.filter(function (c) { return App.choresInRoutine(c, r); });
     var done = inR.filter(function (c) { return c.done; }).length;
     V.el.innerHTML = '<div class="tasks">' +
       '<header class="t-head">' +
@@ -58,7 +58,7 @@
       '<div class="seg">' + D.routines.map(function (x) { return '<button class="' + (x.id === r.id ? 'is-on' : '') + '" data-r="' + x.id + '">' + x.name + '</button>'; }).join('') + '</div>' +
       '<div class="t-progress"><span class="num">' + done + '<small>/' + inR.length + '</small></span><div class="t-bar"><i style="width:' + (inR.length ? done / inR.length * 100 : 0) + '%"></i></div><span class="label">done</span></div>' +
       '</header>' +
-      '<div class="ch-lanes">' + LANES.map(function (w) { return lane(w, r); }).join('') + '</div>' +
+      '<div class="ch-lanes" style="grid-template-columns:repeat(' + (D.people.length + 1) + ',1fr)">' + lanes().map(function (w) { return lane(w, r); }).join('') + '</div>' +
       '</div>';
   }
 
