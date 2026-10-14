@@ -71,7 +71,7 @@ function createHub(options = {}) {
     if (body.calendars !== undefined) {
       if (!Array.isArray(body.calendars) || body.calendars.length > 20) throw problem('Invalid calendar list');
       const calendars = [], links = {...secrets.ical};
-      for (const [index,c] of body.calendars.entries()) { const key = 'calendar-' + index; if (c.url) { let url; try { url = new URL(c.url); } catch { throw problem('Invalid calendar URL'); } if (!['http:','https:'].includes(url.protocol)) throw problem('Invalid calendar URL'); links[key] = url.toString(); } calendars.push({name:String(c.name || 'Calendar').slice(0,80),secret:c.url ? key : c.secret,people:Array.isArray(c.people) ? c.people : []}); }
+      for (const [index,c] of body.calendars.entries()) { const key = 'calendar-' + crypto.randomUUID(); if (c.url) { let url; try { url = new URL(c.url); } catch { throw problem('Invalid calendar URL'); } if (!['http:','https:'].includes(url.protocol)) throw problem('Invalid calendar URL'); links[key] = url.toString(); } calendars.push({name:String(c.name || 'Calendar').slice(0,80),secret:c.url ? key : c.secret,people:Array.isArray(c.people) ? c.people : []}); }
       cfg.calendars = calendars; secrets.ical = links;
     }
     for (const [key,plugin] of settings) if (body[key] !== undefined) plugin.save(body[key]);
