@@ -1,7 +1,7 @@
 'use strict';
 const crypto = require('node:crypto');
 const tune = require('./tune');
-const KEYS = ['theme', 'homeSec', 'ambientSec'];
+const KEYS = ['theme', 'homeSec', 'ambientSec', 'ambientStyle'];
 const token = crypto.randomBytes(32).toString('hex');
 const bad = message => Object.assign(new Error(message), { userError: true });
 function sameOrigin(req) {
@@ -24,7 +24,7 @@ function authorize(req) {
   if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) throw bad('Send display settings as JSON.');
 }
 function save(store, input) {
-  if (!input || typeof input !== 'object' || Array.isArray(input) || !Object.keys(input).length || Object.keys(input).some(key => !KEYS.includes(key))) throw bad('Only theme and idle timers can be changed here.');
+  if (!input || typeof input !== 'object' || Array.isArray(input) || !Object.keys(input).length || Object.keys(input).some(key => !KEYS.includes(key))) throw bad('Only theme, screensaver style and idle timers can be changed here.');
   let values;
   try { values = tune.clean(input, tune.resolve(tune.fromState(store.state.settings))); } catch (e) { throw bad(e.message); }
   const parts = tune.split(values);

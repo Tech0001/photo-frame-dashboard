@@ -328,6 +328,7 @@ button.card:active, .h-hero:active, .h-photo:active { transform: scale(.985); }
 .ds-sample b { display:block; background:var(--sample-card); padding:5px 12px; border-radius:6px; font-size:25px; }
 .ds-themes > button > span:last-child { display:block; padding:9px 12px; font-size:18px; font-weight:700; }
 .ds-timers { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:22px; }
+.ds-timers label:first-child { grid-column:1 / -1; }
 .ds-timers label { display:flex; flex-direction:column; gap:8px; font-size:19px; }
 .ds-timers select { min-height:52px; border:1px solid var(--line); border-radius:10px; font:inherit; background:var(--paper-2); color:var(--ink); padding:8px 12px; }
 .ds-note { font-size:15px; color:var(--mute); margin-top:18px; }

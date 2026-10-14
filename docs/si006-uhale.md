@@ -305,6 +305,17 @@ Downloads used (keep APKs out of the PR):
 
 ## Limits and remaining work
 
+Navigation follow-up (2026-10-13): the installed kiosk was still version 1.4 and
+Android's enabled accessibility-service list had become empty. Restoring Home HQ
+navigation recovered the floating buttons. The original APK and preferences were
+backed up privately, then the same-signed version 1.7 was installed without
+clearing its data. Its optional navigation recovery was enabled using the
+`WRITE_SECURE_SETTINGS` grant described in the [kiosk guide](../dashboard/kiosk/README.md).
+Existing kiosk preferences were preserved, and navigation remained enabled after
+a force-stop and restart. The Dashboard button returned from Android Settings;
+Back returned from Wi-Fi settings. This verifies app restart recovery, not a
+new full-device reboot test.
+
 On-device validation covered all seven tabs with injected touch taps, loaded
 fonts and photos, and no JavaScript or network errors during that check. The
 two-finger hold opened the native controls; both launcher and Settings entries

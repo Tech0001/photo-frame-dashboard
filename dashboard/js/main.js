@@ -8,6 +8,8 @@ import './themes.js';
 import './display-settings.js';
 import './system.js';
 import './slideshow.js';
+import './art-palette.js';
+import './weather-details.js';
 import './views/home.js';
 import './views/calendar.js';
 import './views/tasks.js';

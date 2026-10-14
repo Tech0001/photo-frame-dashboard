@@ -7,13 +7,16 @@ connected frames on their next normal poll; a reboot is not needed.
 - **Paper:** the original warm paper palette, still the default.
 - **Charcoal:** dark gray with a quiet sage accent.
 - **Sakura Mochi:** pink and green on midnight, adapted from the installed
-  Omarchy Sakura Mochi palette.
+  [Omarchy Sakura Mochi theme](https://github.com/OldJobobo/omarchy-sakura-mochi-theme),
+  with dark lacquer gradients, rounded panels, pink highlights and green edges.
 - **Mechanoonna:** cream and aged brass on deep brown, adapted from the
   installed Omarchy Mechanoonna palette.
 - **Autumn:** warm parchment and burnt orange.
 - **Winter:** deep blue, snow white, and a muted icy blue accent.
 
-Themes change colors, keeping the layout, font sizes and touch targets.
+Themes can change colors and surfaces while keeping the page layout, font sizes
+and usable touch targets. Sakura Mochi also changes panel shapes and adds a quiet
+original blossom background; it uses static CSS and SVG rather than live blur.
 Person colors remain distinct; black accents use readable light ink on dark
 themes. Text and navigation contrast is checked for the new palettes.
 Choose **Paper** or **Default: Paper** to restore the original colors.
@@ -23,8 +26,8 @@ clock keep their own colors. The 10 PM–6 AM night schedule is independent of
 theme selection. Seasonal choices are manual; there is no seasonal rotation.
 
 `dashboard/js/theme-palettes.json` supplies both the server's validated choices
-and the frame's color values. `dashboard/js/themes.js` applies those colors to
-the stage when live settings arrive. Paper removes all palette overrides so
+and the frame's color and optional appearance values. `dashboard/js/themes.js` applies them to
+the stage when live settings arrive. Paper removes all color and appearance overrides so
 the original stylesheet remains authoritative.
 
 ## Settings on the frame

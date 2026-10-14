@@ -53,7 +53,7 @@
   {
     "id": "sakura-mochi",
     "label": "Sakura Mochi",
-    "description": "Cherry blossom pink and soft green on midnight.",
+    "description": "Dark lacquer panels, rounded shapes, pink bloom and leaf-green edges.",
     "colors": {
       "paper": "#0B0D11",
       "paper-2": "#211C24",
@@ -76,7 +76,15 @@
       "inverse-soft": "#0B0D11",
       "warning-emphasis": "#E6D3B4"
     },
-    "dark": true
+    "dark": true,
+    "appearance": {
+      "r": "26px",
+      "r-s": "16px",
+      "panel-radius": "26px 16px 30px 16px",
+      "panel-shadow": "0 10px 26px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,208,220,.035)",
+      "panel-surface": "linear-gradient(145deg,rgba(33,28,36,.98),rgba(16,20,22,.97))",
+      "panel-edge": "linear-gradient(135deg,rgba(90,161,93,.5),rgba(111,148,133,.25) 48%,rgba(242,56,136,.36))"
+    }
   },
   {
     "id": "mechanoonna",

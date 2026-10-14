@@ -16,6 +16,7 @@ test('frame display controls are same-origin and limited; Anytime chores persist
  for(let i=0;i<80;i++){try{r=await fetch(base+'/api/display-settings');break;}catch{await new Promise(r=>setTimeout(r,40));}}
  assert(r?.ok);assert.equal(r.headers.get('access-control-allow-origin'),null);
  const settings=await r.json();assert.equal(settings.values.theme,'paper');assert(settings.token);
+ assert.equal(settings.values.ambientStyle,'classic');
  const headers={'Content-Type':'application/json','X-Display-Token':settings.token,Origin:base};
  const put=(values,extra={})=>fetch(base+'/api/display-settings',{method:'PUT',headers:{...headers,...extra},body:JSON.stringify({values})});
  assert.equal((await fetch(base+'/api/display-settings',{headers:{Origin:'https://foreign.example','Sec-Fetch-Site':'cross-site'}})).status,400);
@@ -24,9 +25,10 @@ test('frame display controls are same-origin and limited; Anytime chores persist
  assert.equal((await put({theme:'autumn'},{Origin:'https://foreign.example'})).status,400);
  assert.equal((await put({pollSec:5})).status,400);
  assert.equal((await put({theme:'not-a-theme'})).status,400);
+ assert.equal((await put({ambientStyle:'unsupported'})).status,400);
  assert.equal((await put({homeSec:300,ambientSec:60})).status,400);
- r=await put({theme:'autumn',homeSec:30,ambientSec:300});assert(r.ok);
- const values=(await r.json()).values;assert.deepEqual(values,{theme:'autumn',homeSec:30,ambientSec:300});
+ r=await put({theme:'autumn',homeSec:30,ambientSec:300,ambientStyle:'art'});assert(r.ok);
+ const values=(await r.json()).values;assert.deepEqual(values,{theme:'autumn',homeSec:30,ambientSec:300,ambientStyle:'art'});
  r=await fetch(base+'/api/admin/data');assert.equal(r.status,401);
  const admin={Authorization:'Basic '+Buffer.from('admin:test-only-password').toString('base64'),'Content-Type':'application/json'};
  const d=await(await fetch(base+'/api/admin/data',{headers:admin})).json();const doneOn=d.chores[0].doneOn;
@@ -35,4 +37,5 @@ test('frame display controls are same-origin and limited; Anytime chores persist
  const saved=await(await fetch(base+'/api/admin/data',{headers:admin})).json();assert.equal(saved.chores[0].r,'anytime');assert.equal(saved.chores[0].doneOn,doneOn);
  const publicState=await(await fetch(base+'/api/state')).json();const chore=publicState.chores.find(c=>c.id===id);assert.equal(chore.r,'anytime');assert.equal(chore.done,true);
  const restarted=new Store(cfg.dataDir);assert.equal(restarted.state.chores[0].r,'anytime');assert.equal(restarted.state.settings.tune.theme,'autumn');
+ assert.equal(restarted.state.settings.tune.ambientStyle,'art');
 });
