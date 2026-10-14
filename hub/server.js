@@ -94,7 +94,7 @@ function createHub(options = {}) {
       const url = new URL(req.url,'http://hub'), pathname = decodeURIComponent(url.pathname), record = routes.get(req.method + ' ' + pathname);
       if (pathname === '/admin' || record?.admin) {
         const authorization = /^Basic (.+)$/i.exec(req.headers.authorization || ''), encoded = authorization ? Buffer.from(authorization[1],'base64').toString() : '';
-        if (!encoded.includes(':') || !equalSecret(encoded.slice(encoded.indexOf(':') + 1),secrets.admin_password)) return send(res,401,{error:'Admin sign-in required. Set HUB_ADMIN_PASSWORD or secrets.json first.'},{'WWW-Authenticate':'Basic realm="Photo frame hub"'});
+        if (!encoded.includes(':') || !equalSecret(encoded.slice(encoded.indexOf(':') + 1),secrets.admin_password)) return send(res,401,{error:'Admin sign-in required. Set HUB_ADMIN_PASSWORD or secrets.json first.'},{'WWW-Authenticate':'Basic realm="Hub"'});
       }
       if (record) {
         let body = {};
@@ -114,7 +114,7 @@ function createHub(options = {}) {
   return {server,ctx,state};
 }
 if (require.main === module) {
-  const hub = createHub(); hub.server.listen(hub.ctx.cfg.port,hub.ctx.cfg.host,() => console.log('Photo frame hub listening on ' + hub.ctx.cfg.host + ':' + hub.ctx.cfg.port));
+  const hub = createHub(); hub.server.listen(hub.ctx.cfg.port,hub.ctx.cfg.host,() => console.log('Hub listening on ' + hub.ctx.cfg.host + ':' + hub.ctx.cfg.port));
   for (const signal of ['SIGINT','SIGTERM']) process.on(signal,() => hub.server.close(() => process.exit()));
 }
 module.exports = { createHub };
