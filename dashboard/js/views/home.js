@@ -185,4 +185,5 @@
     if (n.getMinutes() === 0) { V.el.querySelector('.h-weather').innerHTML = weather(); V.el.querySelector('.h-lanes').innerHTML = lanes(); }
   });
   App.on('data', function () { if (App.current === 'home') paint(); });
+  App.on('home-data', function () { if (App.current === 'home') paint(); });
 })();

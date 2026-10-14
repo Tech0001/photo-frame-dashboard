@@ -42,7 +42,7 @@
     return '<div class="ha-fact"><dt>' + text(label) + '</dt><dd>' + text(value) + (unit ? '<small>' + text(unit) + '</small>' : '') + '</dd></div>';
   }
   function thermostat(c) {
-    if (!c) return '<section class="ha-climate"><h2 class="serif">Choose your thermostat</h2><p>Select it in Frame admin → Connections → Home Assistant.</p></section>';
+    if (!c) return '<section class="ha-climate"><h2 class="serif">Choose your thermostat</h2><p>Select it in Hub → Connections → Home Assistant.</p></section>';
     var good = c.available, target = c.low != null && c.high != null ? c.low + '–' + c.high : c.target;
     return '<section class="ha-climate" aria-label="' + text(c.name) + ' thermostat"><div class="ha-climate-title"><h2 class="serif">' + text(c.name) + '</h2><span class="ha-action' + (!good ? ' ha-warning' : '') + '">' + App.icon('thermo', 20) + text(good ? pretty(c.action || 'Status not reported') : 'Unavailable') + '</span></div>' +
       '<div class="ha-climate-body"><div class="ha-temperature num">' + text(good ? c.current : null) + '<small>' + text(c.unit || '') + '</small><span class="label">Inside</span></div>' +
@@ -82,14 +82,14 @@
   }
   function render() {
     if (!root || App.current !== 'control') return;
-    var d = App.homeData, warn = stale(d), msg = !d ? 'Connecting to Home Assistant…' : !d.configured ? 'Connect Home Assistant in Frame admin → Connections → Home Assistant.' : d.error || '';
+    var d = App.homeData, warn = stale(d), msg = !d ? 'Connecting to Home Assistant…' : !d.configured ? 'Connect Home Assistant in Hub → Connections → Home Assistant.' : d.error || '';
     var groups = d ? groupHome(d) : null, scroller = root.querySelector('.ha-content'), scrollTop = scroller ? scroller.scrollTop : 0;
     root.innerHTML = '<div class="ha-home' + (warn ? ' is-stale' : '') + '"><header class="ha-top"><h1 class="serif">Home</h1><div class="ha-sync"><span class="label' + (warn ? ' ha-warning' : '') + '">' + (warn ? 'Connection needs attention · ' : '') + text(stamp(d)) + '</span><button class="icon-btn" data-ha-refresh aria-label="Refresh home status">' + App.icon('undo', 24) + '</button></div></header>' +
       (msg ? '<div class="ha-banner' + (warn ? ' ha-warning' : '') + '">' + text(msg) + (d && d.updated && warn ? ' Showing the last successful readings.' : '') + '</div>' : '') +
       (d && d.configured ? '<div class="ha-content"><div class="ha-overview' + (groups.sun.length ? ' has-sun' : '') + '">' + thermostat(d.climate) + daylight(groups.sun) + '</div>' +
         (groups.devices.length ? '<section class="ha-devices"><h2 class="label">Cameras & doorbells</h2><div class="ha-device-list">' + groups.devices.map(device).join('') + '</div></section>' : '') +
         (groups.others.length ? '<section class="ha-other"><h2 class="label">Other readings</h2><dl>' + groups.others.map(function (e) { return sensor(e); }).join('') + '</dl></section>' : '') +
-        (!groups.devices.length && !groups.others.length && !d.climate ? '<p>Choose devices in Frame admin → Connections → Home Assistant.</p>' : '') + '</div>' : '') + '</div>';
+        (!groups.devices.length && !groups.others.length && !d.climate ? '<p>Choose devices in Hub → Connections → Home Assistant.</p>' : '') + '</div>' : '') + '</div>';
     scroller = root.querySelector('.ha-content'); if (scroller) scroller.scrollTop = scrollTop;
   }
   function load() {
@@ -197,7 +197,7 @@
     resume: function () { render(); load(); },
     summary: function () {
       var d = App.homeData, c = d && d.climate;
-      return '<div class="label">Home</div><div class="h-st-row">' + App.icon('thermo', 24) + (c && c.available ? '<b class="num">' + text(c.current) + text(c.unit || '') + '</b><span>inside</span>' : '<span>' + (!d ? 'Connecting…' : !d.configured ? 'Connect Home Assistant' : 'No thermostat reading') + '</span>') + '</div><div class="h-st-row' + (stale(d) ? ' is-warn' : '') + '"><span>' + text(stale(d) ? 'Readings need refreshing' : d && d.configured ? stamp(d) : 'Set up in Frame admin') + '</span></div>';
+      return '<div class="label">Home</div><div class="h-st-row">' + App.icon('thermo', 24) + (c && c.available ? '<b class="num">' + text(c.current) + text(c.unit || '') + '</b><span>inside</span>' : '<span>' + (!d ? 'Connecting…' : !d.configured ? 'Connect Home Assistant' : 'No thermostat reading') + '</span>') + '</div><div class="h-st-row' + (stale(d) ? ' is-warn' : '') + '"><span>' + text(stale(d) ? 'Readings need refreshing' : d && d.configured ? stamp(d) : 'Set up in Hub') + '</span></div>';
     }
   };
   App.on('ready', function () { if (App.live) { load(); setInterval(load, 30000); } });
