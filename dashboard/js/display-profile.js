@@ -15,7 +15,9 @@
     [['spotify','Spotify','music'],['voice','Voice','mic']].forEach(function(item){
       if(rail.querySelector('[data-profile-tab="'+item[0]+'"]'))return;
       var b=document.createElement('button');b.className='rail-item';b.dataset.profileTab=item[0];b.innerHTML=App.icon(item[2],26)+'<span>'+item[1]+'</span>';
-      b.onclick=function(){App.resetIdle();if(item[0]==='spotify'){if(window.HomeHQNative||display.kind==='echo')location.href='homehq://spotify';else App.toast('Spotify needs to be installed on this display.');}else if(App.openVoice)App.openVoice();};
+      var activate=function(){App.resetIdle();if(item[0]==='spotify'){if(window.HomeHQNative||display.kind==='echo')location.href='homehq://spotify';else App.toast('Spotify needs to be installed on this display.');}else if(App.openVoice)App.openVoice();};
+      b.addEventListener('pointerdown',function(e){if(e.button===0){e.preventDefault();activate();}});
+      b.addEventListener('click',function(e){if(e.detail===0)activate();});
       rail.insertBefore(b,document.getElementById('railClock'));
     });
     rail.querySelectorAll('[data-go],[data-profile-tab]').forEach(function(b){var name=b.dataset.go||b.dataset.profileTab;b.style.display='';b.hidden=profile.tabs.indexOf(name)<0||(name==='voice'&&!App.openVoice);});
