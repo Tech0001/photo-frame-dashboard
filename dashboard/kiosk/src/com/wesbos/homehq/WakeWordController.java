@@ -150,7 +150,7 @@ final class WakeWordController {
       main.post(()->{if(current(s)){label("ready · tap to pause");Log.i(TAG,"Hey Orbis armed locally");}});
       short[] frame=new short[1280];int filled=0;
       long lastData=SystemClock.elapsedRealtime(),lastPlayback=0;
-      double ambient=60;boolean wasPlaying=false;
+      AmbientNoise ambient=new AmbientNoise();boolean wasPlaying=false;
       VoiceEndpoint endpoint=null;ByteArrayOutputStream command=new ByteArrayOutputStream();
       // 320 ms of pre-roll prevents the beginning of an immediate question being clipped.
       byte[] recent=new byte[10240];int recentSize=0;
@@ -166,15 +166,16 @@ final class WakeWordController {
             if(!wasPlaying)main.post(()->{if(current(s))label("paused during audio");});
             wasPlaying=true;lastPlayback=lastData;continue;
           }
-          if(wasPlaying){engine.reset();recentSize=0;wasPlaying=false;main.post(()->{if(current(s))label("ready · tap to pause");});}
+          if(wasPlaying){engine.reset();ambient.reset();recentSize=0;wasPlaying=false;main.post(()->{if(current(s))label("ready · tap to pause");});}
           if(lastData-lastPlayback<1200)continue;
           if(recentSize==recent.length){System.arraycopy(recent,2560,recent,0,recent.length-2560);recentSize-=2560;}
           System.arraycopy(pcm,0,recent,recentSize,pcm.length);recentSize+=pcm.length;
-          double rms=VoiceEndpoint.rms(frame);if(rms<ambient*2)ambient=.98*ambient+.02*rms;
+          ambient.accept(frame);
           float score=engine.predict(frame);
           if(score>=.7f) {
-            Log.i(TAG,"Hey Orbis detected score="+score);
-            endpoint=new VoiceEndpoint(ambient);command.write(recent,0,recentSize);
+            double noiseRms=ambient.rms();
+            Log.i(TAG,"Hey Orbis detected score="+score+" ambientRms="+Math.round(noiseRms));
+            endpoint=new VoiceEndpoint(noiseRms);command.write(recent,0,recentSize);
             s.cueUntil=SystemClock.elapsedRealtime()+WakeChime.GUARD_MS;
             main.post(()->{if(current(s)){
               pending=true;dismissResponse();feedback.listen();label("listening");
@@ -186,7 +187,7 @@ final class WakeWordController {
           if(command.size()+pcm.length<=16000*2*30)command.write(pcm);
           boolean cuePlaying=lastData<s.cueUntil;
           VoiceEndpoint.Result result=endpoint.accept(frame,cuePlaying);
-          final double rms=cuePlaying?0:VoiceEndpoint.rms(frame);
+          final double rms=endpoint.levelRms();
           final int quietMs=endpoint.quietMillis();
           main.post(()->{if(current(s))feedback.level(rms,quietMs);});
           if(s.sendNow||result==VoiceEndpoint.Result.COMPLETE||command.size()+pcm.length>16000*2*30){question=command.toByteArray();break;}
