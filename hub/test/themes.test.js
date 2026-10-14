@@ -47,8 +47,12 @@ test('live theme updates are scoped to the stage and Paper removes every palette
   handlers.tune({ theme: 'sakura-mochi' });
   assert.equal(properties.get('--accent'), '#F23888');
   assert.equal(stage.dataset.themeDark, 'true');
+  assert.equal(properties.get('--r'), '26px');
+  assert(properties.has('--panel-surface'));
   handlers.tune({ theme: 'autumn' });
   assert.equal(stage.dataset.themeDark, 'false');
+  assert.equal(properties.has('--r'), false);
+  assert.equal(properties.has('--panel-surface'), false);
   handlers.tune({ theme: 'paper' });
   assert.equal(properties.size, 0);
   handlers.tune({ theme: 'unknown' });
