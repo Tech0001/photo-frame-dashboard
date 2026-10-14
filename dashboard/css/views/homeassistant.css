@@ -1,0 +1,68 @@
+/* Compact room overview, sun times, and one row per camera/doorbell device. */
+.ha-home { display:flex; flex-direction:column; height:100%; gap:18px; }
+.ha-top { display:flex; align-items:center; justify-content:space-between; gap:24px; flex:none; }
+.ha-top h1 { font-size:60px; line-height:1; }
+.ha-sync { display:flex; align-items:center; gap:16px; text-align:right; }
+.ha-sync .icon-btn { width:52px; height:52px; min-height:52px; }
+.ha-banner { padding:12px 16px; background:var(--paper-2); border-radius:12px; font-size:18px; flex:none; }
+.ha-warning { color:var(--ink-2); }
+.ha-banner.ha-warning { border-left:5px solid var(--amber); }
+.ha-content { display:flex; flex-direction:column; gap:24px; overflow:auto; min-height:0; padding-bottom:4px; }
+.ha-overview { display:grid; grid-template-columns:minmax(0,1fr); background:var(--card); border-radius:var(--r); padding:22px 26px; gap:28px; flex:none; }
+.ha-overview.has-sun { grid-template-columns:minmax(0,1fr) 245px; }
+.ha-climate { min-width:0; }
+.ha-climate-controls { display:flex; align-items:center; gap:16px; margin-top:16px; }
+.ha-climate-controls > span { font-size:16px; color:var(--mute); }
+.ha-climate-controls > button { flex:none; padding:12px 18px; }
+.ha-adjust-sheet { width:680px; max-width:calc(100% - 40px); max-height:calc(100% - 36px); padding:30px; }
+.ha-adjust-sheet > h2 { font-size:36px; line-height:1.1; padding-right:40px; }
+.ha-adjust-sheet > p { font-size:18px; color:var(--mute); margin:12px 0 20px; }
+.ha-adjust { display:flex; flex-direction:column; gap:16px; }
+.ha-adjust label { display:flex; align-items:center; justify-content:space-between; gap:16px; font-size:21px; }
+.ha-adjust select { max-width:65%; min-height:52px; padding:10px 14px; background:var(--paper-2); color:var(--ink); border:1px solid var(--line); border-radius:10px; font:inherit; }
+.ha-target + .ha-target { margin-top:12px; }
+.ha-stepper { display:flex; align-items:center; gap:8px; }
+.ha-stepper button { width:52px; height:52px; background:var(--paper-2); border:1px solid var(--line); border-radius:10px; color:var(--ink); font-size:28px; }
+.ha-stepper input { width:100px; min-height:52px; font:inherit; font-variant-numeric:tabular-nums; text-align:center; color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:10px; }
+.ha-comfort { border-top:1px solid var(--line); padding-top:16px; display:flex; flex-direction:column; gap:12px; }
+.ha-adjust [role=status] { margin:0; font-size:18px; color:var(--ink-2); }
+.ha-adjust button:disabled { opacity:.5; }
+.ha-climate-title { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+.ha-climate-title h2 { font-size:32px; line-height:1; }
+.ha-action { display:flex; align-items:center; gap:5px; font-weight:700; font-size:18px; }
+.ha-climate-body { display:flex; align-items:center; gap:34px; margin-top:14px; }
+.ha-temperature { font-size:86px; line-height:1; flex:none; }
+.ha-temperature small { font-size:29px; margin-left:6px; color:var(--mute); }
+.ha-temperature .label { display:block; font-size:12px; margin:8px 0 0 3px; }
+.ha-facts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px 26px; flex:1; }
+.ha-home dl { margin:0; }
+.ha-home dt { font-size:14px; color:var(--mute); line-height:1.25; margin-bottom:5px; }
+.ha-home dd { margin:0; font-weight:700; font-size:22px; line-height:1.2; }
+.ha-home dd small { font-size:16px; margin-left:4px; color:var(--mute); }
+.ha-daylight { border-left:1px solid var(--line); padding-left:26px; display:flex; flex-direction:column; gap:14px; justify-content:center; }
+.ha-daylight > .label { display:flex; align-items:center; gap:7px; font-size:12px; }
+.ha-sun-time { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:18px; }
+.ha-sun-time > div { text-align:right; }
+.ha-sun-time b { font-size:23px; font-weight:700; font-variant-numeric:tabular-nums; }
+.ha-sun-time small { display:block; font-size:13px; color:var(--mute); margin-top:3px; }
+.ha-devices, .ha-other { flex:none; }
+.ha-devices > h2, .ha-other > h2 { font-size:13px; margin:0 0 10px 2px; }
+.ha-device-list { background:var(--card); border-radius:var(--r); padding:0 24px; }
+.ha-device { display:grid; grid-template-columns:200px minmax(0,1fr) 170px; gap:24px; align-items:center; padding:24px 0; }
+.ha-device + .ha-device { border-top:1px solid var(--line); }
+.ha-device-title { min-width:0; }
+.ha-device-title h3 { font-size:34px; line-height:1.05; margin:0 0 9px; }
+.ha-camera-status { display:flex; align-items:center; gap:5px; font-size:14px; color:var(--mute); }
+.ha-device-readings { display:flex; flex-wrap:wrap; gap:18px 30px; align-items:center; }
+.ha-reading { min-width:0; overflow-wrap:anywhere; }
+.ha-device-readings .ha-reading { flex:1 0 130px; }
+.ha-device-readings .ha-reading:only-child { flex:none; }
+.ha-device-readings dd { font-size:21px; }
+.ha-unavailable dd { color:var(--mute); font-size:18px; font-weight:500; }
+.ha-device-actions { display:flex; flex-direction:column; gap:8px; }
+.ha-image-btn { display:flex; justify-content:center; align-items:center; gap:8px; padding:14px 10px; border:1px solid var(--line); background:var(--paper-2); color:var(--ink); border-radius:12px; font-weight:700; font-size:17px; min-height:52px; }
+.ha-image-btn:disabled { opacity:.5; }
+.ha-other > dl { display:flex; flex-wrap:wrap; gap:18px 30px; padding:18px 24px; background:var(--card); border-radius:var(--r); }
+.ha-other .ha-reading { flex:1 0 210px; max-width:340px; }
+.ha-camera-image { max-width:100%; max-height:440px; object-fit:contain; }
+.ha-home.is-stale .ha-overview, .ha-home.is-stale .ha-device-list, .ha-home.is-stale .ha-other > dl { box-shadow:inset 4px 0 var(--amber); }
