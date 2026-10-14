@@ -7,6 +7,7 @@ function install(ctx) {
   route('GET','/api/home/camera',async({url,res})=>{const result=await ha.camera(cfg,secrets,url.searchParams.get('entity') || '');send(res,200,result.body,{'Content-Type':result.type,'Cache-Control':'no-store'});});
   route('GET','/api/admin/homeassistant/entities',()=>ha.discover(cfg,secrets),{admin:true});
   ctx.settings('homeassistant',{
+    fields:[{path:'url',label:'Home Assistant URL'},{path:'token',label:'Long-lived access token',type:'password',secret:true},{path:'climate',label:'Thermostat entity'},{path:'entities',label:'Camera, sensor and event entities (comma separated)'},{path:'controls',label:'Allow thermostat controls',type:'checkbox'},{path:'ecobeeResume',label:'Allow ecobee schedule resume',type:'checkbox'},{path:'unlink',label:'Remove saved token',type:'checkbox'}],
     view:()=>({...cfg.homeassistant,tokenSet:!!secrets.homeassistant_token}),
     save:input=>{
       if(!input||typeof input!=='object'||Array.isArray(input))throw problem('Invalid Home Assistant settings');
