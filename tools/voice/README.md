@@ -29,7 +29,8 @@ outside Git, with directory mode 0700 and file mode 0600. Configure `worker.py`:
   "speechEngine": "nemotron",
   "speechBinary": "/path/to/nemo-speech",
   "speechModel": "/path/to/nemotron-3.5-asr-streaming-0.6b.q8_0.gguf",
-  "device": "cpu",
+  "device": "vulkan:0",
+  "speechFallbackDevice": "cpu",
   "language": "en",
   "voiceModel": "/path/to/piper-voice.onnx",
   "chatUrl": "http://127.0.0.1:1234/v1/chat/completions",
@@ -40,10 +41,17 @@ outside Git, with directory mode 0700 and file mode 0600. Configure `worker.py`:
 The Nemotron runtime's companion libraries must be beside its executable. The
 worker sets its library path and converts microphone input to 16 kHz mono WAV.
 Nemotron inference runs in a separate process with bounded time and input size.
+Use the device supported by your existing runtime. Optional `speechFallbackDevice`
+retries on CPU only when the GPU cannot allocate model memory; other failures
+remain errors. The authenticated health response reports the last device used.
 For Whisper, omit speechEngine/speechBinary and point speechModel at a complete
 local faster-whisper directory; computeType defaults to int8. No model download
 occurs during a voice request. Supply Piper's adjacent `.onnx.json` configuration.
 Use voices in accordance with their individual model licenses.
+
+Reuse an existing local model endpoint by supplying only `chatUrl` and
+`chatModel`. This sends requests directly, allowing socket-activated servers to
+start themselves without a separate model-list check.
 
 Optional `serverCommand` and `loadCommand` are local, trusted argument arrays
 run without a shell to start/load an installed local model. They are never set
