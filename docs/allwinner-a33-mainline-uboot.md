@@ -16,8 +16,10 @@ Follow the [repository's backup, approval and privacy rules](../README.md#rules-
 and read [the AiMOR remote root shell notes](aimor-remote-root-shell.md) first. Everything
 below is from one unit. Check each value on your own unit; stop at the first mismatch.
 
-Scripts are in [`scripts/a33-uboot/`](../scripts/a33-uboot). Host-specific scripts end in
-`-macos.py`; on Linux use the guide's `lsblk`/`dd` equivalents. Windows has its own
+Scripts are in [`scripts/a33-uboot/`](../scripts/a33-uboot).
+`emmc-macos.py` also supports Linux: use the bare whole-disk name (for example `sdb`,
+not `/dev/sdb`) and the exact byte count from `lsblk -b`, keeping all its identity,
+read-only and mount checks. Windows has its own
 `-windows.ps1` scripts, see [section 9](#9-windows-host-wsl2--usbipd).
 
 A later [May 2026 macOS unit report](pf1007l-macos-20260529-report.md) reached root
@@ -25,6 +27,11 @@ with this route, after locally correcting U-Boot's START STOP handling and addin
 write/readback error guards to the generated scripts. Those changes are **not** in
 the scripts at the repository revision cited in that report. Read its checks and
 limitations before treating the commands below as a tested path for that firmware.
+
+A [May `20260519` Linux report](pf1007l-20260519-linux-report.md) completed a full
+user-area backup and post-write comparison with 4-bit / 12 MHz eMMC, a low-power
+U-Boot and the START STOP correction. Its source patch is opt-in; the report
+records a build-helper SPL-padding limitation, not a change to the default build.
 
 ## 1. Get USB data on the USB-C-only unit
 
@@ -172,7 +179,11 @@ python3 -I scripts/a33-uboot/boot-patch.py backups/a33-emmc-full.img <boot-start
 - requires the sector to be a partition start holding a legacy `ANDROID!` image with a
   2048-byte page, no second stage and a matching SHA-1 image ID;
 - changes only the `sys.usb.config=mass_storage` action in `init.sun8i.usb.rc`, with the
-  same text as the boot access notes, and refuses if the stock action is not there exactly once;
+  same text as the boot access notes, and refuses if the stock action is not there exactly once.
+  The frame uses that action only if its saved USB setting is `mass_storage`. On one May unit
+  (#81) `/data/property/persist.sys.usb.config` held `ptp`, so the patched image booted with no
+  ADB. If a patched frame boots with no ADB, this is the likely cause; the script has no
+  `ptp` option yet;
 - recompresses the ramdisk and refuses if it does not fit the original slot;
 - re-parses both images: exactly one cpio entry may differ, header changes are limited to the
   ramdisk size (bytes 16–19) and image ID (bytes 576–595), nothing after the slot may change;
@@ -190,13 +201,9 @@ eMMC, then writes the ramdisk and then the header **only if** all four payloads 
 CRC-32 (`crc32 -v`) **and** the eMMC still holds the original bytes (`cmp.b`). If any check
 fails, nothing is written. Either way it ends in read-only `ums`.
 
-These are preflight guards. At the checked revision, the generator does not stop
-the header write on a failed ramdisk write or readback. The May session added
-explicit I/O-result checks and device readback before each next write, for both
-apply and restore; see [the tested local guards](pf1007l-macos-20260529-report.md#stronger-generated-write-script-guards).
-They are not included in the current generator and do not make the write atomic.
-Review the report's [RAM map and executable-script checks](pf1007l-macos-20260529-report.md#stronger-generated-write-script-guards)
-when adapting those local guards. Editing the `.cmd` without rebuilding and checking
+The header is written only after the ramdisk write succeeds and reads back equal; the
+same holds for restore. This doesn't make the write atomic: a power cut between the two
+leaves a new ramdisk with the old header. Editing the `.cmd` without rebuilding and checking
 the `.scr` leaves the old commands in the executable image.
 
 With the owner approving **this specific boot-partition write**, power-cycle into FEL and run:
@@ -219,7 +226,9 @@ This reads the whole eMMC. Every byte must equal the backup, except the planned 
 which must equal the patched payloads. A mismatch does not by itself prove that the
 guard refused the write: an operation may have been incomplete. Only a complete
 match with the unchanged original proves the original bytes remain. If neither the
-full original nor the backup plus exact plan matches, stop and investigate.
+full original nor the backup plus exact plan matches, stop and investigate. The whole-disk
+check is only exact if Android hasn't booted since the backup; Android changes userdata.
+If it has, take a fresh read-only backup before the next write (#81).
 
 A first attempt here read the 5.4 MiB payloads back over FEL before starting U-Boot. The
 read timed out (`usb_bulk_recv() ERROR -7`). `sunxi-fel` stopped before "Starting U-Boot",

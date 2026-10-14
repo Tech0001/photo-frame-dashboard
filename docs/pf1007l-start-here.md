@@ -26,6 +26,7 @@ Unit reports with more detail: [unit A's custom tool](allwinner-a33-boot-access.
 [January on Windows](pf1007l-windows-20260113-usb-adb-report.md),
 [`OS-PF1009` units E and F](pf1007l-pf1009-20260417.md),
 [May `20260519` on Windows + WSL](pf1007l-windows-wsl-20260519-report.md),
+[May `20260519` on Linux](pf1007l-20260519-linux-report.md),
 [May `20260529` on macOS](pf1007l-macos-20260529-report.md),
 [May `20260529` on Windows + WSL](pf1007l-windows-20260529-report.md).
 
@@ -41,11 +42,11 @@ differ in eMMC size and in whether ADB ships on.
 | Firmware string ends with | Reports | eMMC sectors | Boot SHA-256, first 8 (sector 172032, 31,028 sectors) | Stock ADB | What worked |
 | --- | --- | --- | --- | --- | --- |
 | `321-OS-AIMOR.0.20260113` | units A, B, C; #6, #12, #18, #19, #61, [Windows report](pf1007l-windows-20260113-usb-adb-report.md) | 30,535,680 or 30,777,344 | `d71c313d` | No | Route U; Route S (at 12 MHz on the larger eMMC, #61); a guarded one-sector edit on one unit |
-| `321-OS-AIMOR.0.20260410` | unit D (#13), #17, #20, #27, #69, #8 comment, [unit G](allwinner-a33-sdcard-adb-wifi.md#14-april-20260410-firmware) | 30,777,344 | `8ffc2a7d` | Usually no; **on** in one unit | Route U; [T3c](#t3c-temporary-adb-through-the-aimor-connection) with no write; [one-sector edit](pf1007l-sector-edit-sdcard.md); Route S with an April patch builder that is not in this repo (unit G) |
+| `321-OS-AIMOR.0.20260410` | unit D (#13), #17, #20, #27, #69, #8 comment, [unit G](allwinner-a33-sdcard-adb-wifi.md#14-april-20260410-firmware), [Linkdaze PF1007BK](pf1007l-linkdaze-20260410-report.md) (#83) | 30,777,344 | `8ffc2a7d` | Usually no; **on** in one unit | Route U; [T3c](#t3c-temporary-adb-through-the-aimor-connection) with no write, then `persist.sys.usb.config` for persistent USB ADB (#83, one unit); [one-sector edit](pf1007l-sector-edit-sdcard.md); Route S with an April patch builder that is not in this repo (unit G) |
 | `321-OS-AIMOR.0.20260416` | #16 comment | 30,777,344 | `fc4d22d2` (over 31,032 sectors) | No | An unpublished `build.prop` edit |
 | `OS-PF1009.0.20260417` | units E and F ([report](pf1007l-pf1009-20260417.md)) | 30,777,344 | `3f0dc9d5` | No | Route U with [U-Boot fixes](#u-boot-settings-that-fixed-ums-problems) |
-| `FL-AIMOR-OS.0.20260519` | #24, #36, #62, #65 comment, [Windows report](pf1007l-windows-wsl-20260519-report.md) | 30,777,344 | `9a6e2456`, **different ramdisk slot** | No | Route U with U-Boot fixes; Route U patch carried on the SD card with a 12 MHz FEL U-Boot (#62, #68); [recovery-window write](pf1007l-macos-20260529-recovery-boot-write.md) (#65 comment). Route S only by editing its hash guard (do not) |
-| `V10-1680.0.20260529` | #8, #16, [#41](pf1007l-windows-20260529-report.md), [#28](pf1007l-macos-20260529-report.md), [recovery write](pf1007l-macos-20260529-recovery-boot-write.md) | 30,777,344 or 30,535,680 | `6c118dc1` | **On** in #8; off in #16, #28 and the recovery-write unit; not established in #41 | Nothing needed (#8); Route U; recovery-window write; a 1-bit 25 MHz read-only `ums` backup, then a userdata `persist.sys.usb.config` edit (#41, record only, not a published route) |
+| `FL-AIMOR-OS.0.20260519` | #24, #36, #62, #65 comment, [Windows report](pf1007l-windows-wsl-20260519-report.md), [Linux report](pf1007l-20260519-linux-report.md) | 30,777,344 | `9a6e2456`, **different ramdisk slot** | No | Route U with U-Boot fixes; Route U patch carried on the SD card with a 12 MHz FEL U-Boot (#62, #68); [recovery-window write](pf1007l-macos-20260529-recovery-boot-write.md) (#65 comment). Route S only by editing its hash guard (do not) |
+| `V10-1680.0.20260529` (also `321-OS-AIMOR.0.20260529`, #81) | #8, #16, [#41](pf1007l-windows-20260529-report.md), [#28](pf1007l-macos-20260529-report.md), [recovery write](pf1007l-macos-20260529-recovery-boot-write.md), [no-HS report](pf1007l-macos-20260529-no-mmc-hs-report.md), #81 | 30,777,344 or 30,535,680 | `6c118dc1` | **On** in #8; off in #16, #28, #81, the no-HS unit and the recovery-write unit; not established in #41 | Nothing needed (#8); Route U; Route U with the [no-HS U-Boot patch](patches/pf1007l-v2025.10-no-mmc-hs.patch) (no-HS report); Route U with the boot patch aimed at the `ptp` USB action, because that unit's saved USB setting was `ptp` (#81, local edit, not in the repo); recovery-window write; a 1-bit 25 MHz read-only `ums` backup, then a userdata `persist.sys.usb.config` edit (#41, record only, not a published route) |
 
 Numbers are GitHub issues and pull requests. Units A to C are from the first three guides:
 [allwinner-a33-pf1007l.md](allwinner-a33-pf1007l.md) (A, DC jack and Linux, rooted with a custom
@@ -75,8 +76,10 @@ What this tells you:
   frame that only an SD-card route can repair, so have a spare card ready.
 
 Hardware notes from several units (#6, #13): the Wi-Fi chip is an AIC8800 with no stored MAC
-address, so the MAC and the DHCP address change at each boot (set a static IP, or pin the MAC with
-[pf1007l-boot-fixes.md](pf1007l-boot-fixes.md)). Stock firmware
+address, so the MAC and the DHCP address change at each boot, or even at each Wi-Fi reconnect (#83).
+Set a static IP if your Wi-Fi screen has **Modify network** (some don't), pin the MAC with
+[pf1007l-boot-fixes.md](pf1007l-boot-fixes.md), or find the frame in the ARP table by the MAC's
+first bytes, which stayed the same on one unit. Stock firmware
 listens on TCP 8086, AiMOR's paired file service, not ADB. AiMOR's `vuid_cert.txt` is a device
 credential: keep it out of anything you publish.
 
@@ -221,6 +224,13 @@ Other firmware variants remain untested for this route. January `20260113` runs 
 network.** Run it on a network you control, finish the T8 lock-down in the same session, then
 reboot to close it, or move to a key-authenticated setup.
 
+**Making it persistent without flashing (April `20260410`, one unit, #83):** on this debuggable
+build, `setprop persist.sys.usb.config mass_storage,adb` kept USB ADB after a reboot. It writes
+`/data/property`, so ask the owner first. Undo: `setprop persist.sys.usb.config mass_storage`. Check
+USB ADB after a reboot before you count it as persistent ADB in T8. Don't use the Wi-Fi equivalent
+(`persist.adb.tcp.port`) except briefly on a network you control: it opens root ADB with no key check
+at every boot. See the [report](pf1007l-linkdaze-20260410-report.md).
+
 ### T4. Route U: FEL test (non-destructive to the frame)
 
 Do this only if T3 found `1f3a:1000`.
@@ -325,15 +335,16 @@ change to the U-Boot source, and its reports are the reference.
 
 | Symptom | What fixed it | Reports |
 | --- | --- | --- |
-| Read errors, `ums` drops, slow or failing backup | eMMC **4-bit at 26 MHz**, or 8-bit at 25 MHz | #16, #18, #24, #27, #29, #6 (8-bit high speed hung) |
-| The disk disappears when the computer sends "eject" or "stop" | Ignore START STOP UNIT unless it is a real unload: [patch](patches/pf1007l-v2025.10-start-stop.patch) | #28, #16, #24 |
+| Read errors, `ums` drops, slow or failing backup | eMMC **4-bit at 26 MHz**, or 8-bit at 25 MHz | #16, #18, #24, #27, #29, #6 (8-bit high speed hung), #81 (8-bit dropped 42–172 MB in; 4-bit at 26 MHz with START STOP finished two passes) |
+| The disk disappears when the computer sends "eject" or "stop" | Ignore START STOP UNIT unless it is a real unload: [patch](patches/pf1007l-v2025.10-start-stop.patch) | #28, #16, #24, #81 |
 | Drops through a bus-powered hub | Direct port or powered hub; low-power build (`CONFIG_SUNXI_NO_PMIC=y`, CPU at 408 MHz) | #16, #24, #29 |
 | Single read errors | Retry each read up to 8 times | #24 |
 | Route S dump fails | eMMC at 12 MHz. On May `20260519` a 12 MHz dump could still reset about a minute in | #24 comment, #61 (January), #62, #68 |
 | FEL U-Boot `mmc read` errors on May `20260519` even at 4-bit 26 MHz; guarded write refuses | eMMC at 8-bit **12 MHz** in the FEL U-Boot too | [Windows report](pf1007l-windows-wsl-20260519-report.md) |
+| Linux UMS drops after about 42 MB even at 4-bit 26 MHz through a powered dock | With the low-power build and START STOP correction retained, lowering the eMMC cap to **12 MHz** completed the full backup and post-write comparison. Electrical cause unmeasured; optional source patch, not a default change | [Linux report](pf1007l-20260519-linux-report.md) |
 | `ums` disk (`1f3a:1010`) resets or vanishes after being attached to WSL with usbipd | Never attach `1010` to WSL; read it from Windows with `emmc-windows.ps1` ([Windows section](allwinner-a33-mainline-uboot.md#9-windows-host-wsl2--usbipd)) | #6, #75 |
 | DRAM init fails on a cold start | DRAM byte lane 0 retrain and a warm-up SPL | #6 |
-| `ums` exposes no eMMC on May `20260529` | Legacy timing, 1-bit at 25 MHz. Check the disk's capacity: some builds exposed the SD card instead | #41 |
+| `ums` exposes no eMMC on May `20260529`; `unable to select a mode: -1` | Legacy timing. The eMMC stops answering after U-Boot switches it to high-speed timing, at any clock. 4-bit with the HS host capabilities removed: [patch](patches/pf1007l-v2025.10-no-mmc-hs.patch). 1-bit at 25 MHz also worked. Both units had the smaller 30,535,680-sector eMMC. Check the disk's capacity: some builds exposed the SD card instead | #41, [no-HS report](pf1007l-macos-20260529-no-mmc-hs-report.md) |
 | Unstable USB reads on April `20260410` | CPU at 480 MHz in the RAM U-Boot | #56 |
 | Bulk reads fail on January (Windows) at 4-bit 26 MHz; single sectors are fine | **Unsolved** | #63 |
 | U-Boot USB gadgets (`ums`, fastboot) fail with error `-71`, while FEL and Android ADB work | **Unsolved** (one May `20260519` unit) | #62, #36 |
@@ -388,8 +399,8 @@ changes too.
 
 > **If your only ADB is temporary (T3c), do not disable AiMOR yet.** AiMOR is then your only way
 > back in without an SD card, and some builds hide disabled apps in Settings, so you can't turn it
-> back on from the screen (#56, #69). Until you have persistent ADB (Route U, Route S or the
-> one-sector edit), block TCP 7806 and force-stop AiMOR instead. That is a stopgap: AiMOR still
+> back on from the screen (#56, #69). Until you have persistent ADB (Route U, Route S, the
+> one-sector edit, or `persist.sys.usb.config` with USB ADB confirmed after a reboot), block TCP 7806 and force-stop AiMOR instead. That is a stopgap: AiMOR still
 > turns SELinux off at every start. See
 > [the lockout notes](pf1007l-20260410-network-adb.md#6-lockout-after-disabling-aimor-and-offline-recovery).
 

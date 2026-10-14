@@ -41,6 +41,18 @@ The kiosk keeps retrying if Wi-Fi or the hub isn't ready at startup, with a
 native offline screen and a button for Wi-Fi settings. Retry timers pause while
 another app is in front; failed images and API requests do not reload the page.
 
+## Screen density
+
+The dashboard is laid out for 1280×800 at density 160. Most 1280×800 frames ship at 160, but a VESWWE
+`DP101` shipped at 190 and the bottom of the dashboard was cut off
+([veswwe-dp101.md](../../docs/veswwe-dp101.md)). Check with `adb shell wm density`. If it isn't 160:
+
+```sh
+adb shell wm density 160      # undo: adb shell wm density reset
+```
+
+Android's own menus get smaller too. The setting survives a reboot.
+
 ## Frames without Home or Back buttons
 
 Some frame firmware omits Android's navigation bar. The two-finger gesture only
