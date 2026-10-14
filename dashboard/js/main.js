@@ -6,6 +6,7 @@ import './live.js';
 import './agent-data.js';
 import './system.js';
 import './slideshow.js';
+import './weather-details.js';
 import './views/home.js';
 import './views/calendar.js';
 import './views/tasks.js';
