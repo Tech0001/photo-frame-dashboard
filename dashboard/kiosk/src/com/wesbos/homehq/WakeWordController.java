@@ -106,8 +106,12 @@ final class WakeWordController {
     feedback.preview();label("preview");chime.play();
     main.postDelayed(()->{
       if(turn!=previewTurn||destroyed)return;
+      feedback.previewThinking();
+    },2500);
+    main.postDelayed(()->{
+      if(turn!=previewTurn||destroyed)return;
       pending=false;feedback.hide();label("ready soon");schedule();
-    },4000);
+    },6500);
   }
   private void schedule(){main.removeCallbacks(poll);if(active&&!destroyed)main.postDelayed(poll,500);}
   private final Runnable poll=this::checkState;

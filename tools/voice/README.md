@@ -23,6 +23,8 @@ features and protoLabsAI's classifier on the display CPU. Only the subsequent
 question, with a short pre-roll to avoid clipping its first word, goes to Hub.
 Standby audio stays in bounded memory on the display and is never uploaded or
 saved. The waves respond to microphone level and show a countdown during quiet.
+Once capture stops, the blue waves switch to warm pulsing dots and “Thinking…”
+with “Preparing your reply · microphone off” while the request is processed.
 A question sends after three seconds of quiet (rounded up to the next 80 ms
 audio frame), or at the 30-second
 limit. No question times out after six seconds. **Send now** and **Close** remain
@@ -37,7 +39,8 @@ audio playback to avoid recognizing the assistant's own reply. This initial
 version does not support interrupting speech or waking over music. It resumes
 after playback. A native voice panel keeps this working with an existing Hub
 deployment without requiring a server/frontend update. **Preview wake sound and
-waves** in the two-finger controls demonstrates the cue without recording.
+waves** in the two-finger controls demonstrates the cue, listening waves, and
+processing indicator without recording.
 
 Build assets are pinned and checksum-verified by
 `dashboard/kiosk/prepare-wakeword.py`; downloads are ignored by Git. Attribution

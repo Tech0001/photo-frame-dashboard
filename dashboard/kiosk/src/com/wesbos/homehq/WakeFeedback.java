@@ -15,7 +15,7 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-/** Lightweight native blue/cyan waves above the dashboard or screensaver. */
+/** Native listening waves and a distinct reply-processing indicator. */
 final class WakeFeedback extends FrameLayout {
   private final TextView title, subtitle;
   private final Button send;
@@ -42,12 +42,15 @@ final class WakeFeedback extends FrameLayout {
   }
   void listen() {
     listening=true;title.setText("Listening…");subtitle.setText("Sends after 3 seconds of quiet");
+    subtitle.setTextColor(0xffc5edff);
     send.setVisibility(VISIBLE);waves.thinking=false;waves.target=0;waves.quiet=0;
     setVisibility(VISIBLE);waves.invalidate();
   }
   void preview() {listen();title.setText("Wake feedback preview");subtitle.setText("Microphone off during preview");send.setVisibility(GONE);waves.target=.4f;}
+  void previewThinking() {thinking();subtitle.setText("Processing preview · microphone off");}
   void thinking() {
-    listening=false;title.setText("Thinking…");subtitle.setText("Your question is processing on the local PC");
+    listening=false;title.setText("Thinking…");subtitle.setText("Preparing your reply · microphone off");
+    subtitle.setTextColor(0xffffd89a);
     send.setVisibility(GONE);waves.thinking=true;waves.quiet=0;setVisibility(VISIBLE);waves.invalidate();
   }
   void level(double rms,int quietMs) {
@@ -74,8 +77,22 @@ final class WakeFeedback extends FrameLayout {
       int w=getWidth(),h=getHeight();float density=getResources().getDisplayMetrics().density;
       paint.setStyle(Paint.Style.FILL);paint.setShader(backdrop);paint.setAlpha(255);canvas.drawRect(0,0,w,h,paint);
       double time=SystemClock.uptimeMillis()/1000.0;
+      if(thinking) {
+        // Warm, pulsing dots replace the blue waves completely once capture stops.
+        paint.setShader(null);
+        for(int dot=0;dot<3;dot++) {
+          float pulse=(float)(.5+.5*Math.sin(time*4-dot*.9));
+          float x=w/2f+(dot-1)*36*density,y=h-40*density;
+          paint.setColor(0xffffbd66);paint.setAlpha((int)(18+20*pulse));
+          canvas.drawCircle(x,y,(13+4*pulse)*density,paint);
+          paint.setColor(0xffffd89a);paint.setAlpha((int)(100+155*pulse));
+          canvas.drawCircle(x,y,(5+2*pulse)*density,paint);
+        }
+        postInvalidateDelayed(33);
+        return;
+      }
       smoothed+=(target-smoothed)*.18f;
-      float amplitude=(thinking?10:6+smoothed*30)*density;
+      float amplitude=(6+smoothed*30)*density;
       float baseline=h-40*density;
       paint.setShader(ink);paint.setStyle(Paint.Style.STROKE);paint.setStrokeCap(Paint.Cap.ROUND);
       for(int layer=0;layer<4;layer++) {
@@ -90,7 +107,7 @@ final class WakeFeedback extends FrameLayout {
         paint.setStrokeWidth((layer==3?2.3f:1.3f)*density);paint.setAlpha(layer==3?255:75+layer*35);
         canvas.drawPath(path,paint);
       }
-      if(!thinking&&quiet>0) {
+      if(quiet>0) {
         paint.setStyle(Paint.Style.FILL);paint.setAlpha(160);
         canvas.drawRect(w*(1-quiet)/2,h-3*density,w*(1+quiet)/2,h,paint);
       }
