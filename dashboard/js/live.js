@@ -23,6 +23,7 @@
     replace(D.photos,state.photos);
     D.weatherLive = !!state.weather; D.weatherConfigured = !!state.weatherConfigured;
     if (state.weather) D.weather = state.weather;
+    if (!state.agents && D.agents) D.agents.forEach(function(a){a.status='off';a.meters=[];a.tokens=0;a.cost=0;a.week=[0,0,0,0,0,0,0];a.note='Install and connect the Agents integration in Hub.';});
     window.TUNE = state.tune || {};
     if (window.App) {
       if (state.display) { App.idle.home = state.display.homeSec || 60; App.idle.ambient = state.display.ambientSec || 120; }

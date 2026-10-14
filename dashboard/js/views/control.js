@@ -333,6 +333,7 @@
 
   App.register('control', {
     show: function (el) {
+      if (App.live && !App.homeView) { el.innerHTML = '<div class="card"><h1 class="serif">Home</h1><p>Install and connect the Home Assistant integration in Hub.</p></div>'; return; }
       if (!V.el) {
         V.el = el;
         el.innerHTML = '<div class="hc">' +
