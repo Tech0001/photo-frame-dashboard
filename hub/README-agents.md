@@ -1,6 +1,6 @@
 # Agents integration
 
-Based on `pr/our-hub`. Keeps our Codex, Claude and OpenRouter account cards and
+Based on `pr/hub`. Keeps our Codex, Claude and OpenRouter account cards and
 usage readers. No project-progress interface, payload or publisher is included.
 The account storage and Codex adapter are new implementations; our Claude,
 OpenRouter and PC-login synchronization modules are retained.

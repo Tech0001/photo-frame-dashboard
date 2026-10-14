@@ -1,6 +1,6 @@
 # Home Assistant integration
 
-Based on `pr/our-hub`. Retains our Home page: selected device groups, thermostat,
+Based on `pr/hub`. Retains our Home page: selected device groups, thermostat,
 sunrise/sunset events, camera snapshots and explicit thermostat controls. Ring
 and ecobee connect through Home Assistant; the hub does not log into their apps.
 
