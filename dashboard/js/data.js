@@ -265,6 +265,22 @@ window.DATA = (function () {
     p: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 5, 10, 20, 25, 40, 80, 90, 70, 55, 20, 10, 0, 0]
   };
 
+  // Detailed demo forecast. A live data source can replace this same shape.
+  weather.units = 'C';
+  weather.today = { hi: weather.hi, lo: weather.lo, c: 'cloud', p: 90, uv: 2, rise: 7.25, set: 18.5 };
+  weather.days = [];
+  weather.hh = { t: [], c: [], p: [] };
+  for (var wd = 0; wd < 7; wd++) {
+    var delta = [0, -2, 1, 3, 2, -1, 0][wd];
+    weather.hh.t = weather.hh.t.concat(weather.t.map(function (v) { return v + delta; }));
+    weather.hh.c = weather.hh.c.concat(weather.c);
+    weather.hh.p = weather.hh.p.concat(weather.p);
+    if (wd) {
+      var forecastDate = new Date(base); forecastDate.setDate(forecastDate.getDate() + wd);
+      weather.days.push({ date: forecastDate.getFullYear() + '-' + ('0' + (forecastDate.getMonth() + 1)).slice(-2) + '-' + ('0' + forecastDate.getDate()).slice(-2), hi: weather.hi + delta, lo: weather.lo + delta, c: wd % 2 ? 'rain' : 'partly', p: wd % 2 ? 80 : 20, uv: 2, rise: 7.25, set: 18.5 });
+    }
+  }
+
   // ---------------------------------------------------------------- photos
   var t = new Date(base);
   var mmdd = ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2);
