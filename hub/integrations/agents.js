@@ -14,6 +14,8 @@ function install(ctx) {
   route('PUT','/api/accounts/local',({req,body})=>{local.authorize(req,secrets);return local.publish(body,secrets,store);});
   route('POST','/api/admin/accounts/token',({body})=>{const key=body.kind==='local'?'local_accounts_token':'agents_token';secrets[key]=crypto.randomBytes(32).toString('hex');ctx.saveFiles();return {token:secrets[key]};},{admin:true});
   ctx.settings('accounts',{
+    fields:[{path:'codex.authJson',label:'Codex login JSON',type:'textarea',secret:true},{path:'codex.source',label:'Codex login source',type:'select',options:[['','Keep existing'],['local','PC login sync'],['hub','Hub login']]},{path:'codex.unlink',label:'Disconnect Codex',type:'checkbox'},{path:'claude.authJson',label:'Claude credentials JSON',type:'textarea',secret:true},{path:'claude.source',label:'Claude login source',type:'select',options:[['','Keep existing'],['local','PC login sync'],['hub','Hub login']]},{path:'claude.unlink',label:'Disconnect Claude',type:'checkbox'},{path:'openrouter.authJson',label:'OpenRouter API key',type:'password',secret:true},{path:'openrouter.unlink',label:'Disconnect OpenRouter',type:'checkbox'}],
+    actions:[{kind:'local',label:'Generate PC login sync token'},{kind:'publisher',label:'Generate account publisher token'}],
     view:()=>({providers:accounts.status(secrets),localSyncTokenSet:!!secrets.local_accounts_token,publisherTokenSet:!!secrets.agents_token}),
     save:input=>{
       if(!input||typeof input!=='object'||Array.isArray(input))throw problem('Invalid account settings');
