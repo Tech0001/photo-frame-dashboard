@@ -1,0 +1,38 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const local=require('../lib/local-accounts'),accounts=require('../lib/accounts'),{AgentsStore}=require('../lib/agents');
+const {collect}=require('../../tools/account-usage/collect.cjs');
+test('local account ingestion is token protected, selected only, and preserves old timestamps on failure',async t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'frame-local-test-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+ const secrets={local_accounts_token:'test-only-local-token-123456789',accounts:{codex:{source:'local'},claude:{source:'local'}}};
+ const req={headers:{'content-type':'application/json','x-local-accounts-token':secrets.local_accounts_token}};
+ assert.doesNotThrow(()=>local.authorize(req,secrets));assert.throws(()=>local.authorize({headers:{...req.headers,'x-local-accounts-token':'wrong'}},secrets));
+ assert.throws(()=>local.authorize({headers:{...req.headers,'sec-fetch-site':'cross-site'}},secrets));
+ const store=new AgentsStore(dir),meter={label:'Weekly',used:12,win:10080,leftMin:600};
+ local.publish({services:[{id:'codex',plan:'Pro',meters:[meter],access_token:'MUST_NOT_STORE'}]},secrets,store);
+ let s=store.get().services[0];assert.equal(s.source,'pc-login');assert.equal(s.meters[0].used,12);assert(!JSON.stringify(s).includes('MUST_NOT_STORE'));
+ const updated=s.updated;local.publish({services:[{id:'codex',error:'PC login needs attention'}]},secrets,store);
+ s=store.get().services[0];assert.equal(s.updated,updated);assert.equal(s.meters[0].used,12);assert(s.errorAt);
+ assert.throws(()=>local.publish({services:[{id:'openrouter',meters:[meter]}]},secrets,store));
+ assert.throws(()=>local.publish({services:[{id:'claude',meters:[{...meter,used:NaN}]}]},secrets,store));
+ await accounts.refreshAll(secrets,store,true);assert.equal(store.get().services[0].source,'pc-login');
+ assert.equal(accounts.status(secrets)[0].source,'local');
+ secrets.accounts={};await accounts.refreshAll(secrets,store,true);assert.equal(store.get().services.length,0);
+});
+test('PC collector rereads rotated credentials, sends only numbers, and skips unchanged normal checks',async t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'frame-collector-test-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+ const credential=path.join(dir,'auth.json'),tokenFile=path.join(dir,'sync-token'),cacheFile=path.join(dir,'cache.json');
+ fs.writeFileSync(tokenFile,'test-only-sync-token-123456789',{mode:0o600});
+ const jwt='header.'+Buffer.from(JSON.stringify({exp:Math.floor(Date.now()/1000)+86400})).toString('base64url')+'.signature';
+ const original=JSON.stringify({tokens:{access_token:jwt,refresh_token:'NEVER_TRANSPORT_REFRESH',account_id:'LOCAL_ACCOUNT'}});fs.writeFileSync(credential,original,{mode:0o600});
+ const old=accounts.providers.codex.fetch;let reads=0,posts=0,requestedAt=null,lastBody;
+ accounts.providers.codex.fetch=async()=>{reads++;return{plan:'Pro',meters:[{label:'Weekly',used:42,win:10080,leftMin:300}]};};
+ t.after(()=>{accounts.providers.codex.fetch=old;});
+ const fetcher=async(url,opts)=>{assert.equal(url,'http://frame.test:8099/api/accounts/local');assert.equal(opts.redirect,'error');if(opts.method==='PUT'){posts++;lastBody=opts.body;return{ok:true};}return{ok:true,json:async()=>({providers:['codex'],requestedAt})};};
+ const cfg={hub:'http://frame.test:8099',tokenFile,cacheFile,credentials:{codex:credential}};
+ await collect(cfg,fetcher);assert.equal(reads,1);assert.equal(posts,1);assert(!lastBody.includes(jwt));assert(!lastBody.includes('NEVER_TRANSPORT_REFRESH'));assert(!lastBody.includes(credential));assert.equal(fs.readFileSync(credential,'utf8'),original);
+ await collect(cfg,fetcher);assert.equal(reads,1);
+ requestedAt=new Date().toISOString();await collect(cfg,fetcher);assert.equal(reads,2);
+ fs.utimesSync(credential,new Date(),new Date(Date.now()+2000));await collect(cfg,fetcher);assert.equal(reads,3);
+ assert(!fs.readFileSync(cacheFile,'utf8').includes('access_token'));
+});

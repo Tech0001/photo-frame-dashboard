@@ -1,0 +1,10 @@
+[Unit]
+Description=Read current PC account logins and publish selected usage to the frame
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env node %h/.local/lib/frame-account-sync/tools/account-usage/collect.cjs --config %h/.config/frame-account-sync/config.json
+Environment=PATH=/home/pc/.local/share/mise/installs/node/26.7.0/bin:/usr/bin:/bin
+UMask=0077
+TimeoutStartSec=90
