@@ -42,6 +42,8 @@ final class WakeWordController {
   private final Handler main=new Handler(Looper.getMainLooper());
   private final TextView badge;
   private final AudioManager audio;
+  private final WakeChime chime=new WakeChime();
+  private final WakeFeedback feedback;
   private boolean enabled, active, pending, destroyed;
   private int turn;
   private Session session;
@@ -56,6 +58,7 @@ final class WakeWordController {
   private static final String TAG="HubWake";
   private static final class Session {
     volatile boolean stop, sendNow;
+    volatile long cueUntil;
     final int turn;
     final String url, display;
     Session(int turn,String url,String display){this.turn=turn;this.url=url;this.display=display;}
@@ -70,7 +73,12 @@ final class WakeWordController {
     GradientDrawable background=new GradientDrawable();background.setColor(0xe637493f);background.setCornerRadius(16);
     badge.setBackground(background);badge.setOnClickListener(v->setEnabled(false));
     FrameLayout.LayoutParams position=new FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM|Gravity.RIGHT);
-    position.setMargins(12,12,12,12);content.addView(badge,position);label("starting");
+    position.setMargins(12,12,12,12);content.addView(badge,position);
+    feedback=new WakeFeedback(activity,()->{cancelTurn();label("ready soon");schedule();},
+        ()->{if(session!=null&&pending)session.sendNow=true;});
+    content.addView(feedback,new FrameLayout.LayoutParams(-1,
+        (int)(160*activity.getResources().getDisplayMetrics().density),Gravity.BOTTOM));
+    label("starting");
   }
   boolean isEnabled(){return enabled;}
   void setEnabled(boolean value) {
@@ -90,7 +98,17 @@ final class WakeWordController {
     cancelTurn();afterStop=start;
     if(session==null){afterStop=null;start.run();}
   }
-  private void label(String state){badge.setVisibility(enabled?View.VISIBLE:View.GONE);badge.setText("Hey Orbis · "+state);}
+  private void label(String state){badge.setVisibility(enabled&&feedback.getVisibility()!=View.VISIBLE?View.VISIBLE:View.GONE);badge.setText("Hey Orbis · "+state);}
+  /** Local preview for the native controls/debug intent. It never records or uploads. */
+  void previewFeedback() {
+    if(pending||voice.isBusy())return;
+    cancelTurn();pending=true;final int previewTurn=turn;
+    feedback.preview();label("preview");chime.play();
+    main.postDelayed(()->{
+      if(turn!=previewTurn||destroyed)return;
+      pending=false;feedback.hide();label("ready soon");schedule();
+    },4000);
+  }
   private void schedule(){main.removeCallbacks(poll);if(active&&!destroyed)main.postDelayed(poll,500);}
   private final Runnable poll=this::checkState;
   private void checkState(){
@@ -153,12 +171,20 @@ final class WakeWordController {
           if(score>=.7f) {
             Log.i(TAG,"Hey Orbis detected score="+score);
             endpoint=new VoiceEndpoint(ambient);command.write(recent,0,recentSize);
-            main.post(()->{if(current(s)){pending=true;label("listening");show("Listening…\nSpeak your question. It sends when you pause.",true);}});
+            s.cueUntil=SystemClock.elapsedRealtime()+WakeChime.GUARD_MS;
+            main.post(()->{if(current(s)){
+              pending=true;dismissResponse();feedback.listen();label("listening");
+              s.cueUntil=SystemClock.elapsedRealtime()+WakeChime.GUARD_MS;chime.play();
+            }});
           }
         } else {
           // Maximum includes pre-roll and is also checked independently of silence detection.
           if(command.size()+pcm.length<=16000*2*30)command.write(pcm);
-          VoiceEndpoint.Result result=endpoint.accept(frame);
+          boolean cuePlaying=lastData<s.cueUntil;
+          VoiceEndpoint.Result result=endpoint.accept(frame,cuePlaying);
+          final double rms=cuePlaying?0:VoiceEndpoint.rms(frame);
+          final int quietMs=endpoint.quietMillis();
+          main.post(()->{if(current(s))feedback.level(rms,quietMs);});
           if(s.sendNow||result==VoiceEndpoint.Result.COMPLETE||command.size()+pcm.length>16000*2*30){question=command.toByteArray();break;}
           if(result==VoiceEndpoint.Result.EMPTY){failure="I didn’t hear a question. Say Hey Orbis and try again.";break;}
         }
@@ -175,7 +201,7 @@ final class WakeWordController {
         if(bytes!=null){
           String encoded=Base64.encodeToString(history.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8),Base64.NO_WRAP);
           voice.submit(s.url,s.display,bytes,encoded,event->{if(current(s))event(event);});
-        } else if(error!=null){pending=false;resumeAfter=SystemClock.elapsedRealtime()+10000;label("try again");show(error,false);}
+        } else if(error!=null){pending=false;feedback.hide();resumeAfter=SystemClock.elapsedRealtime()+10000;label("try again");show(error,false);}
         schedule();
       });
     }
@@ -183,9 +209,10 @@ final class WakeWordController {
   private boolean current(Session s){return !destroyed&&active&&enabled&&!s.stop&&s.turn==turn;}
   private void event(JSONObject event) {
     String phase=event.optString("phase");
-    if("processing".equals(phase)){label("thinking");show("Thinking…",false);}
-    else if("error".equals(phase)){pending=false;resumeAfter=SystemClock.elapsedRealtime()+3000;label("ready soon");show(event.optString("error"),false);}
+    if("processing".equals(phase)){feedback.thinking();label("thinking");}
+    else if("error".equals(phase)){pending=false;feedback.hide();resumeAfter=SystemClock.elapsedRealtime()+3000;label("ready soon");show(event.optString("error"),false);}
     else if("reply".equals(phase)) {
+      feedback.hide();
       String heard=event.optString("text"),answer=event.optString("answer");
       show("You: "+heard+"\n\n"+answer,false);
       JSONObject action=event.optJSONObject("action");
@@ -231,7 +258,10 @@ final class WakeWordController {
   private void cancelTurn() {
     turn++;if(session!=null)session.stop=true;afterStop=null;
     requestedTab=null;
-    if(pending)voice.cancel();pending=false;releasePlayback();resumeAfter=SystemClock.elapsedRealtime()+1500;
+    if(pending)voice.cancel();pending=false;chime.stop();feedback.hide();releasePlayback();resumeAfter=SystemClock.elapsedRealtime()+1500;
+    dismissResponse();
+  }
+  private void dismissResponse() {
     if(dialog!=null){AlertDialog old=dialog;dialog=null;old.setOnDismissListener(null);old.dismiss();}
   }
 }

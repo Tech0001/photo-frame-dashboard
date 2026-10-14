@@ -19,8 +19,20 @@ class EndpointCheck {
   check(empty.accept(quiet)==VoiceEndpoint.Result.EMPTY);
   VoiceEndpoint normal=new VoiceEndpoint(60);
   for(int i=0;i<10;i++)check(normal.accept(speech)==VoiceEndpoint.Result.MORE);
-  for(int i=0;i<19;i++)check(normal.accept(quiet)==VoiceEndpoint.Result.MORE);
+  // 37 * 80 = 2960 ms must NOT send; the next frame crosses three seconds.
+  for(int i=0;i<37;i++)check(normal.accept(quiet)==VoiceEndpoint.Result.MORE);
   check(normal.accept(quiet)==VoiceEndpoint.Result.COMPLETE);
+  VoiceEndpoint resumed=new VoiceEndpoint(60);
+  for(int i=0;i<10;i++)resumed.accept(speech);
+  for(int i=0;i<30;i++)check(resumed.accept(quiet)==VoiceEndpoint.Result.MORE);
+  check(resumed.accept(speech)==VoiceEndpoint.Result.MORE);
+  check(resumed.quietMillis()==0);
+  for(int i=0;i<37;i++)check(resumed.accept(quiet)==VoiceEndpoint.Result.MORE);
+  check(resumed.accept(quiet)==VoiceEndpoint.Result.COMPLETE);
+  VoiceEndpoint chime=new VoiceEndpoint(60);
+  for(int i=0;i<8;i++)check(chime.accept(speech,true)==VoiceEndpoint.Result.MORE);
+  for(int i=0;i<66;i++)check(chime.accept(quiet)==VoiceEndpoint.Result.MORE);
+  check(chime.accept(quiet)==VoiceEndpoint.Result.EMPTY);
   VoiceEndpoint forever=new VoiceEndpoint(60);
   for(int i=0;i<374;i++)check(forever.accept(speech)==VoiceEndpoint.Result.MORE);
   check(forever.accept(speech)==VoiceEndpoint.Result.COMPLETE);
