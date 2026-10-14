@@ -1,0 +1,26 @@
+Optional wake-word listener acknowledgments
+
+openWakeWord streaming feature pipeline and model exports:
+Copyright 2022 David Scripka. Licensed under Apache License 2.0.
+https://github.com/dscripka/openWakeWord (v0.6.0 pipeline; v0.5.1 feature models)
+WakeWordEngine.java implements this streaming contract in Java, with bounded
+buffers and startup warm-up. Only the shared feature models are bundled; none
+of openWakeWord's CC BY-NC-SA pretrained keyword classifiers are included.
+
+Google speech_embedding pretrained audio feature model: Apache License 2.0.
+https://tfhub.dev/google/speech_embedding/1
+
+Hey Orbis classifier: protoLabsAI, model card declares Apache License 2.0.
+https://huggingface.co/protoLabsAI/hey-orbis-wakeword
+Pinned revision a5c9064affdfb487114c7dda083e38e4390e153d.
+The unmodified classifier is used for the temporary phrase "Hey Orbis".
+
+ONNX Runtime 1.20.0 Android: Copyright (c) Microsoft Corporation.
+Licensed under the MIT License. https://github.com/microsoft/onnxruntime
+
+Apache-2.0.txt and ONNX-Runtime-MIT.txt contain the license texts.
+ONNX-Runtime-ThirdPartyNotices.txt contains the runtime's third-party notices.
+
+Android implementation reference: https://github.com/msnilsen/openwakeword-android
+(Apache-2.0). The kiosk uses its existing Java AudioRecord capture infrastructure;
+it does not bundle that Kotlin library or its pretrained keyword classifiers.

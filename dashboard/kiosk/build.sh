@@ -13,26 +13,32 @@ BT="${BUILD_TOOLS:-$ANDROID_HOME/build-tools/34.0.0}"
 JAR="$ANDROID_HOME/platforms/android-34/android.jar"
 KS="$HOME/.android/debug.keystore"
 
-rm -rf build && mkdir -p build/gen build/classes
+python3 prepare-wakeword.py
+rm -rf build && mkdir -p build/gen build/classes build/assets/wakeword build/runtime
+cp wake-deps/models/*.onnx build/assets/wakeword/
+cp wake-word-NOTICE.txt build/assets/wakeword/
+cp -R licenses build/assets/wakeword/
+unzip -q wake-deps/onnxruntime-android.aar 'classes.jar' 'jni/armeabi-v7a/*' 'jni/arm64-v8a/*' -d build/runtime
+mv build/runtime/jni build/lib
 
 # Optional self-contained dashboard: npm run build, then KIOSK_BUNDLE=1 ./kiosk/build.sh.
-ASSET_ARGS=()
+ASSET_ARGS=(-A build/assets)
 if [ "${KIOSK_BUNDLE:-0}" = 1 ]; then
   [ -f ../dist/index.html ] || { echo "Run npm run build before bundling the dashboard." >&2; exit 1; }
   mkdir -p build/assets/dashboard
   cp -R ../dist/. build/assets/dashboard/
-  ASSET_ARGS=(-A build/assets)
 fi
 
 "$BT/aapt2" compile --dir res -o build/res.zip
 "$BT/aapt2" link -o build/base.apk -I "$JAR" --manifest AndroidManifest.xml build/res.zip \
-  --java build/gen --min-sdk-version 23 --target-sdk-version 23 --version-code 11 --version-name 1.10 "${ASSET_ARGS[@]}"
+  --java build/gen --min-sdk-version 23 --target-sdk-version 23 --version-code 12 --version-name 1.11 "${ASSET_ARGS[@]}"
 
-javac -nowarn -source 8 -target 8 -classpath "$JAR" -d build/classes \
+javac -nowarn -source 8 -target 8 -classpath "$JAR:build/runtime/classes.jar" -d build/classes \
   src/com/wesbos/homehq/*.java build/gen/com/wesbos/homehq/R.java
 
-"$BT/d8" --min-api 23 --lib "$JAR" --output build $(find build/classes -name '*.class')
+"$BT/d8" --min-api 23 --lib "$JAR" --output build build/runtime/classes.jar $(find build/classes -name '*.class')
 (cd build && zip -qj base.apk classes.dex)
+(cd build && zip -qr base.apk lib)
 "$BT/zipalign" -f 4 build/base.apk build/aligned.apk
 
 if [ ! -f "$KS" ]; then
