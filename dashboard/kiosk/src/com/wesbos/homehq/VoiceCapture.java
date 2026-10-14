@@ -7,6 +7,8 @@ import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
+import android.util.Log;
 import android.webkit.WebView;
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -20,6 +22,7 @@ final class VoiceCapture {
   private final Handler handler = new Handler(Looper.getMainLooper());
   private MediaRecorder recorder;
   private File recording;
+  private long startedAt;
   private String endpoint;
   private String history;
   private String origin;
@@ -57,12 +60,22 @@ final class VoiceCapture {
       recorder.setAudioSamplingRate(16000);recorder.setAudioChannels(1);recorder.setAudioEncodingBitRate(64000);
       recorder.setOutputFile(recording.getAbsolutePath());recorder.setMaxDuration(30000);
       recorder.setOnInfoListener((r,what,extra)->{if(what==MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED)stop();});
-      recorder.prepare();recorder.start();emit(message("recording",null));
+      recorder.setOnErrorListener((r,what,extra)->{
+        if(r!=recorder)return;
+        Log.w("HubVoice","Recorder failed: "+what+"/"+extra);
+        release();delete();emit(message("error","Android lost microphone capture. Close Voice and try again."));
+      });
+      recorder.prepare();recorder.start();startedAt=SystemClock.elapsedRealtime();emit(message("recording",null));
     } catch(Exception e){release();delete();emit(message("error","Could not start the microphone. Check permission and try again."));}
   }
   void stop(){
     if(recorder==null)return;
-    try{recorder.stop();}catch(Exception e){release();delete();emit(message("error","The recording was too short. Try again."));return;}
+    long duration=SystemClock.elapsedRealtime()-startedAt;
+    try{recorder.stop();}catch(Exception e){
+      Log.w("HubVoice","Recorder stop failed after "+duration+" ms",e);
+      release();delete();
+      emit(message("error",duration<1000?"The recording was too short. Speak for a moment, then tap Stop.":"Android captured no microphone audio. Close Voice and try again; if it continues, restart the Echo."));return;
+    }
     release();sending=true;emit(message("processing",null));
     final File audio=recording;recording=null;
     new Thread(()->{
