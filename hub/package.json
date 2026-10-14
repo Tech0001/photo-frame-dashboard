@@ -1,8 +1,19 @@
 {
-  "name": "photo-frame-hub", "version": "0.2.0", "private": true,
+  "name": "hub",
+  "version": "0.2.0",
+  "private": true,
   "description": "Optional local server for household photo dashboards",
-  "type": "commonjs", "main": "server.js",
-  "scripts": { "start": "node server.js", "test": "node --test test/*.test.js" },
-  "engines": { "node": ">=22" },
-  "dependencies": { "node-ical": "^0.27.3", "sharp": "^0.35.5" }
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "node-ical": "^0.27.3",
+    "sharp": "^0.35.5"
+  }
 }
