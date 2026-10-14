@@ -16,7 +16,7 @@
     D.agents.splice.apply(D.agents,[0,D.agents.length].concat(rows));D.agentsUpdated=latest;D.agentsRequestedAt=Date.parse(payload.requestedAt || '') || 0;
   });
   window.liveRefreshAgents=function(silent){
-    if(silent && Date.now()-lastRequest<60000)return;lastRequest=Date.now();D.agentsRequestedAt=Date.now();
+    if(silent && (Date.now()-lastRequest<60000 || D.agents.every(function(a){return a.status==='off';})))return;lastRequest=Date.now();D.agentsRequestedAt=Date.now();
     fetch('/api/agents/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}).catch(function(){App.toast('Could not refresh account usage.');});
   };
 })();
