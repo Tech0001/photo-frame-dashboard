@@ -23,6 +23,10 @@ features and protoLabsAI's classifier on the display CPU. Only the subsequent
 question, with a short pre-roll to avoid clipping its first word, goes to Hub.
 Standby audio stays in bounded memory on the display and is never uploaded or
 saved. The waves respond to microphone level and show a countdown during quiet.
+The endpoint learns the room's background level while waiting for the wake word,
+then holds that noise floor steady through the question. Fan noise below the
+speech threshold and isolated clicks don't restart the countdown. This is a
+noise-relative level detector, not a model that distinguishes every sound from speech.
 Once capture stops, the blue waves switch to warm pulsing dots and “Thinking…”
 with “Preparing your reply · microphone off” while the request is processed.
 A question sends after three seconds of quiet (rounded up to the next 80 ms

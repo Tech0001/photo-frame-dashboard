@@ -14,6 +14,8 @@
   and early submission, and a preview that never records.
 - [x] Replace listening waves with warm pulsing dots while preparing a reply,
   with an explicit microphone-off label.
+- [x] Calibrate the silence endpoint against standby room noise and reject isolated
+  clicks, so steady fans don't keep resetting the quiet countdown.
 - [ ] Connect spoken requests to a coding assistant with the live display
   tools. The current local Bonsai conversation is separate from the active
   coding-assistant chat; that routing is not connected yet.
