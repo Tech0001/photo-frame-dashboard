@@ -4,74 +4,56 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
-import android.graphics.Bitmap;
-import android.graphics.Color;
+import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import java.io.IOException;
 
 /**
  * Full-screen kiosk WebView for the Home HQ wall tablet.
  * - Immersive mode hides the status + navigation bars (true 1280x800).
- * - Controls: hold two fingers still on the screen for 1.5s for launcher/settings/Wi-Fi/reload.
- * - Offline: a failed page load shows a native screen instead of WebView's error page (which
- *   prints the full URL, including any token in it). With no Wi-Fi it offers Wi-Fi settings.
+ * - Controls: hold two fingers still on the screen for 1.5s for launcher/settings/reload.
  * - Remote debugging is OFF unless launched with the debug extra (every app on this device
  *   gets root, so the devtools socket should only exist while actively debugging):
  *     adb shell am start -n com.wesbos.homehq/.MainActivity --ez debug true
  * - Launch with a URL: adb shell am start -a android.intent.action.VIEW -d <url> -n com.wesbos.homehq/.MainActivity
- * - Set the saved URL, used on every later launch: adb shell am start -n com.wesbos.homehq/.MainActivity --es url <url>
- * - Offer the kiosk as a Home app (--ez home false undoes it), then pick it:
- *     adb shell am start -n com.wesbos.homehq/.MainActivity --ez home true
- *     adb shell cmd package set-home-activity com.wesbos.homehq/.Home
  */
 public class MainActivity extends Activity {
   static final String TAG = "HomeHQ";
   static final String DEFAULT_URL = "https://home-dashboard.wesbos.workers.dev/";
-  static final String PREFS = "kiosk";
-  static final String PREF_URL = "url";
   static final long EXIT_HOLD_MS = 1500;
-  static final long RETRY_MS = 5000;
   static final float EXIT_SLOP_PX = 60;
 
   private WebView web;
+  private DashboardClient dashboard;
+  private VoiceCapture voice;
+  private TextView waitingMessage;
   private final Handler handler = new Handler(Looper.getMainLooper());
   private final int[] exitIds = new int[2];
   private final float[] exitX = new float[2];
   private final float[] exitY = new float[2];
   private boolean exitArmed;
-  private String retryUrl;
-  private boolean pageFailed;
-  private LinearLayout offline;
-  private TextView offlineTitle, offlineText;
 
-  private final Runnable retry = new Runnable() {
-    @Override
-    public void run() {
-      if (retryUrl != null) web.loadUrl(retryUrl);
-    }
-  };
-
-  private final Runnable showControls = new Runnable() {
+  private final Runnable exitToLauncher = new Runnable() {
     @Override
     public void run() {
       exitArmed = false;
@@ -83,7 +65,7 @@ public class MainActivity extends Activity {
                 if (which == 0) openLauncher();
                 else if (which == 1) startActivity(new Intent(Settings.ACTION_SETTINGS));
                 else if (which == 2) openWifiSettings();
-                else web.reload();
+                else dashboard.reload();
               })
           .setNegativeButton("Back to dashboard", null).show();
     }
@@ -92,62 +74,81 @@ public class MainActivity extends Activity {
   @Override
   protected void onCreate(Bundle state) {
     super.onCreate(state);
+    saveOptions(getIntent());
+    if (redirectToDefaultHome(getIntent())) return;
     applyDebugFlag(getIntent());
-    applyHomeFlag(getIntent());
     keepNavigationEnabled();
+    getWindow().setBackgroundDrawable(new ColorDrawable(Color.BLACK));
+    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER);
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
         | WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
     web = new WebView(this);
+    web.setBackgroundColor(Color.BLACK);
     WebSettings s = web.getSettings();
     s.setJavaScriptEnabled(true);
     s.setDomStorageEnabled(true);
-    s.setUseWideViewPort(true);
+    // The page fits its fixed stage itself. Use the real device viewport rather than
+    // a virtual wide viewport, which clips higher-density screens like the Echo Show.
+    s.setUseWideViewPort(false);
     s.setMediaPlaybackRequiresUserGesture(false);
-    // Keep navigation inside the kiosk. When the kiosk starts at boot before Wi-Fi is up, the
-    // first load fails and would stay on the error page, so retry failed main-frame loads.
-    // The offline screen covers WebView's error page until a load succeeds.
-    web.setWebViewClient(new WebViewClient() {
-      @Override
-      public void onPageStarted(WebView view, String url, Bitmap icon) {
-        pageFailed = false;
-      }
+    s.setAllowFileAccess(false);
+    s.setAllowContentAccess(false);
+    FrameLayout content = new FrameLayout(this);
+    content.setBackgroundColor(Color.BLACK);
+    content.addView(web);
+    LinearLayout waiting = new LinearLayout(this);
+    waiting.setOrientation(LinearLayout.VERTICAL);
+    waiting.setGravity(Gravity.CENTER);
+    waiting.setBackgroundColor(Color.rgb(243, 239, 230));
+    waiting.setClickable(true);
+    TextView message = new TextView(this);
+    waitingMessage = message;
+    message.setText("Waiting for dashboard\nIt will open automatically when the connection is ready.");
+    message.setTextColor(Color.rgb(32, 32, 32));
+    message.setTextSize(24);
+    message.setGravity(Gravity.CENTER);
+    message.setPadding(32, 24, 32, 24);
+    waiting.addView(message);
+    Button retry = new Button(this);
+    retry.setText("Retry now");
+    retry.setOnClickListener(v -> dashboard.reload());
+    Button wifi = new Button(this);
+    wifi.setText("Open Wi-Fi settings");
+    wifi.setOnClickListener(v -> openWifiSettings());
+    waiting.addView(wifi);
+    waiting.addView(retry, new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+    waiting.setVisibility(View.GONE);
+    content.addView(waiting, new FrameLayout.LayoutParams(
+        FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+    voice = new VoiceCapture(this,web);
+    dashboard = new DashboardClient(getAssets(), web, waiting, this::showOffline, this::openSpotify, this::voiceAction,
+        getSharedPreferences("kiosk", 0).getBoolean("household_sidebar", false));
+    web.setWebViewClient(dashboard);
+    setContentView(content);
 
-      @Override
-      public void onPageFinished(WebView view, String url) {
-        if (!pageFailed) offline.setVisibility(View.GONE);
-      }
-
-      @Override
-      @SuppressWarnings("deprecation")
-      public void onReceivedError(WebView view, int code, String desc, String failingUrl) {
-        Log.w(TAG, "Load failed (" + desc + "), retrying in " + RETRY_MS + " ms");
-        pageFailed = true;
-        showOffline();
-        retryUrl = failingUrl;
-        handler.removeCallbacks(retry);
-        handler.postDelayed(retry, RETRY_MS);
-      }
-    });
-    FrameLayout root = new FrameLayout(this);
-    root.addView(web);
-    root.addView(buildOffline());
-    setContentView(root);
-
-    String url = urlFrom(getIntent());
-    web.loadUrl(url != null ? url : savedUrl());
+    String url = requestedUrl(getIntent());
+    dashboard.load(url != null ? url : defaultUrl());
   }
 
   @Override
   protected void onResume() {
     super.onResume();
-    NavigationService.setDashboardVisible(true);
+    if (dashboard != null) {
+      NavigationService.setDashboardVisible(true);
+      dashboard.resume();
+    }
   }
 
   @Override
   protected void onPause() {
     cancelExit();
-    NavigationService.setDashboardVisible(false);
+    if (voice != null) voice.cancel();
+    if (dashboard != null) {
+      NavigationService.setDashboardVisible(false);
+      dashboard.pause();
+    }
     super.onPause();
   }
 
@@ -155,67 +156,80 @@ public class MainActivity extends Activity {
   protected void onNewIntent(Intent intent) {
     super.onNewIntent(intent);
     setIntent(intent);
+    saveOptions(intent);
     applyDebugFlag(intent);
-    applyHomeFlag(intent);
-    String url = urlFrom(intent);
-    if (url != null) {
-      handler.removeCallbacks(retry);
-      web.loadUrl(url);
+    String url = requestedUrl(intent);
+    if (url != null) dashboard.load(url);
+    else if (intent.getBooleanExtra("reset_url", false)) dashboard.load(defaultUrl());
+  }
+
+  private void saveOptions(Intent intent) {
+    if (intent != null && intent.getBooleanExtra("reset_url", false)) {
+      getSharedPreferences("kiosk", 0).edit().remove("dashboard_url").apply();
+    }
+    String requested = requestedUrl(intent);
+    if (requested != null) {
+      Uri uri = Uri.parse(requested);
+      String scheme = uri.getScheme();
+      if (("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))
+          && uri.getHost() != null) {
+        getSharedPreferences("kiosk", 0).edit()
+            .putString("dashboard_url", requested).apply();
+      }
+    }
+    if (intent != null && intent.hasExtra("household_sidebar")) {
+      getSharedPreferences("kiosk", 0).edit()
+          .putBoolean("household_sidebar", intent.getBooleanExtra("household_sidebar", false)).apply();
+    }
+    if (intent != null && intent.hasExtra("keep_usb")) {
+      getSharedPreferences("kiosk", 0).edit()
+          .putBoolean("keep_usb", intent.getBooleanExtra("keep_usb", false)).apply();
     }
   }
 
-  /** A "url" extra is saved for later launches. A VIEW link from another app is shown, not saved. */
-  private String urlFrom(Intent intent) {
-    String saved = intent.getStringExtra(PREF_URL);
-    if (saved == null) return intent.getDataString();
-    // The activity is exported, so only save web URLs: never file:, content: or javascript:.
-    String scheme = Uri.parse(saved).getScheme();
-    if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
-      Log.w(TAG, "Ignoring non-web kiosk URL: " + saved);
-      return null;
+  private String defaultUrl() {
+    String savedUrl = getSharedPreferences("kiosk", 0).getString("dashboard_url", null);
+    if (savedUrl != null) return savedUrl;
+    try (java.io.InputStream ignored = getAssets().open("dashboard/index.html")) {
+      return DashboardAssets.URL;
+    } catch (IOException e) {
+      return DEFAULT_URL;
     }
-    getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(PREF_URL, saved).apply();
-    Log.i(TAG, "Saved kiosk URL: " + saved);
-    return saved;
   }
 
-  private String savedUrl() {
-    return getSharedPreferences(PREFS, MODE_PRIVATE).getString(PREF_URL, DEFAULT_URL);
+  /** Android keeps HOME and ordinary app tasks separate even for singleTask.
+   * Route shortcuts/reloads into our default HOME task instead of retaining two WebViews. */
+  private boolean redirectToDefaultHome(Intent incoming) {
+    if (incoming != null && incoming.hasCategory(Intent.CATEGORY_HOME)) return false;
+    Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+    ResolveInfo selected = getPackageManager().resolveActivity(home, 0);
+    if (selected == null || selected.activityInfo == null
+        || !getPackageName().equals(selected.activityInfo.packageName)
+        || !getClass().getName().equals(selected.activityInfo.name)) return false;
+    Intent canonical = new Intent(incoming == null ? new Intent() : incoming);
+    canonical.setAction(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        .removeCategory(Intent.CATEGORY_LAUNCHER);
+    canonical.setComponent(new ComponentName(this, MainActivity.class));
+    canonical.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+    startActivity(canonical);
+    finish();
+    return true;
   }
 
-  private int dp(float v) {
-    return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, getResources().getDisplayMetrics());
+  private void voiceAction(Uri command) {
+    if("/start".equals(command.getPath())) {
+      String id=command.getQueryParameter("display");
+      if(id!=null&&id.matches("[a-zA-Z0-9_-]{1,80}"))voice.start(web.getUrl(),id,command.getQueryParameter("history"));
+    } else if("/stop".equals(command.getPath())) voice.stop();
+    else if("/cancel".equals(command.getPath())) voice.cancel();
   }
 
-  private View buildOffline() {
-    offline = new LinearLayout(this);
-    offline.setOrientation(LinearLayout.VERTICAL);
-    offline.setGravity(Gravity.CENTER);
-    offline.setBackgroundColor(Color.rgb(17, 17, 17));
-    offline.setVisibility(View.GONE);
-    offline.setClickable(true); // keep taps off the error page underneath
-
-    offlineTitle = new TextView(this);
-    offlineTitle.setTextColor(Color.WHITE);
-    offlineTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 40);
-    offlineTitle.setGravity(Gravity.CENTER);
-    offline.addView(offlineTitle);
-
-    offlineText = new TextView(this);
-    offlineText.setTextColor(Color.rgb(170, 170, 170));
-    offlineText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-    offlineText.setGravity(Gravity.CENTER);
-    offlineText.setPadding(dp(24), dp(12), dp(24), dp(28));
-    offline.addView(offlineText);
-
-    Button wifi = new Button(this);
-    wifi.setText("Open Wi-Fi settings");
-    wifi.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
-    wifi.setPadding(dp(32), dp(16), dp(32), dp(16));
-    wifi.setOnClickListener(v -> openWifiSettings());
-    offline.addView(wifi, new LinearLayout.LayoutParams(
-        LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-    return offline;
+  private void openSpotify() {
+    Intent launch = getPackageManager().getLaunchIntentForPackage("com.spotify.music");
+    if (launch != null) startActivity(launch);
+    else new AlertDialog.Builder(this).setTitle("Spotify")
+        .setMessage("Install Spotify on this display first.")
+        .setPositiveButton("OK", null).show();
   }
 
   private boolean wifiConnected() {
@@ -226,14 +240,9 @@ public class MainActivity extends Activity {
   }
 
   private void showOffline() {
-    if (wifiConnected()) {
-      offlineTitle.setText("Can't reach the dashboard");
-      offlineText.setText("Wi-Fi is connected. Retrying every few seconds.");
-    } else {
-      offlineTitle.setText("Connect to Wi-Fi?");
-      offlineText.setText("The frame isn't on Wi-Fi. The dashboard comes back by itself once it is.");
-    }
-    offline.setVisibility(View.VISIBLE);
+    waitingMessage.setText(wifiConnected()
+        ? "Can't reach the dashboard\nWi-Fi is connected. Retrying every few seconds."
+        : "Connect to Wi-Fi?\nThe dashboard comes back by itself once the connection is ready.");
   }
 
   private void openWifiSettings() {
@@ -271,6 +280,17 @@ public class MainActivity extends Activity {
     }
   }
 
+  /** Accept upstream's saved URL extra while preserving this fork's VIEW persistence. */
+  private String requestedUrl(Intent intent) {
+    if (intent == null) return null;
+    String explicit = intent.getStringExtra("url");
+    if (explicit == null) return intent.getDataString();
+    Uri uri = Uri.parse(explicit);
+    if (("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme()))
+        && uri.getHost() != null) return explicit;
+    return null;
+  }
+
   private void openLauncher() {
     Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
     for (ResolveInfo info : getPackageManager().queryIntentActivities(home, 0)) {
@@ -285,6 +305,7 @@ public class MainActivity extends Activity {
   @Override
   protected void onDestroy() {
     handler.removeCallbacksAndMessages(null);
+    if (dashboard != null) dashboard.destroy();
     if (web != null) web.destroy();
     super.onDestroy();
   }
@@ -296,19 +317,12 @@ public class MainActivity extends Activity {
     Log.i(TAG, "WebView remote debugging " + (debug ? "ON" : "off"));
   }
 
-  /** Turns the Home alias on or off. The shell can't enable a component of a release app. */
-  private void applyHomeFlag(Intent intent) {
-    if (intent == null || !intent.hasExtra("home")) return;
-    boolean home = intent.getBooleanExtra("home", false);
-    getPackageManager().setComponentEnabledSetting(new ComponentName(this, getPackageName() + ".Home"),
-        home ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DEFAULT,
-        PackageManager.DONT_KILL_APP);
-    Log.i(TAG, "Home alias " + (home ? "on" : "off"));
-  }
-
   /** Watches for the two-finger exit hold; all touches still go to the page. */
   @Override
   public boolean dispatchTouchEvent(MotionEvent e) {
+    if (getIntent().getBooleanExtra("debug", false)) {
+      Log.d(TAG, "Touch action=" + e.getActionMasked() + " pointers=" + e.getPointerCount());
+    }
     switch (e.getActionMasked()) {
       case MotionEvent.ACTION_POINTER_DOWN:
         if (e.getPointerCount() == 2) {
@@ -318,8 +332,8 @@ public class MainActivity extends Activity {
             exitY[i] = e.getY(i);
           }
           exitArmed = true;
-          handler.removeCallbacks(showControls);
-          handler.postDelayed(showControls, EXIT_HOLD_MS);
+          handler.removeCallbacks(exitToLauncher);
+          handler.postDelayed(exitToLauncher, EXIT_HOLD_MS);
         } else {
           cancelExit(); // 3+ fingers
         }
@@ -349,7 +363,7 @@ public class MainActivity extends Activity {
   private void cancelExit() {
     if (!exitArmed) return;
     exitArmed = false;
-    handler.removeCallbacks(showControls);
+    handler.removeCallbacks(exitToLauncher);
   }
 
   @Override

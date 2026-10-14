@@ -2,10 +2,12 @@
 import './icons.js';
 import './data.js';
 import './app.js';
+import './display-profile.js';
 import './live.js';
 import './agent-data.js';
 import './themes.js';
 import './display-settings.js';
+import './voice.js';
 import './system.js';
 import './slideshow.js';
 import './weather-details.js';

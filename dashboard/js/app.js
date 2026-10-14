@@ -171,7 +171,7 @@
   }
   App.go = function (name, opts) {
     opts = opts || {};
-    if (!App.views[name]) name = 'home';
+    if (!App.views[name] || (window.DashboardDisplay && DashboardDisplay.profile && DashboardDisplay.profile.tabs.indexOf(name)<0)) name = 'home';
     if (App.current && App.current !== name && App.views[App.current].hide) App.views[App.current].hide();
     App.$$('.view').forEach(function (v) { v.classList.toggle('is-active', v.dataset.view === name); });
     App.$$('.rail-item').forEach(function (b) { b.classList.toggle('is-active', b.dataset.go === name); });
@@ -198,7 +198,7 @@
     refreshTimer = setTimeout(function next() {
       var name = Object.keys(App.views).filter(function (k) {
         var v = App.views[k];
-        return k !== App.current && (!v._built || v._dirty);
+        return k !== App.current && (!window.DashboardDisplay || !DashboardDisplay.profile || DashboardDisplay.profile.tabs.indexOf(k)>-1) && (!v._built || v._dirty);
       })[0];
       if (!name) return;
       prebuild(name);
@@ -295,7 +295,8 @@
   var idleSec = 0;
   function onIdleTick() {
     idleSec++;
-    var blocked = $('#takeover').classList.contains('is-open');
+    var settings=$('#sheetLayer');
+    var blocked = $('#takeover').classList.contains('is-open') || (settings.classList.contains('is-open') && !!settings.querySelector('.sheet--voice,.sheet--display-settings'));
     if (App.mode === 'nightdash' && idleSec >= 20) { App.setMode('night'); return; }
     if (App.mode !== 'day' || blocked) return;
     if (idleSec === App.idle.home && App.current !== 'home') { App.closeSheet(); App.go('home'); }
@@ -348,6 +349,7 @@
     tick();
     setInterval(tick, 1000);
     App.emit('ready');
+    if(window.DashboardDisplay)DashboardDisplay.apply(DashboardDisplay.profile);
     refreshStale(1500);
     setTimeout(function () { App.toast('Tip: press and hold the <b>clock</b> in the sidebar for demo controls', { ms: 6000, icon: 'bolt' }); }, 1200);
   };

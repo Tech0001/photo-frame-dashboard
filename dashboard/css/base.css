@@ -312,3 +312,4 @@ button.card:active, .h-hero:active, .h-photo:active { transform: scale(.985); }
 .diag u { text-decoration: none; color: #aaa; }
 
 .stage[data-theme-dark="true"] [style*="--c:#111111"] { --c:var(--ink) !important; --c-rgb:var(--ink-rgb) !important; --c-ink:var(--paper) !important; }
+.rail-item[hidden]{display:none!important}

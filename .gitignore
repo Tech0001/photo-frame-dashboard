@@ -27,4 +27,4 @@ scripts/si006-webview-overlay/build/
 /hub/data/
 /hub/cache/
 /hub/photos/
-/hub/node_modules/
+/hub/node_modules
